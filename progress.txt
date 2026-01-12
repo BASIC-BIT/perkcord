@@ -51,3 +51,4 @@
 2026-01-12: Added role connection update queue and worker to sync Linked Roles metadata on entitlement changes.
 2026-01-12: Added admin portal Linked Roles setup wizard with step-by-step guidance and metadata registration form.
 2026-01-12: Added scheduled drift repair job to enqueue periodic guild role sync requests with interval guards.
+2026-01-12: Added Prettier config plus format scripts for web and bot packages.

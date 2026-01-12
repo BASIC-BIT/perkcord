@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "format": "prettier --check .",
+    "format:write": "prettier --write ."
   },
   "dependencies": {
     "convex": "^1.14.1",
@@ -21,6 +23,7 @@
     "@types/react-dom": "^18.2.0",
     "eslint": "^8.57.0",
     "eslint-config-next": "^14.2.0",
+    "prettier": "^3.2.5",
     "typescript": "^5.5.0"
   }
 }

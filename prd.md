@@ -468,6 +468,7 @@ Progress (2026-01-12): Added scheduled job to retry failed role sync requests wi
 Progress (2026-01-12): Added Discord bot role sync retry/backoff handling for rate limits and transient Discord API errors.
 Progress (2026-01-12): Polished admin audit event UI with badges, ID chips, and payload previews for faster diagnostics.
 Progress (2026-01-12): Added scheduled drift repair job to enqueue periodic guild role sync requests with interval guards.
+Progress (2026-01-12): Added Prettier configuration with format scripts for web and bot packages to meet code quality gates.
 
 **Milestone 7 — NMI integration (later)**
 
