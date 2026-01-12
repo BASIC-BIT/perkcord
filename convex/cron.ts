@@ -16,6 +16,12 @@ crons.interval(
 );
 
 crons.interval(
+  "repair role sync drift",
+  { minutes: 60 },
+  api.roleSync.enqueueRoleSyncRepairs
+);
+
+crons.interval(
   "process provider events",
   { minutes: 2 },
   api.providerEventProcessing.processProviderEvents

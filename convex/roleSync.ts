@@ -52,6 +52,26 @@ const coerceRetryAfterMs = (value?: number) => {
   return value;
 };
 
+const coerceRepairLimit = (limit?: number) => {
+  if (limit === undefined) {
+    return 25;
+  }
+  if (!Number.isFinite(limit) || limit <= 0 || !Number.isInteger(limit)) {
+    throw new Error("limit must be a positive integer.");
+  }
+  return Math.min(limit, 200);
+};
+
+const coerceMinIntervalMs = (value?: number) => {
+  if (value === undefined) {
+    return 6 * 60 * 60 * 1000;
+  }
+  if (!Number.isFinite(value) || !Number.isInteger(value) || value <= 0) {
+    throw new Error("minIntervalMs must be a positive integer.");
+  }
+  return value;
+};
+
 const isGrantEffective = (
   grant: Doc<"entitlementGrants">,
   now: number
@@ -535,6 +555,87 @@ export const retryFailedRoleSyncRequests = mutation({
       retriedCount: retriedRequestIds.length,
       retriedRequestIds,
       evaluatedAt: now,
+    };
+  },
+});
+
+export const enqueueRoleSyncRepairs = mutation({
+  args: {
+    limit: v.optional(v.number()),
+    minIntervalMs: v.optional(v.number()),
+    asOf: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const now = coerceAsOf(args.asOf);
+    const limit = coerceRepairLimit(args.limit);
+    const minIntervalMs = coerceMinIntervalMs(args.minIntervalMs);
+
+    const guilds = await ctx.db.query("guilds").collect();
+    const requestedIds: Array<Doc<"roleSyncRequests">["_id"]> = [];
+
+    for (const guild of guilds) {
+      if (requestedIds.length >= limit) {
+        break;
+      }
+
+      const recentRequests = await ctx.db
+        .query("roleSyncRequests")
+        .withIndex("by_guild_time", (q) => q.eq("guildId", guild._id))
+        .order("desc")
+        .take(200);
+
+      const hasGuildPending = recentRequests.some(
+        (request) =>
+          request.scope === "guild" &&
+          (request.status === "pending" || request.status === "in_progress")
+      );
+      if (hasGuildPending) {
+        continue;
+      }
+
+      const latestGuildRequest = recentRequests.find(
+        (request) => request.scope === "guild"
+      );
+      if (
+        latestGuildRequest &&
+        now - latestGuildRequest.requestedAt < minIntervalMs
+      ) {
+        continue;
+      }
+
+      const requestId = await ctx.db.insert("roleSyncRequests", {
+        guildId: guild._id,
+        scope: "guild",
+        status: "pending",
+        requestedAt: now,
+        requestedByActorType: "system",
+        requestedByActorId: "role_sync_repair",
+        reason: "Scheduled drift repair",
+        updatedAt: now,
+      });
+
+      await ctx.db.insert("auditEvents", {
+        guildId: guild._id,
+        timestamp: now,
+        actorType: "system",
+        actorId: "role_sync_repair",
+        eventType: "role_sync.repair_requested",
+        correlationId: requestId,
+        payloadJson: JSON.stringify({
+          requestId,
+          scope: "guild",
+          reason: "Scheduled drift repair",
+        }),
+      });
+
+      requestedIds.push(requestId);
+    }
+
+    return {
+      requestedCount: requestedIds.length,
+      requestedIds,
+      evaluatedAt: now,
+      minIntervalMs,
     };
   },
 });
