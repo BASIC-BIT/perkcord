@@ -404,6 +404,7 @@ Progress (2026-01-12): Added member identity upsert mutation for Discord OAuth l
 
 * Bot install + onboarding diagnostics
 * Role sync worker + admin “force sync”
+Progress (2026-01-12): Added role sync request table and admin mutation for force sync requests (guild/user) with audit events.
 
 **Milestone 3 — Stripe integration**
 

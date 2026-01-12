@@ -9,6 +9,12 @@ const entitlementStatus = v.union(
   v.literal("expired"),
   v.literal("suspended_dispute")
 );
+const roleSyncRequestStatus = v.union(
+  v.literal("pending"),
+  v.literal("in_progress"),
+  v.literal("completed"),
+  v.literal("failed")
+);
 
 const entitlementSource = v.union(
   v.literal("stripe_subscription"),
@@ -88,6 +94,23 @@ export default defineSchema({
     .index("by_guild_user", ["guildId", "discordUserId"])
     .index("by_tier", ["tierId"])
     .index("by_source_ref", ["sourceRefProvider", "sourceRefId"]),
+
+  roleSyncRequests: defineTable({
+    guildId: v.id("guilds"),
+    scope: v.union(v.literal("guild"), v.literal("user")),
+    discordUserId: v.optional(v.string()),
+    status: roleSyncRequestStatus,
+    requestedAt: v.number(),
+    requestedByActorType: v.union(v.literal("system"), v.literal("admin")),
+    requestedByActorId: v.optional(v.string()),
+    reason: v.optional(v.string()),
+    lastError: v.optional(v.string()),
+    completedAt: v.optional(v.number()),
+    updatedAt: v.number(),
+  })
+    .index("by_guild_status", ["guildId", "status"])
+    .index("by_guild_user_status", ["guildId", "discordUserId", "status"])
+    .index("by_guild_time", ["guildId", "requestedAt"]),
 
   auditEvents: defineTable({
     guildId: v.id("guilds"),
