@@ -1,0 +1,10 @@
+prd_path = "prd.md"
+progress_path = "progress.txt"
+model = "gpt-5.2-codex"
+reasoning_effort = "xhigh"
+completion_sigil = "<promise>DONE</promise>"
+max_iterations = 9999
+full_auto = true
+# Optional
+# test_command = "pnpm test"
+# extra_instructions = "Follow AGENTS.md and keep changes minimal."
