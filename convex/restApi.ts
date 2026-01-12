@@ -631,6 +631,33 @@ export const getGuildDiagnostics = httpAction(async (ctx, request) => {
   }
 });
 
+export const listFailedOutboundWebhooks = httpAction(async (ctx, request) => {
+  if (request.method !== "GET") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  const authError = authorizeRequest(request);
+  if (authError) {
+    return authError;
+  }
+
+  try {
+    const url = new URL(request.url);
+    const guildId = getRequiredParam(url, "guildId");
+    const limit = getOptionalInteger(url, "limit");
+    const deliveries = await ctx.runQuery(
+      api.outboundWebhooks.listFailedOutboundWebhookDeliveries,
+      {
+        guildId,
+        limit,
+      }
+    );
+    return jsonResponse({ deliveries });
+  } catch (error) {
+    return handleError(error);
+  }
+});
+
 export const createManualGrant = httpAction(async (ctx, request) => {
   if (request.method !== "POST") {
     return jsonResponse({ error: "Method not allowed." }, 405);

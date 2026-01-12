@@ -455,6 +455,7 @@ Progress (2026-01-12): Added REST API admin endpoints to create and revoke manua
 Progress (2026-01-12): Added REST API endpoint to request admin force-sync (guild or user) role sync jobs.
 Progress (2026-01-12): Added admin health overview panel plus REST endpoints for active member counts and latest provider events.
 Progress (2026-01-12): Added admin portal recent audit events feed for guild lifecycle visibility.
+Progress (2026-01-12): Added REST API endpoint and admin health panel to surface failed outbound webhook deliveries for dead-letter visibility.
 
 **Milestone 6 — Phase 1 hardening**
 

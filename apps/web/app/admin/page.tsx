@@ -79,6 +79,24 @@ type ProviderDiagnosticsResponse = {
   evaluatedAt: number;
   providers: ProviderDiagnosticsEntry[];
 };
+type OutboundWebhookDelivery = {
+  _id: string;
+  endpointId: string;
+  endpointUrl: string;
+  eventType: string;
+  eventId: string;
+  status: string;
+  attempts: number;
+  nextAttemptAt: number;
+  lastAttemptedAt?: number;
+  lastError?: string;
+  deliveredAt?: number;
+  createdAt: number;
+  updatedAt: number;
+};
+type FailedOutboundWebhookResponse = {
+  deliveries: OutboundWebhookDelivery[];
+};
 type AuditEventsResponse = {
   events: AuditEventSummary[];
 };
@@ -223,6 +241,7 @@ export default async function AdminPage({
   const memberId = getParam(searchParams?.memberId);
   const scanLimit = getNumberParam(searchParams?.scanLimit);
   const auditLimit = getNumberParam(searchParams?.auditLimit);
+  const failedLimit = getNumberParam(searchParams?.failedLimit);
   const convexUrl = process.env.PERKCORD_CONVEX_HTTP_URL?.trim();
   const convexApiKey = process.env.PERKCORD_REST_API_KEY?.trim();
 
@@ -236,6 +255,8 @@ export default async function AdminPage({
   let guildDiagnostics: GuildDiagnostics | null = null;
   let providerDiagnosticsError: string | null = null;
   let providerDiagnostics: ProviderDiagnosticsResponse | null = null;
+  let failedWebhookError: string | null = null;
+  let failedWebhookDeliveries: OutboundWebhookDelivery[] | null = null;
   let auditEventsError: string | null = null;
   let auditEvents: AuditEventSummary[] | null = null;
   let healthConfigError: string | null = null;
@@ -345,6 +366,22 @@ export default async function AdminPage({
         providerDiagnostics = diagnosticsResult.data ?? null;
       }
 
+      const failedResult =
+        await fetchConvexJson<FailedOutboundWebhookResponse>(
+          convexUrl,
+          convexApiKey,
+          "/api/webhooks/failed",
+          {
+            guildId,
+            limit: failedLimit ?? 25,
+          }
+        );
+      if (failedResult.error) {
+        failedWebhookError = failedResult.error;
+      } else {
+        failedWebhookDeliveries = failedResult.data?.deliveries ?? [];
+      }
+
       const auditResult = await fetchConvexJson<AuditEventsResponse>(
         convexUrl,
         convexApiKey,
@@ -375,6 +412,8 @@ export default async function AdminPage({
       guildDiagnosticsError =
         "Convex REST configuration missing (PERKCORD_CONVEX_HTTP_URL, PERKCORD_REST_API_KEY).";
       tierListError =
+        "Convex REST configuration missing (PERKCORD_CONVEX_HTTP_URL, PERKCORD_REST_API_KEY).";
+      failedWebhookError =
         "Convex REST configuration missing (PERKCORD_CONVEX_HTTP_URL, PERKCORD_REST_API_KEY).";
       auditEventsError =
         "Convex REST configuration missing (PERKCORD_CONVEX_HTTP_URL, PERKCORD_REST_API_KEY).";
@@ -982,6 +1021,18 @@ export default async function AdminPage({
                   defaultValue={scanLimit ? String(scanLimit) : ""}
                 />
               </label>
+              <label className="field">
+                <span>Failed webhook limit (optional)</span>
+                <input
+                  className="input"
+                  name="failedLimit"
+                  type="number"
+                  min={1}
+                  max={200}
+                  placeholder="25"
+                  defaultValue={failedLimit ? String(failedLimit) : ""}
+                />
+              </label>
               <div className="tier-actions">
                 <button className="button secondary" type="submit">
                   Load health
@@ -1002,6 +1053,9 @@ export default async function AdminPage({
             )}
             {providerDiagnosticsError && (
               <div className="banner error">{providerDiagnosticsError}</div>
+            )}
+            {failedWebhookError && (
+              <div className="banner error">{failedWebhookError}</div>
             )}
             {auditEventsError && (
               <div className="banner error">{auditEventsError}</div>
@@ -1151,6 +1205,41 @@ export default async function AdminPage({
                     </>
                   ) : (
                     <p>Provider diagnostics are unavailable.</p>
+                  )}
+                </div>
+                <div className="snapshot-card">
+                  <h3>Failed outbound webhooks</h3>
+                  {failedWebhookDeliveries ? (
+                    failedWebhookDeliveries.length === 0 ? (
+                      <p>No failed deliveries for this guild.</p>
+                    ) : (
+                      <ul className="audit-list">
+                        {failedWebhookDeliveries.map((delivery) => (
+                          <li key={delivery._id} className="audit-item">
+                            <div className="audit-title">
+                              {delivery.eventType}
+                            </div>
+                            <div className="audit-meta">
+                              <span>Endpoint: {delivery.endpointUrl}</span>
+                              <span>Event: {delivery.eventId}</span>
+                              <span>Attempts: {delivery.attempts}</span>
+                              <span>
+                                Last tried:{" "}
+                                {formatTimestamp(delivery.lastAttemptedAt)}
+                              </span>
+                              <span>
+                                Failed: {formatTimestamp(delivery.updatedAt)}
+                              </span>
+                              {delivery.lastError && (
+                                <span>Error: {delivery.lastError}</span>
+                              )}
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    )
+                  ) : (
+                    <p>Failed deliveries are unavailable.</p>
                   )}
                 </div>
                 <div className="snapshot-card">

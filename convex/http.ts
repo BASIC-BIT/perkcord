@@ -6,6 +6,7 @@ import {
   getActiveMemberCounts,
   getGuildDiagnostics,
   getProviderEventDiagnostics,
+  listFailedOutboundWebhooks,
   getMemberSnapshot,
   listAuditEvents,
   listMembers,
@@ -82,6 +83,12 @@ http.route({
   path: "/api/diagnostics/guild",
   method: "GET",
   handler: getGuildDiagnostics,
+});
+
+http.route({
+  path: "/api/webhooks/failed",
+  method: "GET",
+  handler: listFailedOutboundWebhooks,
 });
 
 http.route({
