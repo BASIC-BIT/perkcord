@@ -53,3 +53,4 @@
 2026-01-12: Added scheduled drift repair job to enqueue periodic guild role sync requests with interval guards.
 2026-01-12: Added Prettier config plus format scripts for web and bot packages.
 2026-01-12: Added GitHub Actions CI workflow to run lint + typecheck for web and bot packages.
+2026-01-12: Added Vitest unit tests for web encryption helpers and wired them into CI.

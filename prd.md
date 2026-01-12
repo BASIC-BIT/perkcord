@@ -470,6 +470,7 @@ Progress (2026-01-12): Polished admin audit event UI with badges, ID chips, and 
 Progress (2026-01-12): Added scheduled drift repair job to enqueue periodic guild role sync requests with interval guards.
 Progress (2026-01-12): Added Prettier configuration with format scripts for web and bot packages to meet code quality gates.
 Progress (2026-01-12): Added GitHub Actions CI workflow to run lint + typecheck for web and bot packages.
+Progress (2026-01-12): Added Vitest unit tests for web encryption helpers with a CI test step.
 
 **Milestone 7 — NMI integration (later)**
 
