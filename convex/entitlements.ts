@@ -1,4 +1,4 @@
-import { mutation } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
 const entitlementStatus = v.union(
@@ -59,6 +59,9 @@ export const createManualGrant = mutation({
       timestamp: now,
       actorType: "admin",
       actorId: args.actorId,
+      subjectDiscordUserId: args.discordUserId,
+      subjectTierId: args.tierId,
+      subjectGrantId: grantId,
       eventType: "grant.created",
       correlationId: grantId,
       payloadJson: JSON.stringify({
@@ -118,6 +121,9 @@ export const revokeEntitlementGrant = mutation({
       timestamp: now,
       actorType: "admin",
       actorId: args.actorId,
+      subjectDiscordUserId: grant.discordUserId,
+      subjectTierId: grant.tierId,
+      subjectGrantId: args.grantId,
       eventType: "grant.revoked",
       correlationId: args.grantId,
       payloadJson: JSON.stringify({
@@ -133,5 +139,58 @@ export const revokeEntitlementGrant = mutation({
     });
 
     return args.grantId;
+  },
+});
+
+export const getMemberSnapshot = query({
+  args: {
+    guildId: v.id("guilds"),
+    discordUserId: v.string(),
+    auditLimit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const memberIdentity = await ctx.db
+      .query("memberIdentities")
+      .withIndex("by_guild_user", (q) =>
+        q.eq("guildId", args.guildId).eq("discordUserId", args.discordUserId)
+      )
+      .unique();
+
+    const grants = await ctx.db
+      .query("entitlementGrants")
+      .withIndex("by_guild_user", (q) =>
+        q.eq("guildId", args.guildId).eq("discordUserId", args.discordUserId)
+      )
+      .collect();
+
+    grants.sort((a, b) => b.validFrom - a.validFrom);
+
+    const tierIds = Array.from(new Set(grants.map((grant) => grant.tierId)));
+    const tiers = await Promise.all(tierIds.map((tierId) => ctx.db.get(tierId)));
+    const tierById = new Map(
+      tiers
+        .filter((tier): tier is NonNullable<typeof tier> => Boolean(tier))
+        .map((tier) => [tier._id, tier])
+    );
+
+    const grantsWithTier = grants.map((grant) => ({
+      ...grant,
+      tier: tierById.get(grant.tierId) ?? null,
+    }));
+
+    const auditLimit = Math.max(1, Math.min(args.auditLimit ?? 25, 100));
+    const auditEvents = await ctx.db
+      .query("auditEvents")
+      .withIndex("by_guild_user_time", (q) =>
+        q.eq("guildId", args.guildId).eq("subjectDiscordUserId", args.discordUserId)
+      )
+      .order("desc")
+      .take(auditLimit);
+
+    return {
+      memberIdentity,
+      grants: grantsWithTier,
+      auditEvents,
+    };
   },
 });

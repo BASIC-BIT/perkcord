@@ -94,8 +94,17 @@ export default defineSchema({
     timestamp: v.number(),
     actorType: v.union(v.literal("system"), v.literal("admin")),
     actorId: v.optional(v.string()),
+    subjectDiscordUserId: v.optional(v.string()),
+    subjectTierId: v.optional(v.id("tiers")),
+    subjectGrantId: v.optional(v.id("entitlementGrants")),
     eventType: v.string(),
     correlationId: v.optional(v.string()),
     payloadJson: v.optional(v.string()),
-  }).index("by_guild_time", ["guildId", "timestamp"]),
+  })
+    .index("by_guild_time", ["guildId", "timestamp"])
+    .index("by_guild_user_time", [
+      "guildId",
+      "subjectDiscordUserId",
+      "timestamp",
+    ]),
 });

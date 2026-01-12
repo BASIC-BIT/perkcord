@@ -395,6 +395,7 @@ Events emitted to customer-configured endpoints:
 Progress (2026-01-12): Completed initial Convex schema for entitlements core (guilds, tiers, member identities, entitlement grants, audit events).
 Progress (2026-01-12): Added Convex mutation for manual entitlement grants with audit events.
 Progress (2026-01-12): Added Convex mutation to revoke entitlement grants with audit events.
+Progress (2026-01-12): Added member snapshot query returning entitlements plus audit events, with audit events indexed by subject user for admin lookup.
 
 **Milestone 2 — Discord bot roles**
 
