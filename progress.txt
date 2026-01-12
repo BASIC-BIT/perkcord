@@ -58,3 +58,4 @@
 2026-01-12: Added Dependabot config for npm packages and GitHub Actions updates.
 2026-01-12: Captured Stripe subscription period end in provider events and applied it to subscription entitlements.
 2026-01-12: Added Playwright e2e smoke test for admin login landing and member flow stub pages, plus CI step.
+2026-01-12: Added GitHub Actions secret scanning workflow using Gitleaks.
