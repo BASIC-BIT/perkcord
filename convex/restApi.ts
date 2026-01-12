@@ -791,3 +791,32 @@ export const requestRoleSync = httpAction(async (ctx, request) => {
     return handleError(error);
   }
 });
+
+export const registerRoleConnectionMetadata = httpAction(async (ctx, request) => {
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  const authError = authorizeRequest(request);
+  if (authError) {
+    return authError;
+  }
+
+  try {
+    const body = await readJsonBody(request);
+    const guildId = getRequiredBodyString(body, "guildId");
+    const actorId = getRequiredBodyString(body, "actorId");
+
+    const result = await ctx.runAction(
+      api.discordRoleConnections.registerRoleConnectionMetadata,
+      {
+        guildId,
+        actorId,
+      }
+    );
+
+    return jsonResponse(result, 200);
+  } catch (error) {
+    return handleError(error);
+  }
+});

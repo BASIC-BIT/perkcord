@@ -13,6 +13,7 @@ import {
   listMembers,
   listTiers,
   requestRoleSync,
+  registerRoleConnectionMetadata,
   revokeManualGrant,
   updateTier,
 } from "./restApi";
@@ -114,6 +115,12 @@ http.route({
   path: "/api/role-sync",
   method: "POST",
   handler: requestRoleSync,
+});
+
+http.route({
+  path: "/api/role-connections/metadata",
+  method: "POST",
+  handler: registerRoleConnectionMetadata,
 });
 
 export default http;

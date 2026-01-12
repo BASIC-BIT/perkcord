@@ -303,6 +303,13 @@ export default async function AdminPage({
   const forceSyncStatus = getParam(searchParams?.forceSync);
   const forceSyncRequestId = getParam(searchParams?.requestId);
   const forceSyncError = getParam(searchParams?.message);
+  const roleConnectionsStatus = getParam(
+    searchParams?.roleConnectionsStatus
+  );
+  const roleConnectionsMessage = getParam(
+    searchParams?.roleConnectionsMessage
+  );
+  const roleConnectionsCount = getParam(searchParams?.roleConnectionsCount);
   const grantAction = getParam(searchParams?.grantAction);
   const grantStatus = getParam(searchParams?.grantStatus);
   const grantId = getParam(searchParams?.grantId);
@@ -547,6 +554,16 @@ export default async function AdminPage({
             tierMessage ? `: ${tierMessage}` : "."
           }`
         : null;
+  const roleConnectionsBanner =
+    roleConnectionsStatus === "success"
+      ? `Linked Roles metadata registered${
+          roleConnectionsCount ? ` (${roleConnectionsCount} fields)` : ""
+        }.`
+      : roleConnectionsStatus === "error"
+        ? `Linked Roles metadata registration failed${
+            roleConnectionsMessage ? `: ${roleConnectionsMessage}` : "."
+          }`
+        : null;
 
   return (
     <main className="card">
@@ -591,6 +608,15 @@ export default async function AdminPage({
               }`}
             >
               {tierBanner}
+            </div>
+          )}
+          {roleConnectionsStatus && roleConnectionsBanner && (
+            <div
+              className={`banner ${
+                roleConnectionsStatus === "error" ? "error" : "success"
+              }`}
+            >
+              {roleConnectionsBanner}
             </div>
           )}
           <section className="panel">
@@ -641,9 +667,37 @@ export default async function AdminPage({
             </form>
           </section>
           <section className="panel">
+            <h2>Linked Roles metadata</h2>
+            <p>
+              Register the Role Connections metadata schema (is_active, tier,
+              member_since_days) for this Discord application.
+            </p>
+            <form
+              className="form"
+              action="/api/admin/role-connections/register"
+              method="post"
+            >
+              <label className="field">
+                <span>Guild ID</span>
+                <input
+                  className="input"
+                  name="guildId"
+                  placeholder="123456789012345678"
+                  defaultValue={guildId ?? ""}
+                  required
+                />
+              </label>
+              <div className="tier-actions">
+                <button className="button secondary" type="submit">
+                  Register metadata schema
+                </button>
+              </div>
+            </form>
+          </section>
+          <section className="panel">
             <h2>Tier management</h2>
             <p>
-              Create or update tiers, mapping roles and provider product IDs.
+              Create or update tiers, mapping roles and provider product IDs.   
               Use comma-separated IDs for lists.
             </p>
             {tierListError && (
