@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from "crypto";
+import { createHash, createHmac, timingSafeEqual } from "crypto";
 import { httpAction } from "./_generated/server";
 import { api } from "./_generated/api";
 
@@ -298,7 +298,7 @@ export const nmiWebhook = httpAction(async (ctx, request) => {
   const eventType =
     pickFromRecords(records, ["event_type", "eventType", "type", "event"]) ??
     toOptionalString(event.event_type ?? event.eventType ?? event.type);
-  const eventId = pickFromRecords(records, [
+  const rawEventId = pickFromRecords(records, [
     "event_id",
     "eventId",
     "notification_id",
@@ -306,7 +306,7 @@ export const nmiWebhook = httpAction(async (ctx, request) => {
     "id",
   ]);
 
-  if (!eventType || !eventId) {
+  if (!eventType) {
     return new Response("Invalid NMI event payload.", { status: 400 });
   }
 
@@ -375,6 +375,30 @@ export const nmiWebhook = httpAction(async (ctx, request) => {
     ])
   );
 
+  let eventId = rawEventId;
+  let usedFallbackEventId = false;
+  if (!eventId) {
+    const hasFallbackData =
+      Boolean(providerObjectId) ||
+      Boolean(providerCustomerId) ||
+      Boolean(providerPeriodEnd) ||
+      Boolean(occurredAt) ||
+      (providerPriceIds?.length ?? 0) > 0;
+    if (!hasFallbackData) {
+      return new Response("Invalid NMI event payload.", { status: 400 });
+    }
+    const fallbackSeed = JSON.stringify({
+      type: eventType,
+      objectId: providerObjectId ?? null,
+      customerId: providerCustomerId ?? null,
+      priceIds: providerPriceIds ?? null,
+      periodEnd: providerPeriodEnd ?? null,
+      occurredAt: occurredAt ?? null,
+    });
+    eventId = `fallback:${createHash("sha256").update(fallbackSeed).digest("hex")}`;
+    usedFallbackEventId = true;
+  }
+
   const payloadSummaryJson = JSON.stringify({
     id: eventId,
     type: eventType,
@@ -382,6 +406,7 @@ export const nmiWebhook = httpAction(async (ctx, request) => {
     customerId: providerCustomerId ?? null,
     priceIds: providerPriceIds,
     periodEnd: providerPeriodEnd ?? null,
+    usedFallbackEventId: usedFallbackEventId ? true : undefined,
   });
 
   await ctx.runMutation(api.providerEvents.recordProviderEvent, {

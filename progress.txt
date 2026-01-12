@@ -63,3 +63,4 @@
 2026-01-12: Added initial NMI webhook endpoint with signature verification and normalized provider event logging for recognized event types.
 2026-01-12: Added REST API guild listing and admin portal guild selector to choose a managed guild.
 2026-01-12: Added NMI subscription reconciliation in provider reconciliation with configurable API URL/security key and flexible response parsing.
+2026-01-12: Hardened NMI webhook ingestion with fallback hashed event IDs when event_id is missing.
