@@ -571,6 +571,7 @@ Progress (2026-01-12): Added Storybook test runner to capture component screensh
   * Import ordering or sorting
   * No shadowed variables and no accidental `any` in critical layers
 * Prettier remains the single source of formatting truth.
+Progress (2026-01-12): Added flat ESLint configs for web, bot, and convex packages with Prettier integration and CI lint steps for bot and convex.
 
 **18.5 Validation and safety checks**
 

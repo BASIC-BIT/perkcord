@@ -41,6 +41,23 @@ jobs:
       - name: Install dependencies
         working-directory: apps/bot
         run: npm install --no-audit --no-fund
+      - name: Lint
+        working-directory: apps/bot
+        run: npm run lint
       - name: Typecheck
         working-directory: apps/bot
         run: npm run typecheck
+
+  convex:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install dependencies
+        working-directory: convex
+        run: npm install --no-audit --no-fund
+      - name: Lint
+        working-directory: convex
+        run: npm run lint
