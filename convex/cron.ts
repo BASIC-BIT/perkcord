@@ -15,4 +15,10 @@ crons.interval(
   api.roleSync.retryFailedRoleSyncRequests
 );
 
+crons.interval(
+  "deliver outbound webhooks",
+  { minutes: 1 },
+  api.outboundWebhooks.processOutboundWebhookDeliveries
+);
+
 export default crons;

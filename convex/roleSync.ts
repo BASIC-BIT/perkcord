@@ -1,6 +1,10 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
+import {
+  createOutboundWebhookPayload,
+  enqueueOutboundWebhookDeliveries,
+} from "./outboundWebhookQueue";
 
 const actorType = v.optional(v.union(v.literal("system"), v.literal("admin")));
 const activeGrantStatuses: Doc<"entitlementGrants">["status"][] = [
@@ -406,6 +410,28 @@ export const completeRoleSyncRequest = mutation({
         discordUserId: request.discordUserId ?? null,
         status,
         lastError: status === "failed" ? lastError : null,
+      }),
+    });
+
+    const outboundEventType =
+      status === "failed" ? "role_sync.failed" : "role_sync.succeeded";
+
+    await enqueueOutboundWebhookDeliveries(ctx, {
+      guildId: request.guildId,
+      eventType: outboundEventType,
+      eventId: request._id,
+      payloadJson: createOutboundWebhookPayload({
+        id: request._id,
+        type: outboundEventType,
+        guildId: request.guildId,
+        occurredAt: now,
+        data: {
+          requestId: request._id,
+          scope: request.scope,
+          discordUserId: request.discordUserId ?? null,
+          status,
+          lastError: status === "failed" ? lastError : null,
+        },
       }),
     });
 

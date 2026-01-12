@@ -44,6 +44,12 @@ const outboundWebhookEventType = v.union(
   v.literal("role_sync.succeeded"),
   v.literal("role_sync.failed")
 );
+const outboundWebhookDeliveryStatus = v.union(
+  v.literal("pending"),
+  v.literal("delivering"),
+  v.literal("succeeded"),
+  v.literal("failed")
+);
 
 const entitlementSource = v.union(
   v.literal("stripe_subscription"),
@@ -172,6 +178,27 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_guild", ["guildId"]),
+
+  outboundWebhookDeliveries: defineTable({
+    guildId: v.id("guilds"),
+    endpointId: v.id("outboundWebhookEndpoints"),
+    endpointUrl: v.string(),
+    endpointSigningSecret: v.string(),
+    eventType: outboundWebhookEventType,
+    eventId: v.string(),
+    payloadJson: v.string(),
+    status: outboundWebhookDeliveryStatus,
+    attempts: v.number(),
+    nextAttemptAt: v.number(),
+    lastAttemptedAt: v.optional(v.number()),
+    lastError: v.optional(v.string()),
+    deliveredAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_endpoint_event", ["endpointId", "eventType", "eventId"])
+    .index("by_status_nextAttempt", ["status", "nextAttemptAt"])
+    .index("by_guild_status_time", ["guildId", "status", "createdAt"]),
 
   roleSyncRequests: defineTable({
     guildId: v.id("guilds"),

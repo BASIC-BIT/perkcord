@@ -439,6 +439,7 @@ Progress (2026-01-12): Added Convex query to report active member counts by tier
 Progress (2026-01-12): Added provider event diagnostics query to surface the latest webhook per provider for a guild (matched by customer or price ids).        
 Progress (2026-01-12): Added minimal REST API HTTP endpoints for tier listing, member search, member snapshots, and audit timelines guarded by PERKCORD_REST_API_KEY.
 Progress (2026-01-12): Added outbound webhook endpoint schema plus create/update/list mutations with signing secrets and audit events.
+Progress (2026-01-12): Added outbound webhook delivery queue with retry/backoff processing, cron dispatch, and enqueue hooks for grant + role sync events.
 Progress (2026-01-12): Added REST API admin endpoints to create and revoke manual entitlement grants.
 
 **Milestone 6 — Phase 1 hardening**

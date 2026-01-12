@@ -1,6 +1,10 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
+import {
+  createOutboundWebhookPayload,
+  enqueueOutboundWebhookDeliveries,
+} from "./outboundWebhookQueue";
 
 const entitlementStatus = v.union(
   v.literal("active"),
@@ -330,6 +334,27 @@ export const createManualGrant = mutation({
       }),
     });
 
+    await enqueueOutboundWebhookDeliveries(ctx, {
+      guildId: args.guildId,
+      eventType: "grant.created",
+      eventId: grantId,
+      payloadJson: createOutboundWebhookPayload({
+        id: grantId,
+        type: "grant.created",
+        guildId: args.guildId,
+        occurredAt: now,
+        data: {
+          grantId,
+          tierId: args.tierId,
+          discordUserId: args.discordUserId,
+          status,
+          validFrom,
+          validThrough: validThrough ?? null,
+          source: "manual",
+        },
+      }),
+    });
+
     return grantId;
   },
 });
@@ -390,6 +415,28 @@ export const revokeEntitlementGrant = mutation({
         previousValidThrough: grant.validThrough,
         validThrough: nextValidThrough,
         note: args.note,
+      }),
+    });
+
+    await enqueueOutboundWebhookDeliveries(ctx, {
+      guildId: args.guildId,
+      eventType: "grant.revoked",
+      eventId: args.grantId,
+      payloadJson: createOutboundWebhookPayload({
+        id: args.grantId,
+        type: "grant.revoked",
+        guildId: args.guildId,
+        occurredAt: now,
+        data: {
+          grantId: args.grantId,
+          tierId: grant.tierId,
+          discordUserId: grant.discordUserId,
+          status: nextStatus,
+          previousStatus: grant.status,
+          validThrough: nextValidThrough,
+          previousValidThrough: grant.validThrough ?? null,
+          source: grant.source,
+        },
       }),
     });
 
