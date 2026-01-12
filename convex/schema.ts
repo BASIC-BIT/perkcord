@@ -97,6 +97,22 @@ export default defineSchema({
     .index("by_guild_user", ["guildId", "discordUserId"])
     .index("by_guild", ["guildId"]),
 
+  providerCustomerLinks: defineTable({
+    guildId: v.id("guilds"),
+    provider: providerName,
+    providerCustomerId: v.string(),
+    discordUserId: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_guild_provider_customer", [
+      "guildId",
+      "provider",
+      "providerCustomerId",
+    ])
+    .index("by_guild_user", ["guildId", "discordUserId"])
+    .index("by_provider_customer", ["provider", "providerCustomerId"]),
+
   entitlementGrants: defineTable({
     guildId: v.id("guilds"),
     tierId: v.id("tiers"),

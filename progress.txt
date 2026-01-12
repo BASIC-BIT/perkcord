@@ -17,3 +17,4 @@
 2026-01-12: Added query to report active member counts by tier for admin reporting.
 2026-01-12: Added scheduled job to expire entitlement grants past validThrough with audit events.
 2026-01-12: Added admin member search query to find linked Discord users by id or username.
+2026-01-12: Added provider customer link table and upsert/lookup mutations to map payment provider customer IDs to Discord users per guild.
