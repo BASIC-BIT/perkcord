@@ -9,6 +9,7 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:e2e": "playwright test",
     "format": "prettier --check .",
     "format:write": "prettier --write ."
   },
@@ -20,6 +21,7 @@
     "stripe": "^14.21.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.49.1",
     "@types/node": "^20.11.0",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",

@@ -473,6 +473,7 @@ Progress (2026-01-12): Added scheduled drift repair job to enqueue periodic guil
 Progress (2026-01-12): Added Prettier configuration with format scripts for web and bot packages to meet code quality gates.
 Progress (2026-01-12): Added GitHub Actions CI workflow to run lint + typecheck for web and bot packages.
 Progress (2026-01-12): Added Vitest unit tests for web encryption helpers with a CI test step.
+Progress (2026-01-12): Added Playwright e2e smoke test covering admin login landing and member flow stub pages, with a CI step.
 Progress (2026-01-12): Added Dependabot configuration for npm dependencies and GitHub Actions updates.
 
 **Milestone 7 — NMI integration (later)**

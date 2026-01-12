@@ -15,6 +15,9 @@ jobs:
       - name: Install dependencies
         working-directory: apps/web
         run: npm install --no-audit --no-fund
+      - name: Install Playwright browsers
+        working-directory: apps/web
+        run: npx playwright install --with-deps
       - name: Lint
         working-directory: apps/web
         run: npm run lint
@@ -24,6 +27,9 @@ jobs:
       - name: Unit tests
         working-directory: apps/web
         run: npm run test
+      - name: E2E smoke tests
+        working-directory: apps/web
+        run: npm run test:e2e
 
   bot:
     runs-on: ubuntu-latest
