@@ -76,3 +76,4 @@
 2026-01-12: Added revenue indicators reporting in the admin health overview derived from provider events (not accounting).
 2026-01-12: Added root check/check:ci scripts to mirror CI gates plus metrics, documented them, and added Convex format scripts.
 2026-01-12: Added Playwright smoke test that injects a signed admin session cookie and verifies core admin panels render.
+2026-01-12: Added bot runtime env validation helpers for required config values, including URL checks and numeric bounds.
