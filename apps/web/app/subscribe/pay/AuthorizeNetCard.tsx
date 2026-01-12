@@ -21,6 +21,8 @@ type AuthorizeNetCardProps = {
   tierId: string;
   guildId: string | null;
   amount: string | null;
+  mode: "subscription" | "one_time" | null;
+  intervalLabel?: string | null;
   apiLoginId: string | null;
   clientKey: string | null;
   configError?: string | null;
@@ -139,6 +141,8 @@ export function AuthorizeNetCard({
   tierId,
   guildId,
   amount,
+  mode,
+  intervalLabel,
   apiLoginId,
   clientKey,
   configError,
@@ -152,11 +156,25 @@ export function AuthorizeNetCard({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const missingKeys = !apiLoginId || !clientKey;
-  const ready = Boolean(guildId && amount && !configError && !missingKeys);
+  const ready = Boolean(
+    guildId && amount && mode && !configError && !missingKeys
+  );
+  const isSubscription = mode === "subscription";
+  const billingLabel =
+    isSubscription && intervalLabel ? intervalLabel : "billing period";
+  const buttonLabel = isSubmitting
+    ? "Processing..."
+    : isSubscription
+      ? amount
+        ? `Start ${amount} per ${billingLabel} subscription`
+        : "Start subscription"
+      : amount
+        ? `Pay ${amount} with Authorize.Net`
+        : "Pay with Authorize.Net";
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!ready || !apiLoginId || !clientKey || !guildId) {
+    if (!ready || !apiLoginId || !clientKey || !guildId || !mode) {
       return;
     }
 
@@ -210,7 +228,10 @@ export function AuthorizeNetCard({
 
   return (
     <div className="form">
-      <p>Tokenized card capture via Accept.js.</p>
+      <p>
+        Tokenized card capture via Accept.js.
+        {isSubscription ? ` Renews every ${billingLabel}.` : ""}
+      </p>
       {configError && <div className="banner error">{configError}</div>}
       {missingKeys && (
         <div className="banner">
@@ -221,6 +242,9 @@ export function AuthorizeNetCard({
         <div className="banner">
           Missing guildId. Add ?guildId=&lt;serverId&gt; to the URL to continue.
         </div>
+      )}
+      {!mode && (
+        <div className="banner">Authorize.Net checkout is not configured.</div>
       )}
       {error && <div className="banner error">{error}</div>}
       <form className="form" onSubmit={handleSubmit}>
@@ -288,11 +312,7 @@ export function AuthorizeNetCard({
           disabled={!ready || isSubmitting}
           type="submit"
         >
-          {isSubmitting
-            ? "Processing..."
-            : amount
-            ? `Pay ${amount} with Authorize.Net`
-            : "Pay with Authorize.Net"}
+          {buttonLabel}
         </button>
       </form>
     </div>

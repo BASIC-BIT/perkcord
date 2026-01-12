@@ -52,6 +52,39 @@ const extractAuthorizeNetError = (payload: any) => {
   return "Authorize.Net transaction failed.";
 };
 
+const formatDate = (value: Date) => value.toISOString().slice(0, 10);
+
+const addMonthsUtc = (value: Date, months: number) => {
+  const year = value.getUTCFullYear();
+  const month = value.getUTCMonth();
+  const day = value.getUTCDate();
+  const targetMonth = month + months;
+  const targetYear = year + Math.floor(targetMonth / 12);
+  const normalizedMonth = ((targetMonth % 12) + 12) % 12;
+  const lastDay = new Date(
+    Date.UTC(targetYear, normalizedMonth + 1, 0)
+  ).getUTCDate();
+  const safeDay = Math.min(day, lastDay);
+  return new Date(Date.UTC(targetYear, normalizedMonth, safeDay));
+};
+
+const addIntervalUtc = (
+  value: Date,
+  length: number,
+  unit: "days" | "months"
+) => {
+  if (unit === "months") {
+    return addMonthsUtc(value, length);
+  }
+  return new Date(
+    Date.UTC(
+      value.getUTCFullYear(),
+      value.getUTCMonth(),
+      value.getUTCDate() + length
+    )
+  );
+};
+
 export async function POST(request: Request) {
   const apiLoginId = process.env.AUTHORIZE_NET_API_LOGIN_ID?.trim();
   const transactionKey = process.env.AUTHORIZE_NET_TRANSACTION_KEY?.trim();
@@ -134,13 +167,18 @@ export async function POST(request: Request) {
       });
     }
 
+    const refId = `${guildId}:${tierId}`;
+    const invoiceNumber =
+      configResult.config.mode === "subscription"
+        ? configResult.config.subscriptionKey
+        : configResult.config.oneTimeKey;
     const transactionRequest = {
       createTransactionRequest: {
         merchantAuthentication: {
           name: apiLoginId,
           transactionKey,
         },
-        refId: `${guildId}:${tierId}`,
+        refId,
         transactionRequest: {
           transactionType: "authCaptureTransaction",
           amount: configResult.config.amount,
@@ -151,7 +189,7 @@ export async function POST(request: Request) {
             },
           },
           order: {
-            invoiceNumber: configResult.config.oneTimeKey,
+            invoiceNumber,
             description: `Perkcord ${tierId} membership`,
           },
           customer: {
@@ -177,6 +215,68 @@ export async function POST(request: Request) {
     const transactionId = readString(payload?.transactionResponse?.transId);
     if (!transactionId) {
       return jsonError("Authorize.Net transaction was missing an id.");
+    }
+
+    if (configResult.config.mode === "subscription") {
+      const startDate = formatDate(
+        addIntervalUtc(
+          new Date(),
+          configResult.config.intervalLength,
+          configResult.config.intervalUnit
+        )
+      );
+      const subscriptionRequest = {
+        createSubscriptionRequest: {
+          merchantAuthentication: {
+            name: apiLoginId,
+            transactionKey,
+          },
+          refId,
+          subscription: {
+            name: `Perkcord ${tierId} subscription`,
+            paymentSchedule: {
+              interval: {
+                length: configResult.config.intervalLength,
+                unit: configResult.config.intervalUnit,
+              },
+              startDate,
+              totalOccurrences: 9999,
+              trialOccurrences: 0,
+            },
+            amount: configResult.config.amount,
+            payment: {
+              opaqueData: {
+                dataDescriptor,
+                dataValue,
+              },
+            },
+            order: {
+              invoiceNumber: configResult.config.subscriptionKey,
+              description: `Perkcord ${tierId} subscription`,
+            },
+            customer: {
+              id: providerCustomerId,
+            },
+          },
+        },
+      };
+
+      const subscriptionResponse = await fetch(getAuthorizeNetApiUrl(), {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify(subscriptionRequest),
+      });
+      const subscriptionPayload = await subscriptionResponse
+        .json()
+        .catch(() => ({}));
+      if (
+        !subscriptionResponse.ok ||
+        subscriptionPayload?.messages?.resultCode !== "Ok"
+      ) {
+        return jsonError(extractAuthorizeNetError(subscriptionPayload));
+      }
     }
 
     const baseUrl = new URL(request.url).origin;

@@ -45,6 +45,11 @@ export default function PaymentPage({
   const authorizeNetError = authorizeNetConfigResult.ok
     ? null
     : authorizeNetConfigResult.error;
+  const authorizeNetDescription = authorizeNetConfig
+    ? authorizeNetConfig.mode === "subscription"
+      ? `Subscription billed every ${authorizeNetConfig.intervalLabel}.`
+      : "One-time checkout."
+    : "Authorize.Net checkout is not configured yet.";
   const backUrl = `/subscribe/connect?tier=${tier.id}${
     guildId ? `&guildId=${guildId}` : ""
   }`;
@@ -87,10 +92,17 @@ export default function PaymentPage({
         </div>
         <div className="payment-card">
           <h3>Authorize.Net checkout</h3>
+          <p>{authorizeNetDescription}</p>
           <AuthorizeNetCard
             tierId={tier.id}
             guildId={guildId ?? null}
             amount={authorizeNetConfig?.amount ?? null}
+            mode={authorizeNetConfig?.mode ?? null}
+            intervalLabel={
+              authorizeNetConfig?.mode === "subscription"
+                ? authorizeNetConfig.intervalLabel
+                : null
+            }
             apiLoginId={authorizeNetApiLoginId}
             clientKey={authorizeNetClientKey}
             configError={authorizeNetError}
