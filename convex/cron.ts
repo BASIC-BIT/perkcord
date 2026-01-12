@@ -22,6 +22,12 @@ crons.interval(
 );
 
 crons.interval(
+  "sync role connections",
+  { minutes: 2 },
+  api.discordRoleConnections.processRoleConnectionUpdates
+);
+
+crons.interval(
   "deliver outbound webhooks",
   { minutes: 1 },
   api.outboundWebhooks.processOutboundWebhookDeliveries

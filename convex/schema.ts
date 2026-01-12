@@ -15,6 +15,12 @@ const roleSyncRequestStatus = v.union(
   v.literal("completed"),
   v.literal("failed")
 );
+const roleConnectionUpdateStatus = v.union(
+  v.literal("pending"),
+  v.literal("in_progress"),
+  v.literal("completed"),
+  v.literal("failed")
+);
 const providerName = v.union(
   v.literal("stripe"),
   v.literal("authorize_net"),
@@ -216,6 +222,19 @@ export default defineSchema({
     .index("by_guild_status", ["guildId", "status"])
     .index("by_guild_user_status", ["guildId", "discordUserId", "status"])
     .index("by_guild_time", ["guildId", "requestedAt"])
+    .index("by_guild_user_time", ["guildId", "discordUserId", "requestedAt"]),
+
+  roleConnectionUpdates: defineTable({
+    guildId: v.id("guilds"),
+    discordUserId: v.string(),
+    status: roleConnectionUpdateStatus,
+    requestedAt: v.number(),
+    lastError: v.optional(v.string()),
+    completedAt: v.optional(v.number()),
+    updatedAt: v.number(),
+  })
+    .index("by_status_time", ["status", "requestedAt"])
+    .index("by_guild_user_status", ["guildId", "discordUserId", "status"])
     .index("by_guild_user_time", ["guildId", "discordUserId", "requestedAt"]),
 
   auditEvents: defineTable({

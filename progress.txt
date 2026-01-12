@@ -48,3 +48,4 @@
 2026-01-12: Added Authorize.Net subscription checkout flow with immediate authCaptureTransaction + ARB subscription creation, including env-based billing interval config and pay page labels.
 2026-01-12: Polished admin audit event UI with badges, ID chips, and payload previews for faster diagnostics.
 2026-01-12: Added admin-triggered endpoint to register Discord Role Connections metadata schema (is_active, tier, member_since_days).
+2026-01-12: Added role connection update queue and worker to sync Linked Roles metadata on entitlement changes.

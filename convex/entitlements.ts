@@ -5,6 +5,7 @@ import {
   createOutboundWebhookPayload,
   enqueueOutboundWebhookDeliveries,
 } from "./outboundWebhookQueue";
+import { enqueueRoleConnectionUpdate } from "./roleConnectionQueue";
 
 const entitlementStatus = v.union(
   v.literal("active"),
@@ -355,6 +356,11 @@ export const createManualGrant = mutation({
       }),
     });
 
+    await enqueueRoleConnectionUpdate(ctx, {
+      guildId: args.guildId,
+      discordUserId: args.discordUserId,
+    });
+
     return grantId;
   },
 });
@@ -439,6 +445,13 @@ export const revokeEntitlementGrant = mutation({
         },
       }),
     });
+
+    if (shouldPatch) {
+      await enqueueRoleConnectionUpdate(ctx, {
+        guildId: args.guildId,
+        discordUserId: grant.discordUserId,
+      });
+    }
 
     return args.grantId;
   },
@@ -546,6 +559,10 @@ export const expireEntitlementGrants = mutation({
     const now = coerceExpirationTime(args.asOf);
     let remaining = coerceExpirationLimit(args.limit);
     const expiredGrantIds: Array<Doc<"entitlementGrants">["_id"]> = [];
+    const roleConnectionUpdates = new Map<
+      string,
+      { guildId: Doc<"guilds">["_id"]; discordUserId: string }
+    >();
 
     for (const status of activeGrantStatuses) {
       if (remaining <= 0) {
@@ -597,9 +614,21 @@ export const expireEntitlementGrants = mutation({
           }),
         });
 
+        const roleConnectionKey = `${current.guildId}:${current.discordUserId}`;
+        if (!roleConnectionUpdates.has(roleConnectionKey)) {
+          roleConnectionUpdates.set(roleConnectionKey, {
+            guildId: current.guildId,
+            discordUserId: current.discordUserId,
+          });
+        }
+
         expiredGrantIds.push(grant._id);
         remaining -= 1;
       }
+    }
+
+    for (const update of roleConnectionUpdates.values()) {
+      await enqueueRoleConnectionUpdate(ctx, update);
     }
 
     return {

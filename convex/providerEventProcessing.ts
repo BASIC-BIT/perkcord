@@ -5,6 +5,7 @@ import {
   createOutboundWebhookPayload,
   enqueueOutboundWebhookDeliveries,
 } from "./outboundWebhookQueue";
+import { enqueueRoleConnectionUpdate } from "./roleConnectionQueue";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const providers: Doc<"providerEvents">["provider"][] = [
@@ -496,6 +497,11 @@ export const processProviderEvents = mutation({
             }),
           });
 
+          await enqueueRoleConnectionUpdate(ctx, {
+            guildId,
+            discordUserId,
+          });
+
           await ctx.db.patch(event._id, {
             processedStatus: "processed",
             processedAt: now,
@@ -614,6 +620,11 @@ export const processProviderEvents = mutation({
                   source: existingGrant.source,
                 },
               }),
+            });
+
+            await enqueueRoleConnectionUpdate(ctx, {
+              guildId,
+              discordUserId: existingGrant.discordUserId,
             });
           }
         }
