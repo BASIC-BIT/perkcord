@@ -1,10 +1,12 @@
 import { httpRouter } from "convex/server";
 import { authorizeNetWebhook } from "./authorizeNetWebhooks";
 import {
+  createManualGrant,
   getMemberSnapshot,
   listAuditEvents,
   listMembers,
   listTiers,
+  revokeManualGrant,
 } from "./restApi";
 import { stripeWebhook } from "./stripeWebhooks";
 
@@ -44,6 +46,18 @@ http.route({
   path: "/api/audit",
   method: "GET",
   handler: listAuditEvents,
+});
+
+http.route({
+  path: "/api/grants",
+  method: "POST",
+  handler: createManualGrant,
+});
+
+http.route({
+  path: "/api/grants/revoke",
+  method: "POST",
+  handler: revokeManualGrant,
 });
 
 export default http;

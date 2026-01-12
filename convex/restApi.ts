@@ -62,6 +62,76 @@ const getOptionalInteger = (url: URL, key: string) => {
   return parsed;
 };
 
+const readJsonBody = async (request: Request) => {
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch (error) {
+    throw new Error("Invalid JSON body.");
+  }
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    throw new Error("Request body must be a JSON object.");
+  }
+  return body as Record<string, unknown>;
+};
+
+const getRequiredBodyString = (body: Record<string, unknown>, key: string) => {
+  const value = body[key];
+  if (typeof value !== "string" || value.trim().length === 0) {
+    throw new Error(`${key} is required.`);
+  }
+  return value.trim();
+};
+
+const getOptionalBodyString = (body: Record<string, unknown>, key: string) => {
+  const value = body[key];
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  if (typeof value !== "string") {
+    throw new Error(`${key} must be a string.`);
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+};
+
+const getOptionalBodyInteger = (body: Record<string, unknown>, key: string) => {
+  const value = body[key];
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw new Error(`${key} must be an integer.`);
+  }
+  if (!Number.isInteger(value)) {
+    throw new Error(`${key} must be an integer.`);
+  }
+  return value;
+};
+
+const allowedGrantStatuses = new Set([
+  "active",
+  "pending",
+  "past_due",
+  "canceled",
+  "expired",
+  "suspended_dispute",
+]);
+
+const getOptionalGrantStatus = (
+  body: Record<string, unknown>,
+  key: string
+) => {
+  const value = getOptionalBodyString(body, key);
+  if (value === undefined) {
+    return undefined;
+  }
+  if (!allowedGrantStatuses.has(value)) {
+    throw new Error(`${key} must be a valid entitlement status.`);
+  }
+  return value;
+};
+
 const handleError = (error: unknown) => {
   const message = error instanceof Error ? error.message : "Unexpected error.";
   return jsonResponse({ error: message }, 400);
@@ -162,6 +232,74 @@ export const listAuditEvents = httpAction(async (ctx, request) => {
       subjectDiscordUserId,
     });
     return jsonResponse({ events });
+  } catch (error) {
+    return handleError(error);
+  }
+});
+
+export const createManualGrant = httpAction(async (ctx, request) => {
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  const authError = authorizeRequest(request);
+  if (authError) {
+    return authError;
+  }
+
+  try {
+    const body = await readJsonBody(request);
+    const guildId = getRequiredBodyString(body, "guildId");
+    const tierId = getRequiredBodyString(body, "tierId");
+    const discordUserId = getRequiredBodyString(body, "discordUserId");
+    const actorId = getRequiredBodyString(body, "actorId");
+    const status = getOptionalGrantStatus(body, "status");
+    const validFrom = getOptionalBodyInteger(body, "validFrom");
+    const validThrough = getOptionalBodyInteger(body, "validThrough");
+    const note = getOptionalBodyString(body, "note");
+
+    const grantId = await ctx.runMutation(api.entitlements.createManualGrant, {
+      guildId,
+      tierId,
+      discordUserId,
+      actorId,
+      status,
+      validFrom,
+      validThrough,
+      note,
+    });
+
+    return jsonResponse({ grantId }, 200);
+  } catch (error) {
+    return handleError(error);
+  }
+});
+
+export const revokeManualGrant = httpAction(async (ctx, request) => {
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  const authError = authorizeRequest(request);
+  if (authError) {
+    return authError;
+  }
+
+  try {
+    const body = await readJsonBody(request);
+    const guildId = getRequiredBodyString(body, "guildId");
+    const grantId = getRequiredBodyString(body, "grantId");
+    const actorId = getRequiredBodyString(body, "actorId");
+    const note = getOptionalBodyString(body, "note");
+
+    await ctx.runMutation(api.entitlements.revokeEntitlementGrant, {
+      guildId,
+      grantId,
+      actorId,
+      note,
+    });
+
+    return jsonResponse({ grantId }, 200);
   } catch (error) {
     return handleError(error);
   }

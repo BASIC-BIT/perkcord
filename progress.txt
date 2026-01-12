@@ -25,3 +25,4 @@
 2026-01-12: Added scheduled job to retry failed role sync requests with safeguards against duplicate retries.
 2026-01-12: Added admin portal skeleton Next.js app with Discord OAuth login and signed session cookie.
 2026-01-12: Added outbound webhook endpoint schema plus create/update/list mutations with signing secrets and audit events.
+2026-01-12: Added REST API admin endpoints to create and revoke manual entitlement grants.
