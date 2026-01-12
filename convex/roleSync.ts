@@ -1,8 +1,80 @@
-import { mutation } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
 
 const actorType = v.optional(v.union(v.literal("system"), v.literal("admin")));
+const activeGrantStatuses: Doc<"entitlementGrants">["status"][] = [
+  "active",
+  "past_due",
+];
+
+const isGrantEffective = (
+  grant: Doc<"entitlementGrants">,
+  now: number
+) => {
+  if (!activeGrantStatuses.includes(grant.status)) {
+    return false;
+  }
+  if (grant.validFrom > now) {
+    return false;
+  }
+  if (grant.validThrough !== undefined && grant.validThrough < now) {
+    return false;
+  }
+  return true;
+};
+
+export const getDesiredRolesForMember = query({
+  args: {
+    guildId: v.id("guilds"),
+    discordUserId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const guild = await ctx.db.get(args.guildId);
+    if (!guild) {
+      throw new Error("Guild not found for role sync.");
+    }
+
+    const grants = await ctx.db
+      .query("entitlementGrants")
+      .withIndex("by_guild_user", (q) =>
+        q.eq("guildId", args.guildId).eq("discordUserId", args.discordUserId)
+      )
+      .collect();
+
+    const activeGrants = grants.filter((grant) => isGrantEffective(grant, now));
+    if (activeGrants.length === 0) {
+      return {
+        discordUserId: args.discordUserId,
+        desiredRoleIds: [],
+        grantIds: [],
+        evaluatedAt: now,
+      };
+    }
+
+    const tierIds = Array.from(
+      new Set(activeGrants.map((grant) => grant.tierId))
+    );
+    const tiers = await Promise.all(tierIds.map((tierId) => ctx.db.get(tierId)));
+
+    const roleIdSet = new Set<string>();
+    for (const tier of tiers) {
+      if (tier && tier.guildId === args.guildId) {
+        for (const roleId of tier.roleIds) {
+          roleIdSet.add(roleId);
+        }
+      }
+    }
+
+    return {
+      discordUserId: args.discordUserId,
+      desiredRoleIds: Array.from(roleIdSet).sort(),
+      grantIds: activeGrants.map((grant) => grant._id),
+      evaluatedAt: now,
+    };
+  },
+});
 
 export const requestRoleSync = mutation({
   args: {
