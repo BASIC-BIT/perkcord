@@ -599,9 +599,10 @@ pre-commit hooks; rely on explicit commands and CI enforcement.
   * Typecheck
   * Unit tests with coverage thresholds
   * E2E smoke tests
-  * Visual regression tests (optional in main CI, required on UI change labels
+  * Visual regression tests (optional in main CI, required on UI change labels  
     or nightly schedule)
   * Secret scanning
+Progress (2026-01-12): Added repo-wide check/check:ci scripts to mirror CI gates (plus metrics) and documented them, with Convex formatting scripts for consistency.
 
 **18.7 Complexity and size checks**
 

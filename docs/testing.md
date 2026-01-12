@@ -3,6 +3,12 @@
 This repo uses per-package scripts. The commands below assume npm, but the same
 script names work with your package manager of choice.
 
+## Repo-wide checks
+
+From the repo root:
+- `npm run check` (format, lint, typecheck, unit tests, and web e2e smoke)
+- `npm run check:ci` (same as check, plus code metrics via `scripts/check-metrics.sh`)
+
 ## Web app (apps/web)
 
 From the repo root:

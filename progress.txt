@@ -74,3 +74,4 @@
 2026-01-12: Added scc + lizard code metrics checks with shared ignore allowlist, docs update, and CI job.
 2026-01-12: Added unit tests for Stripe and Authorize.Net checkout config validation error paths.
 2026-01-12: Added revenue indicators reporting in the admin health overview derived from provider events (not accounting).
+2026-01-12: Added root check/check:ci scripts to mirror CI gates plus metrics, documented them, and added Convex format scripts.
