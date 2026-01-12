@@ -38,11 +38,53 @@ type MemberSnapshotResponse = {
   grants: GrantSummary[];
   auditEvents: AuditEventSummary[];
 };
+type ActiveMemberCount = {
+  tierId: string;
+  tierName: string;
+  activeMemberCount: number;
+};
+type ActiveMemberCountsResponse = {
+  tiers: ActiveMemberCount[];
+};
+type ProviderEventSummary = {
+  _id: string;
+  provider: string;
+  providerEventId: string;
+  providerEventType?: string;
+  normalizedEventType: string;
+  providerObjectId?: string;
+  providerCustomerId?: string;
+  providerPriceIds?: string[];
+  occurredAt?: number;
+  receivedAt?: number;
+  processedStatus?: string;
+  processedAt?: number;
+  lastError?: string;
+};
+type ProviderDiagnosticsEntry = {
+  provider: string;
+  event: ProviderEventSummary | null;
+  matchType: "customer" | "price" | "none";
+};
+type ProviderDiagnosticsResponse = {
+  guildId: string;
+  scanLimit: number;
+  evaluatedAt: number;
+  providers: ProviderDiagnosticsEntry[];
+};
 
 type FetchResult<T> = { data?: T; error?: string };
 
 const getParam = (value: SearchParams[string]) =>
   Array.isArray(value) ? value[0] : value;
+const getNumberParam = (value: SearchParams[string]) => {
+  const raw = getParam(value);
+  if (!raw) {
+    return undefined;
+  }
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) ? parsed : undefined;
+};
 
 const normalizeBaseUrl = (value: string) => {
   const trimmed = value.trim();
@@ -69,6 +111,30 @@ const formatTimestamp = (value?: number) => {
     return "N/A";
   }
   return new Date(value).toLocaleString();
+};
+
+const formatProviderLabel = (provider: string) => {
+  switch (provider) {
+    case "stripe":
+      return "Stripe";
+    case "authorize_net":
+      return "Authorize.Net";
+    case "nmi":
+      return "NMI";
+    default:
+      return provider;
+  }
+};
+
+const formatMatchType = (matchType: ProviderDiagnosticsEntry["matchType"]) => {
+  switch (matchType) {
+    case "customer":
+      return "Customer match";
+    case "price":
+      return "Price match";
+    default:
+      return "No match";
+  }
 };
 
 const fetchConvexJson = async <T,>(
@@ -120,6 +186,7 @@ export default async function AdminPage({
   const guildId = getParam(searchParams?.guildId);
   const memberSearch = getParam(searchParams?.memberSearch);
   const memberId = getParam(searchParams?.memberId);
+  const scanLimit = getNumberParam(searchParams?.scanLimit);
   const convexUrl = process.env.PERKCORD_CONVEX_HTTP_URL?.trim();
   const convexApiKey = process.env.PERKCORD_REST_API_KEY?.trim();
 
@@ -127,6 +194,11 @@ export default async function AdminPage({
   let memberSearchResults: MemberIdentity[] | null = null;
   let memberSnapshotError: string | null = null;
   let memberSnapshot: MemberSnapshotResponse | null = null;
+  let activeMemberCountsError: string | null = null;
+  let activeMemberCounts: ActiveMemberCountsResponse | null = null;
+  let providerDiagnosticsError: string | null = null;
+  let providerDiagnostics: ProviderDiagnosticsResponse | null = null;
+  let healthConfigError: string | null = null;
 
   if (session && convexUrl && convexApiKey) {
     if (memberSearch && !guildId) {
@@ -170,13 +242,49 @@ export default async function AdminPage({
         memberSnapshot = result.data ?? null;
       }
     }
-  } else if (session && (memberSearch || memberId)) {
+
+    if (guildId) {
+      const countsResult = await fetchConvexJson<ActiveMemberCountsResponse>(
+        convexUrl,
+        convexApiKey,
+        "/api/reporting/active-members",
+        {
+          guildId,
+        }
+      );
+      if (countsResult.error) {
+        activeMemberCountsError = countsResult.error;
+      } else {
+        activeMemberCounts = countsResult.data ?? null;
+      }
+
+      const diagnosticsResult =
+        await fetchConvexJson<ProviderDiagnosticsResponse>(
+          convexUrl,
+          convexApiKey,
+          "/api/diagnostics/provider-events",
+          {
+            guildId,
+            scanLimit,
+          }
+        );
+      if (diagnosticsResult.error) {
+        providerDiagnosticsError = diagnosticsResult.error;
+      } else {
+        providerDiagnostics = diagnosticsResult.data ?? null;
+      }
+    }
+  } else if (session && (memberSearch || memberId || guildId)) {
     if (memberSearch) {
       memberSearchError =
         "Convex REST configuration missing (PERKCORD_CONVEX_HTTP_URL, PERKCORD_REST_API_KEY).";
     }
     if (memberId) {
       memberSnapshotError =
+        "Convex REST configuration missing (PERKCORD_CONVEX_HTTP_URL, PERKCORD_REST_API_KEY).";
+    }
+    if (guildId) {
+      healthConfigError =
         "Convex REST configuration missing (PERKCORD_CONVEX_HTTP_URL, PERKCORD_REST_API_KEY).";
     }
   }
@@ -254,6 +362,128 @@ export default async function AdminPage({
                 </button>
               </div>
             </form>
+          </section>
+          <section className="panel">
+            <h2>Health overview</h2>
+            <p>
+              Review recent provider events and active member counts for a
+              guild.
+            </p>
+            <form className="form" action="/admin" method="get">
+              <label className="field">
+                <span>Guild ID</span>
+                <input
+                  className="input"
+                  name="guildId"
+                  placeholder="123456789012345678"
+                  defaultValue={guildId ?? ""}
+                  required
+                />
+              </label>
+              <label className="field">
+                <span>Provider scan limit (optional)</span>
+                <input
+                  className="input"
+                  name="scanLimit"
+                  type="number"
+                  min={1}
+                  max={1000}
+                  placeholder="200"
+                  defaultValue={scanLimit ? String(scanLimit) : ""}
+                />
+              </label>
+              <div className="tier-actions">
+                <button className="button secondary" type="submit">
+                  Load health
+                </button>
+              </div>
+            </form>
+            {!guildId && (
+              <p>Enter a guild ID to load health metrics.</p>
+            )}
+            {healthConfigError && (
+              <div className="banner error">{healthConfigError}</div>
+            )}
+            {activeMemberCountsError && (
+              <div className="banner error">{activeMemberCountsError}</div>
+            )}
+            {providerDiagnosticsError && (
+              <div className="banner error">{providerDiagnosticsError}</div>
+            )}
+            {guildId && !healthConfigError && (
+              <div className="snapshot-grid">
+                <div className="snapshot-card">
+                  <h3>Active members by tier</h3>
+                  {activeMemberCounts ? (
+                    activeMemberCounts.tiers.length === 0 ? (
+                      <p>No tiers found for this guild.</p>
+                    ) : (
+                      <ul className="audit-list">
+                        {activeMemberCounts.tiers.map((tier) => (
+                          <li key={tier.tierId} className="audit-item">
+                            <div className="audit-title">{tier.tierName}</div>
+                            <div className="audit-meta">
+                              <span>
+                                Active members: {tier.activeMemberCount}
+                              </span>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    )
+                  ) : (
+                    <p>Active member counts are unavailable.</p>
+                  )}
+                </div>
+                <div className="snapshot-card">
+                  <h3>Latest provider events</h3>
+                  {providerDiagnostics ? (
+                    <>
+                      <div className="meta">
+                        <span>
+                          Evaluated:{" "}
+                          {formatTimestamp(providerDiagnostics.evaluatedAt)}
+                        </span>
+                        <span>Scan limit: {providerDiagnostics.scanLimit}</span>
+                      </div>
+                      <ul className="audit-list">
+                        {providerDiagnostics.providers.map((entry) => {
+                          const event = entry.event;
+                          const eventTime =
+                            event?.occurredAt ?? event?.receivedAt;
+                          return (
+                            <li key={entry.provider} className="audit-item">
+                              <div className="audit-title">
+                                {formatProviderLabel(entry.provider)}{" "}
+                                {event
+                                  ? `• ${event.normalizedEventType}`
+                                  : "• No events"}
+                              </div>
+                              <div className="audit-meta">
+                                <span>{formatMatchType(entry.matchType)}</span>
+                                <span>
+                                  Seen: {formatTimestamp(eventTime)}
+                                </span>
+                                {event?.processedStatus && (
+                                  <span>
+                                    Processed: {event.processedStatus}
+                                  </span>
+                                )}
+                                {event?.lastError && (
+                                  <span>Error: {event.lastError}</span>
+                                )}
+                              </div>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </>
+                  ) : (
+                    <p>Provider diagnostics are unavailable.</p>
+                  )}
+                </div>
+              </div>
+            )}
           </section>
           <section className="panel">
             <h2>Member lookup</h2>

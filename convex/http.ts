@@ -2,6 +2,8 @@ import { httpRouter } from "convex/server";
 import { authorizeNetWebhook } from "./authorizeNetWebhooks";
 import {
   createManualGrant,
+  getActiveMemberCounts,
+  getProviderEventDiagnostics,
   getMemberSnapshot,
   listAuditEvents,
   listMembers,
@@ -47,6 +49,18 @@ http.route({
   path: "/api/audit",
   method: "GET",
   handler: listAuditEvents,
+});
+
+http.route({
+  path: "/api/reporting/active-members",
+  method: "GET",
+  handler: getActiveMemberCounts,
+});
+
+http.route({
+  path: "/api/diagnostics/provider-events",
+  method: "GET",
+  handler: getProviderEventDiagnostics,
 });
 
 http.route({

@@ -248,6 +248,55 @@ export const listAuditEvents = httpAction(async (ctx, request) => {
   }
 });
 
+export const getActiveMemberCounts = httpAction(async (ctx, request) => {
+  if (request.method !== "GET") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  const authError = authorizeRequest(request);
+  if (authError) {
+    return authError;
+  }
+
+  try {
+    const url = new URL(request.url);
+    const guildId = getRequiredParam(url, "guildId");
+    const tiers = await ctx.runQuery(api.entitlements.getActiveMemberCountsByTier, {
+      guildId,
+    });
+    return jsonResponse({ tiers });
+  } catch (error) {
+    return handleError(error);
+  }
+});
+
+export const getProviderEventDiagnostics = httpAction(async (ctx, request) => {
+  if (request.method !== "GET") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  const authError = authorizeRequest(request);
+  if (authError) {
+    return authError;
+  }
+
+  try {
+    const url = new URL(request.url);
+    const guildId = getRequiredParam(url, "guildId");
+    const scanLimit = getOptionalInteger(url, "scanLimit");
+    const summary = await ctx.runQuery(
+      api.providerEvents.getLatestProviderEventsForGuild,
+      {
+        guildId,
+        scanLimit,
+      }
+    );
+    return jsonResponse(summary);
+  } catch (error) {
+    return handleError(error);
+  }
+});
+
 export const createManualGrant = httpAction(async (ctx, request) => {
   if (request.method !== "POST") {
     return jsonResponse({ error: "Method not allowed." }, 405);

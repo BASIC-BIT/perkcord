@@ -448,6 +448,7 @@ Progress (2026-01-12): Added outbound webhook endpoint schema plus create/update
 Progress (2026-01-12): Added outbound webhook delivery queue with retry/backoff processing, cron dispatch, and enqueue hooks for grant + role sync events.
 Progress (2026-01-12): Added REST API admin endpoints to create and revoke manual entitlement grants.
 Progress (2026-01-12): Added REST API endpoint to request admin force-sync (guild or user) role sync jobs.
+Progress (2026-01-12): Added admin health overview panel plus REST endpoints for active member counts and latest provider events.
 
 **Milestone 6 — Phase 1 hardening**
 

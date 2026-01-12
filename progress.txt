@@ -35,3 +35,4 @@
 2026-01-12: Added member Discord OAuth connect flow with role_connections.write scope, encrypted token storage, and Convex member identity linkage.
 2026-01-12: Added admin portal force sync form and API route to request role sync jobs via the Convex REST API.
 2026-01-12: Added admin portal member lookup panels for member search, snapshots, and audit timelines using the Convex REST API.
+2026-01-12: Added admin health overview panel plus REST endpoints for active member counts and latest provider events.
