@@ -411,6 +411,7 @@ Progress (2026-01-12): Added role sync request table and admin mutation for forc
 Progress (2026-01-12): Added role sync request claim/completion mutations for bot workers with audit events.
 Progress (2026-01-12): Added Convex query to compute desired role IDs for a member from active entitlements for bot role sync.
 Progress (2026-01-12): Added guild diagnostics schema plus upsert/get mutations for onboarding checks with audit events.
+Progress (2026-01-12): Added Convex query to list recent role sync requests by guild or user for admin diagnostics.
 
 **Milestone 3 — Stripe integration**
 

@@ -19,3 +19,4 @@
 2026-01-12: Added admin member search query to find linked Discord users by id or username.
 2026-01-12: Added provider customer link table and upsert/lookup mutations to map payment provider customer IDs to Discord users per guild.
 2026-01-12: Captured Authorize.Net merchantReferenceId on webhook ingestion for tier mapping.
+2026-01-12: Added Convex query to list recent role sync requests by guild or user for admin diagnostics.

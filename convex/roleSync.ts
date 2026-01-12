@@ -8,6 +8,16 @@ const activeGrantStatuses: Doc<"entitlementGrants">["status"][] = [
   "past_due",
 ];
 
+const coerceLimit = (limit?: number) => {
+  if (limit === undefined) {
+    return 50;
+  }
+  if (!Number.isFinite(limit) || limit <= 0 || !Number.isInteger(limit)) {
+    throw new Error("limit must be a positive integer.");
+  }
+  return Math.min(limit, 200);
+};
+
 const isGrantEffective = (
   grant: Doc<"entitlementGrants">,
   now: number
@@ -73,6 +83,38 @@ export const getDesiredRolesForMember = query({
       grantIds: activeGrants.map((grant) => grant._id),
       evaluatedAt: now,
     };
+  },
+});
+
+export const listRoleSyncRequests = query({
+  args: {
+    guildId: v.id("guilds"),
+    discordUserId: v.optional(v.string()),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const limit = coerceLimit(args.limit);
+    const discordUserId =
+      args.discordUserId === undefined ? undefined : args.discordUserId.trim();
+    if (discordUserId !== undefined && discordUserId.length === 0) {
+      throw new Error("discordUserId cannot be empty.");
+    }
+
+    if (discordUserId) {
+      return ctx.db
+        .query("roleSyncRequests")
+        .withIndex("by_guild_user_time", (q) =>
+          q.eq("guildId", args.guildId).eq("discordUserId", discordUserId)
+        )
+        .order("desc")
+        .take(limit);
+    }
+
+    return ctx.db
+      .query("roleSyncRequests")
+      .withIndex("by_guild_time", (q) => q.eq("guildId", args.guildId))
+      .order("desc")
+      .take(limit);
   },
 });
 

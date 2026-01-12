@@ -168,7 +168,8 @@ export default defineSchema({
   })
     .index("by_guild_status", ["guildId", "status"])
     .index("by_guild_user_status", ["guildId", "discordUserId", "status"])
-    .index("by_guild_time", ["guildId", "requestedAt"]),
+    .index("by_guild_time", ["guildId", "requestedAt"])
+    .index("by_guild_user_time", ["guildId", "discordUserId", "requestedAt"]),
 
   auditEvents: defineTable({
     guildId: v.id("guilds"),
