@@ -70,3 +70,4 @@
 2026-01-12: Added Storybook test runner for component screenshots with stable storybook-snapshots output and update script.
 2026-01-12: Added flat ESLint configs for web, bot, and convex packages with Prettier integration and CI lint steps for bot/convex.
 2026-01-12: Added server-side env validation helpers for web routes to require critical configuration values.
+2026-01-12: Added docs/testing.md documenting test commands, snapshot update steps, and VLM review guidance for visual diffs.

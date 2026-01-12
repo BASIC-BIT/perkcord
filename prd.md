@@ -615,4 +615,6 @@ pre-commit hooks; rely on explicit commands and CI enforcement.
 * Keep snapshot baselines and Storybook screenshots in version control.
 * Encourage a consistent workflow: run visual tests after UI changes, update
   snapshots intentionally, and include a short change note in PRs.
+Progress (2026-01-12): Added docs/testing.md with local test commands plus
+snapshot locations and VLM review guidance for Playwright and Storybook.
 
