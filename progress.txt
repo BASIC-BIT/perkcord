@@ -39,3 +39,4 @@
 2026-01-12: Added REST API endpoint and admin health card for guild onboarding diagnostics (permissions, role hierarchy, missing roles).
 2026-01-12: Added admin portal manual grant/revoke forms with Convex REST API proxy routes and tier hints.
 2026-01-12: Added Stripe checkout session creation API plus member pay page wiring with tier-based Stripe price configuration.
+2026-01-12: Added admin portal recent audit events feed for guild lifecycle visibility.

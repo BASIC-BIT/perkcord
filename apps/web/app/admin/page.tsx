@@ -32,6 +32,10 @@ type AuditEventSummary = {
   eventType: string;
   actorType?: string;
   actorId?: string;
+  subjectDiscordUserId?: string;
+  subjectTierId?: string;
+  subjectGrantId?: string;
+  correlationId?: string;
 };
 type MemberSearchResponse = {
   members: MemberIdentity[];
@@ -74,6 +78,9 @@ type ProviderDiagnosticsResponse = {
   scanLimit: number;
   evaluatedAt: number;
   providers: ProviderDiagnosticsEntry[];
+};
+type AuditEventsResponse = {
+  events: AuditEventSummary[];
 };
 type GuildDiagnostics = {
   checkedAt: number;
@@ -211,6 +218,7 @@ export default async function AdminPage({
   const memberSearch = getParam(searchParams?.memberSearch);
   const memberId = getParam(searchParams?.memberId);
   const scanLimit = getNumberParam(searchParams?.scanLimit);
+  const auditLimit = getNumberParam(searchParams?.auditLimit);
   const convexUrl = process.env.PERKCORD_CONVEX_HTTP_URL?.trim();
   const convexApiKey = process.env.PERKCORD_REST_API_KEY?.trim();
 
@@ -224,6 +232,8 @@ export default async function AdminPage({
   let guildDiagnostics: GuildDiagnostics | null = null;
   let providerDiagnosticsError: string | null = null;
   let providerDiagnostics: ProviderDiagnosticsResponse | null = null;
+  let auditEventsError: string | null = null;
+  let auditEvents: AuditEventSummary[] | null = null;
   let healthConfigError: string | null = null;
   let tierListError: string | null = null;
   let tierList: TierSummary[] | null = null;
@@ -330,6 +340,21 @@ export default async function AdminPage({
       } else {
         providerDiagnostics = diagnosticsResult.data ?? null;
       }
+
+      const auditResult = await fetchConvexJson<AuditEventsResponse>(
+        convexUrl,
+        convexApiKey,
+        "/api/audit",
+        {
+          guildId,
+          limit: auditLimit ?? 25,
+        }
+      );
+      if (auditResult.error) {
+        auditEventsError = auditResult.error;
+      } else {
+        auditEvents = auditResult.data?.events ?? [];
+      }
     }
   } else if (session && (memberSearch || memberId || guildId)) {
     if (memberSearch) {
@@ -346,6 +371,8 @@ export default async function AdminPage({
       guildDiagnosticsError =
         "Convex REST configuration missing (PERKCORD_CONVEX_HTTP_URL, PERKCORD_REST_API_KEY).";
       tierListError =
+        "Convex REST configuration missing (PERKCORD_CONVEX_HTTP_URL, PERKCORD_REST_API_KEY).";
+      auditEventsError =
         "Convex REST configuration missing (PERKCORD_CONVEX_HTTP_URL, PERKCORD_REST_API_KEY).";
     }
   }
@@ -650,6 +677,9 @@ export default async function AdminPage({
             {providerDiagnosticsError && (
               <div className="banner error">{providerDiagnosticsError}</div>
             )}
+            {auditEventsError && (
+              <div className="banner error">{auditEventsError}</div>
+            )}
             {guildId && !healthConfigError && (
               <div className="snapshot-grid">
                 <div className="snapshot-card">
@@ -795,6 +825,47 @@ export default async function AdminPage({
                     </>
                   ) : (
                     <p>Provider diagnostics are unavailable.</p>
+                  )}
+                </div>
+                <div className="snapshot-card">
+                  <h3>Recent audit events</h3>
+                  {auditEvents ? (
+                    auditEvents.length === 0 ? (
+                      <p>No recent audit events for this guild.</p>
+                    ) : (
+                      <ul className="audit-list">
+                        {auditEvents.map((event) => (
+                          <li key={event._id} className="audit-item">
+                            <div className="audit-title">{event.eventType}</div>
+                            <div className="audit-meta">
+                              <span>{formatTimestamp(event.timestamp)}</span>
+                              <span>
+                                Actor: {event.actorType ?? "system"}
+                                {event.actorId ? ` (${event.actorId})` : ""}
+                              </span>
+                              {event.subjectDiscordUserId && (
+                                <span>
+                                  Member: {event.subjectDiscordUserId}
+                                </span>
+                              )}
+                              {event.subjectTierId && (
+                                <span>Tier: {event.subjectTierId}</span>
+                              )}
+                              {event.subjectGrantId && (
+                                <span>Grant: {event.subjectGrantId}</span>
+                              )}
+                              {event.correlationId && (
+                                <span>
+                                  Correlation: {event.correlationId}
+                                </span>
+                              )}
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    )
+                  ) : (
+                    <p>Audit events are unavailable.</p>
                   )}
                 </div>
               </div>
