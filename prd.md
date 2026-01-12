@@ -506,3 +506,109 @@ Progress (2026-01-12): Added admin portal Linked Roles setup wizard with step-by
 * Webhook failures or Discord API failures self-heal via reconciliation within a bounded window
 * Stripe + Authorize.Net both proven end-to-end in sandbox mode (NMI later)
 
+### 18) Addendum - Testing, linting, validation, and quality strategy (2026-01-12)
+
+This addendum defines the quality bar for the hosted SaaS and how we keep it
+maintainable after an AI-driven implementation pass. It introduces local checks,
+CI gates, visual regression testing (page and component level), coverage targets,
+and complexity checks. No pre-commit hooks are required; we prefer explicit local
+commands and CI enforcement.
+
+**18.1 Test pyramid and coverage goals**
+
+* Unit tests: core logic, entitlement rules, provider event normalization, and
+  utility helpers. Keep them fast and deterministic.
+* Integration tests: provider adapters, Convex functions, webhook handlers, and
+  role sync workflows. Validate idempotency and reconciliation behavior.
+* E2E tests: member flow and admin flows for critical paths. Keep a smoke suite
+  that is always on in CI.
+* Visual regression tests: Playwright page snapshots and Storybook component
+  snapshots for UI stability and VLM review.
+* Coverage target: near-complete coverage across the repo. Enforce high global
+  thresholds (target 90 to 95 percent lines and statements, 85 to 90 percent
+  branches and functions). New or changed code should include tests that keep
+  coverage stable or improve it. Avoid blanket ignores.
+
+**18.2 Playwright E2E and visual regression**
+
+* Standard Playwright E2E tests cover:
+  * Admin login and onboarding diagnostics
+  * Member subscribe flow end-to-end
+  * Tier mapping and manual grant/revoke flows
+  * Role sync repair and force sync paths
+* Visual regression tests run as a tagged suite (for example `@visual`) with:
+  * Stable time, fonts, and animation disabled to reduce snapshot flakiness
+  * Deterministic data and mock mode where possible
+  * Two capture modes per page: viewport and full page
+* Provide explicit scripts for:
+  * Running visual tests
+  * Updating snapshots when intentional UI changes are made
+* Keep visual snapshots committed so the VLM can review UI changes without      
+  manual inspection.
+Progress (2026-01-12): Added Playwright visual regression tests tagged @visual with fixed time, reduced motion, and viewport/full-page snapshots, plus scripts to run and update the visual suite.
+
+**18.3 Storybook component snapshots**
+
+* Add Storybook for component-level development and visual snapshots.
+* Add a Storybook test runner to capture component screenshots.
+* Store component snapshots in a stable folder so the VLM can compare before and
+  after changes.
+* Use Storybook snapshots for UI elements that do not require a full app context
+  (cards, tables, forms, navigation, tier mapping components).
+
+**18.4 Linting and formatting (rigorous, not overboard)**
+
+* ESLint is required in all packages (web, bot, convex, shared).
+* Use a flat ESLint config:
+  * `@eslint/js` recommended
+  * `typescript-eslint` recommended
+  * `eslint-config-next` and core-web-vitals for Next.js
+  * `eslint-config-prettier` to avoid formatting conflicts
+* Keep extra rules minimal and high-signal:
+  * Unused imports cleanup
+  * Import ordering or sorting
+  * No shadowed variables and no accidental `any` in critical layers
+* Prettier remains the single source of formatting truth.
+
+**18.5 Validation and safety checks**
+
+* Runtime env validation for web and bot services.
+* Zod or equivalent schema validation for:
+  * Admin API inputs
+  * Webhook payloads
+  * Entitlement policy updates and tier mapping
+* Unit tests for validation rules and error paths.
+* Keep webhook signature verification covered by tests with idempotency cases.
+
+**18.6 Local checks and CI gates**
+
+Local commands should mirror CI and be recommended in the PRD and docs. Avoid
+pre-commit hooks; rely on explicit commands and CI enforcement.
+
+* Local checks (suggested):
+  * `check`: lint, format check, typecheck, unit tests, e2e smoke, and coverage
+  * `check:ci`: same as CI gates, plus complexity checks
+* CI gates:
+  * Lint
+  * Typecheck
+  * Unit tests with coverage thresholds
+  * E2E smoke tests
+  * Visual regression tests (optional in main CI, required on UI change labels
+    or nightly schedule)
+  * Secret scanning
+
+**18.7 Complexity and size checks**
+
+* Add `scc` and `lizard` for code size and complexity checks.
+* Use a clear ignore allowlist for known exceptions, kept small and reviewed.
+* Use failures to prompt refactors of large or complex modules into smaller,
+  atomic components.
+
+**18.8 Documentation and VLM enablement**
+
+* Document the test commands, how to update snapshots, and how to review
+  snapshots with the VLM.
+* Keep snapshot baselines and Storybook screenshots in version control.
+* Encourage a consistent workflow: run visual tests after UI changes, update
+  snapshots intentionally, and include a short change note in PRs.
+

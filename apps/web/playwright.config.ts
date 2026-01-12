@@ -9,10 +9,16 @@ export default defineConfig({
   timeout: 30_000,
   expect: {
     timeout: 5_000,
+    toHaveScreenshot: {
+      maxDiffPixelRatio: 0.01,
+    },
   },
   use: {
     baseURL,
     trace: "on-first-retry",
+    locale: "en-US",
+    timezoneId: "UTC",
+    reducedMotion: "reduce",
   },
   webServer: {
     command: `npm run dev -- --hostname 127.0.0.1 --port ${port}`,
