@@ -1,0 +1,1 @@
+2026-01-12: Added initial Convex schema for core entitlements tables (guilds, tiers, member identities, entitlement grants, audit events).

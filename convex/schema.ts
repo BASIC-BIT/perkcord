@@ -1,0 +1,101 @@
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
+
+const entitlementStatus = v.union(
+  v.literal("active"),
+  v.literal("pending"),
+  v.literal("past_due"),
+  v.literal("canceled"),
+  v.literal("expired"),
+  v.literal("suspended_dispute")
+);
+
+const entitlementSource = v.union(
+  v.literal("stripe_subscription"),
+  v.literal("stripe_one_time"),
+  v.literal("authorize_net_subscription"),
+  v.literal("authorize_net_one_time"),
+  v.literal("nmi_subscription"),
+  v.literal("nmi_one_time"),
+  v.literal("manual"),
+  v.literal("api")
+);
+
+export default defineSchema({
+  guilds: defineTable({
+    discordGuildId: v.string(),
+    name: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_discord_id", ["discordGuildId"]),
+
+  tiers: defineTable({
+    guildId: v.id("guilds"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    roleIds: v.array(v.string()),
+    entitlementPolicy: v.object({
+      kind: v.union(v.literal("subscription"), v.literal("one_time")),
+      durationDays: v.optional(v.number()),
+      isLifetime: v.optional(v.boolean()),
+      gracePeriodDays: v.optional(v.number()),
+      cancelAtPeriodEnd: v.optional(v.boolean()),
+    }),
+    providerRefs: v.optional(
+      v.object({
+        stripeSubscriptionPriceIds: v.optional(v.array(v.string())),
+        stripeOneTimePriceIds: v.optional(v.array(v.string())),
+        authorizeNetSubscriptionIds: v.optional(v.array(v.string())),
+        authorizeNetOneTimeKeys: v.optional(v.array(v.string())),
+        nmiPlanIds: v.optional(v.array(v.string())),
+        nmiOneTimeKeys: v.optional(v.array(v.string())),
+      })
+    ),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_guild", ["guildId"]),
+
+  memberIdentities: defineTable({
+    guildId: v.id("guilds"),
+    discordUserId: v.string(),
+    discordUsername: v.optional(v.string()),
+    oauth: v.optional(
+      v.object({
+        accessTokenEnc: v.string(),
+        refreshTokenEnc: v.string(),
+        expiresAt: v.number(),
+      })
+    ),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_guild_user", ["guildId", "discordUserId"]),
+
+  entitlementGrants: defineTable({
+    guildId: v.id("guilds"),
+    tierId: v.id("tiers"),
+    discordUserId: v.string(),
+    status: entitlementStatus,
+    validFrom: v.number(),
+    validThrough: v.optional(v.number()),
+    source: entitlementSource,
+    sourceRefProvider: v.optional(v.string()),
+    sourceRefId: v.optional(v.string()),
+    sourceRefSecondaryIds: v.optional(v.array(v.string())),
+    note: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_guild_user", ["guildId", "discordUserId"])
+    .index("by_tier", ["tierId"])
+    .index("by_source_ref", ["sourceRefProvider", "sourceRefId"]),
+
+  auditEvents: defineTable({
+    guildId: v.id("guilds"),
+    timestamp: v.number(),
+    actorType: v.union(v.literal("system"), v.literal("admin")),
+    actorId: v.optional(v.string()),
+    eventType: v.string(),
+    correlationId: v.optional(v.string()),
+    payloadJson: v.optional(v.string()),
+  }).index("by_guild_time", ["guildId", "timestamp"]),
+});
