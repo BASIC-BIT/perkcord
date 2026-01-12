@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import type { Doc } from "./_generated/dataModel";
 
 const entitlementStatus = v.union(
   v.literal("active"),
@@ -9,6 +10,227 @@ const entitlementStatus = v.union(
   v.literal("expired"),
   v.literal("suspended_dispute")
 );
+
+const entitlementPolicy = v.object({
+  kind: v.union(v.literal("subscription"), v.literal("one_time")),
+  durationDays: v.optional(v.number()),
+  isLifetime: v.optional(v.boolean()),
+  gracePeriodDays: v.optional(v.number()),
+  cancelAtPeriodEnd: v.optional(v.boolean()),
+});
+
+const providerRefs = v.optional(
+  v.object({
+    stripeSubscriptionPriceIds: v.optional(v.array(v.string())),
+    stripeOneTimePriceIds: v.optional(v.array(v.string())),
+    authorizeNetSubscriptionIds: v.optional(v.array(v.string())),
+    authorizeNetOneTimeKeys: v.optional(v.array(v.string())),
+    nmiPlanIds: v.optional(v.array(v.string())),
+    nmiOneTimeKeys: v.optional(v.array(v.string())),
+  })
+);
+
+type EntitlementPolicy = {
+  kind: "subscription" | "one_time";
+  durationDays?: number;
+  isLifetime?: boolean;
+  gracePeriodDays?: number;
+  cancelAtPeriodEnd?: boolean;
+};
+
+type ProviderRefs = {
+  stripeSubscriptionPriceIds?: string[];
+  stripeOneTimePriceIds?: string[];
+  authorizeNetSubscriptionIds?: string[];
+  authorizeNetOneTimeKeys?: string[];
+  nmiPlanIds?: string[];
+  nmiOneTimeKeys?: string[];
+};
+
+const normalizeRoleIds = (roleIds: string[]) => Array.from(new Set(roleIds));
+
+const assertPositiveInteger = (value: number, fieldName: string) => {
+  if (!Number.isFinite(value) || value <= 0 || !Number.isInteger(value)) {
+    throw new Error(`${fieldName} must be a positive integer.`);
+  }
+};
+
+const assertNonNegativeInteger = (value: number, fieldName: string) => {
+  if (!Number.isFinite(value) || value < 0 || !Number.isInteger(value)) {
+    throw new Error(`${fieldName} must be a non-negative integer.`);
+  }
+};
+
+const validateEntitlementPolicy = (policy: EntitlementPolicy) => {
+  if (policy.durationDays !== undefined) {
+    assertPositiveInteger(policy.durationDays, "durationDays");
+  }
+  if (policy.gracePeriodDays !== undefined) {
+    assertNonNegativeInteger(policy.gracePeriodDays, "gracePeriodDays");
+  }
+  if (policy.kind === "subscription") {
+    if (policy.isLifetime) {
+      throw new Error("Subscriptions cannot be marked as lifetime.");
+    }
+    if (policy.durationDays !== undefined) {
+      throw new Error("Subscriptions do not support durationDays.");
+    }
+  }
+  if (policy.kind === "one_time") {
+    const hasDuration = policy.durationDays !== undefined;
+    const isLifetime = Boolean(policy.isLifetime);
+    if (hasDuration === isLifetime) {
+      throw new Error(
+        "One-time entitlements require either durationDays or isLifetime=true (but not both)."
+      );
+    }
+  }
+};
+
+const validateRoleIds = (roleIds: string[]) => {
+  if (roleIds.length === 0) {
+    throw new Error("Tier must map to at least one role.");
+  }
+};
+
+export const createTier = mutation({
+  args: {
+    guildId: v.id("guilds"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    roleIds: v.array(v.string()),
+    entitlementPolicy,
+    providerRefs,
+    actorId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const guild = await ctx.db.get(args.guildId);
+    if (!guild) {
+      throw new Error("Guild not found for tier.");
+    }
+
+    const roleIds = normalizeRoleIds(args.roleIds);
+    validateRoleIds(roleIds);
+    validateEntitlementPolicy(args.entitlementPolicy);
+
+    const tierId = await ctx.db.insert("tiers", {
+      guildId: args.guildId,
+      name: args.name,
+      description: args.description,
+      roleIds,
+      entitlementPolicy: args.entitlementPolicy,
+      providerRefs: args.providerRefs as ProviderRefs | undefined,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    await ctx.db.insert("auditEvents", {
+      guildId: args.guildId,
+      timestamp: now,
+      actorType: "admin",
+      actorId: args.actorId,
+      subjectTierId: tierId,
+      eventType: "tier.created",
+      correlationId: tierId,
+      payloadJson: JSON.stringify({
+        tierId,
+        name: args.name,
+        roleIds,
+      }),
+    });
+
+    return tierId;
+  },
+});
+
+export const updateTier = mutation({
+  args: {
+    guildId: v.id("guilds"),
+    tierId: v.id("tiers"),
+    name: v.optional(v.string()),
+    description: v.optional(v.string()),
+    roleIds: v.optional(v.array(v.string())),
+    entitlementPolicy: v.optional(entitlementPolicy),
+    providerRefs: providerRefs,
+    actorId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const tier = await ctx.db.get(args.tierId);
+    if (!tier) {
+      throw new Error("Tier not found.");
+    }
+    if (tier.guildId !== args.guildId) {
+      throw new Error("Tier does not belong to guild.");
+    }
+
+    const nextRoleIds = args.roleIds
+      ? normalizeRoleIds(args.roleIds)
+      : tier.roleIds;
+    if (args.roleIds) {
+      validateRoleIds(nextRoleIds);
+    }
+
+    const nextPolicy = args.entitlementPolicy ?? tier.entitlementPolicy;
+    validateEntitlementPolicy(nextPolicy as EntitlementPolicy);
+
+    const patch: Partial<Doc<"tiers">> = {};
+    if (args.name !== undefined && args.name !== tier.name) {
+      patch.name = args.name;
+    }
+    if (args.description !== undefined && args.description !== tier.description) {
+      patch.description = args.description;
+    }
+    if (args.roleIds && nextRoleIds !== tier.roleIds) {
+      patch.roleIds = nextRoleIds;
+    }
+    if (args.entitlementPolicy) {
+      patch.entitlementPolicy = nextPolicy;
+    }
+    if (args.providerRefs !== undefined) {
+      patch.providerRefs = args.providerRefs as ProviderRefs | undefined;
+    }
+
+    if (Object.keys(patch).length === 0) {
+      return args.tierId;
+    }
+
+    patch.updatedAt = now;
+    await ctx.db.patch(args.tierId, patch);
+
+    await ctx.db.insert("auditEvents", {
+      guildId: args.guildId,
+      timestamp: now,
+      actorType: "admin",
+      actorId: args.actorId,
+      subjectTierId: args.tierId,
+      eventType: "tier.updated",
+      correlationId: args.tierId,
+      payloadJson: JSON.stringify({
+        tierId: args.tierId,
+        updatedFields: Object.keys(patch).filter((key) => key !== "updatedAt"),
+      }),
+    });
+
+    return args.tierId;
+  },
+});
+
+export const listTiers = query({
+  args: {
+    guildId: v.id("guilds"),
+  },
+  handler: async (ctx, args) => {
+    const tiers = await ctx.db
+      .query("tiers")
+      .withIndex("by_guild", (q) => q.eq("guildId", args.guildId))
+      .collect();
+
+    tiers.sort((a, b) => a.name.localeCompare(b.name));
+    return tiers;
+  },
+});
 
 export const createManualGrant = mutation({
   args: {
