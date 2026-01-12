@@ -66,3 +66,4 @@
 2026-01-12: Hardened NMI webhook ingestion with fallback hashed event IDs when event_id is missing.
 2026-01-12: Applied default subscription grace period (7 days) and cancel-at-period-end behavior when entitlement policies omit them.
 2026-01-12: Added Playwright visual regression tests tagged @visual with fixed time, reduced motion, viewport/full-page snapshots, and scripts to run/update snapshots.
+2026-01-12: Added Storybook configuration and scripts for component-level development with an initial Authorize.Net card story.
