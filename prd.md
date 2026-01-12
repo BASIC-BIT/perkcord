@@ -451,6 +451,7 @@ Progress (2026-01-12): Added REST API endpoint to request admin force-sync (guil
 * retries, rate limits, audit UX polish, error handling
 Progress (2026-01-12): Added scheduled job to expire entitlement grants past validThrough with audit events.
 Progress (2026-01-12): Added scheduled job to retry failed role sync requests with safeguards to avoid duplicate retries.
+Progress (2026-01-12): Added Discord bot role sync retry/backoff handling for rate limits and transient Discord API errors.
 
 **Milestone 7 — NMI integration (later)**
 

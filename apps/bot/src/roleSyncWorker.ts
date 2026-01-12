@@ -25,6 +25,73 @@ type WorkerOptions = {
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+const asRecord = (value: unknown): Record<string, unknown> | null =>
+  typeof value === "object" && value !== null
+    ? (value as Record<string, unknown>)
+    : null;
+
+const readNumber = (value: unknown): number | null =>
+  typeof value === "number" && Number.isFinite(value) ? value : null;
+
+const readString = (value: unknown): string | null =>
+  typeof value === "string" ? value : null;
+
+const getRetryAfterMs = (error: unknown): number | null => {
+  const record = asRecord(error);
+  if (!record) {
+    return null;
+  }
+  const rawError = asRecord(record["rawError"]);
+  const retryAfterSeconds = readNumber(rawError?.["retry_after"]);
+  if (retryAfterSeconds !== null) {
+    return Math.max(0, retryAfterSeconds * 1000);
+  }
+  const retryAfterMs = readNumber(record["retryAfter"]);
+  if (retryAfterMs !== null) {
+    return Math.max(0, retryAfterMs);
+  }
+  return null;
+};
+
+const getStatusCode = (error: unknown): number | null => {
+  const record = asRecord(error);
+  return record ? readNumber(record["status"]) : null;
+};
+
+const getErrorCode = (error: unknown): string | number | null => {
+  const record = asRecord(error);
+  if (!record) {
+    return null;
+  }
+  const code = record["code"];
+  if (typeof code === "string" || typeof code === "number") {
+    return code;
+  }
+  return null;
+};
+
+const isRetryableDiscordError = (error: unknown): boolean => {
+  const status = getStatusCode(error);
+  if (status === 429 || (status !== null && status >= 500)) {
+    return true;
+  }
+  const code = getErrorCode(error);
+  if (typeof code === "string") {
+    return [
+      "ECONNRESET",
+      "ETIMEDOUT",
+      "EAI_AGAIN",
+      "ECONNREFUSED",
+      "ENOTFOUND",
+    ].includes(code);
+  }
+  const message = readString(asRecord(error)?.["message"]);
+  if (message && message.toLowerCase().includes("rate limit")) {
+    return true;
+  }
+  return false;
+};
+
 const formatError = (error: unknown) => {
   if (error instanceof Error) {
     return `${error.name}: ${error.message}`;
@@ -38,6 +105,9 @@ export class RoleSyncWorker {
   private readonly config: BotConfig;
   private readonly convexGuildIdByDiscordId = new Map<string, string>();
   private readonly guildByConvexId = new Map<string, Guild>();
+  private readonly retryMaxAttempts = 3;
+  private readonly retryBaseDelayMs = 1000;
+  private readonly retryMaxDelayMs = 15000;
   private timer: NodeJS.Timeout | null = null;
   private running = false;
 
@@ -230,12 +300,58 @@ export class RoleSyncWorker {
     );
 
     if (rolesToAdd.length > 0) {
-      await member.roles.add(rolesToAdd, "Perkcord role sync");
+      await this.runWithRetry(
+        () => member.roles.add(rolesToAdd, "Perkcord role sync"),
+        `add roles for ${member.id}`
+      );
     }
 
     if (rolesToRemove.length > 0) {
-      await member.roles.remove(rolesToRemove, "Perkcord role sync");
+      await this.runWithRetry(
+        () => member.roles.remove(rolesToRemove, "Perkcord role sync"),
+        `remove roles for ${member.id}`
+      );
     }
+  }
+
+  private async runWithRetry<T>(operation: () => Promise<T>, context: string) {
+    let attempt = 0;
+    let lastError: unknown = null;
+    while (attempt < this.retryMaxAttempts) {
+      attempt += 1;
+      try {
+        return await operation();
+      } catch (error) {
+        lastError = error;
+        const delayMs = this.getRetryDelayMs(error, attempt);
+        if (delayMs === null || attempt >= this.retryMaxAttempts) {
+          throw error;
+        }
+        console.warn(
+          `Role sync ${context} failed (attempt ${attempt}/${this.retryMaxAttempts}). Retrying in ${Math.round(
+            delayMs
+          )}ms.`
+        );
+        await sleep(delayMs);
+      }
+    }
+    throw lastError ?? new Error("Role sync retry attempts exhausted.");
+  }
+
+  private getRetryDelayMs(error: unknown, attempt: number): number | null {
+    const retryAfterMs = getRetryAfterMs(error);
+    if (retryAfterMs !== null && retryAfterMs > 0) {
+      return Math.min(retryAfterMs, this.retryMaxDelayMs);
+    }
+    if (!isRetryableDiscordError(error)) {
+      return null;
+    }
+    const baseDelay = Math.min(
+      this.retryBaseDelayMs * Math.pow(2, attempt - 1),
+      this.retryMaxDelayMs
+    );
+    const jitter = baseDelay * 0.2 * Math.random();
+    return baseDelay + jitter;
   }
 
   private async fetchManagedRoleIds(convexGuildId: string) {
