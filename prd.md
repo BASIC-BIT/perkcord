@@ -435,6 +435,7 @@ Progress (2026-01-12): Captured Authorize.Net merchantReferenceId on webhook ing
 * outbound webhooks + minimal REST API
 * admin dashboard health panes
 Progress (2026-01-12): Added Convex query to report active member counts by tier for admin reporting.
+Progress (2026-01-12): Added provider event diagnostics query to surface the latest webhook per provider for a guild (matched by customer or price ids).
 
 **Milestone 6 — Phase 1 hardening**
 

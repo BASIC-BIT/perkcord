@@ -1,4 +1,4 @@
-import { mutation } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
 
@@ -34,6 +34,31 @@ const normalizeOptionalStringArray = (values?: string[]) => {
   }
   return Array.from(new Set(trimmed));
 };
+
+const coerceScanLimit = (limit?: number) => {
+  if (limit === undefined) {
+    return 200;
+  }
+  if (!Number.isFinite(limit) || limit <= 0 || !Number.isInteger(limit)) {
+    throw new Error("scanLimit must be a positive integer.");
+  }
+  return Math.min(limit, 1000);
+};
+
+const addIdValues = (target: Set<string>, values?: string[]) => {
+  if (!values) {
+    return;
+  }
+  for (const value of values) {
+    const trimmed = value.trim();
+    if (trimmed.length > 0) {
+      target.add(trimmed);
+    }
+  }
+};
+
+const hasAnyOverlap = (values: string[] | undefined, candidates: Set<string>) =>
+  values ? values.some((value) => candidates.has(value)) : false;
 
 export const recordProviderEvent = mutation({
   args: {
@@ -91,6 +116,142 @@ export const recordProviderEvent = mutation({
     return {
       status: "recorded" as const,
       providerEventId: eventId,
+    };
+  },
+});
+
+export const getLatestProviderEventsForGuild = query({
+  args: {
+    guildId: v.id("guilds"),
+    scanLimit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const scanLimit = coerceScanLimit(args.scanLimit);
+    const now = Date.now();
+
+    const guild = await ctx.db.get(args.guildId);
+    if (!guild) {
+      throw new Error("Guild not found for provider event lookup.");
+    }
+
+    const customerLinks = await ctx.db
+      .query("providerCustomerLinks")
+      .withIndex("by_guild", (q) => q.eq("guildId", args.guildId))
+      .collect();
+
+    const customerIdsByProvider = new Map<
+      Doc<"providerEvents">["provider"],
+      Set<string>
+    >();
+    for (const link of customerLinks) {
+      let set = customerIdsByProvider.get(link.provider);
+      if (!set) {
+        set = new Set<string>();
+        customerIdsByProvider.set(link.provider, set);
+      }
+      set.add(link.providerCustomerId);
+    }
+
+    const tiers = await ctx.db
+      .query("tiers")
+      .withIndex("by_guild", (q) => q.eq("guildId", args.guildId))
+      .collect();
+
+    const priceIdsByProvider = new Map<
+      Doc<"providerEvents">["provider"],
+      Set<string>
+    >();
+
+    for (const tier of tiers) {
+      const refs = tier.providerRefs;
+      if (!refs) {
+        continue;
+      }
+
+      if (refs.stripeSubscriptionPriceIds || refs.stripeOneTimePriceIds) {
+        let set = priceIdsByProvider.get("stripe");
+        if (!set) {
+          set = new Set<string>();
+          priceIdsByProvider.set("stripe", set);
+        }
+        addIdValues(set, refs.stripeSubscriptionPriceIds);
+        addIdValues(set, refs.stripeOneTimePriceIds);
+      }
+
+      if (refs.authorizeNetSubscriptionIds || refs.authorizeNetOneTimeKeys) {
+        let set = priceIdsByProvider.get("authorize_net");
+        if (!set) {
+          set = new Set<string>();
+          priceIdsByProvider.set("authorize_net", set);
+        }
+        addIdValues(set, refs.authorizeNetSubscriptionIds);
+        addIdValues(set, refs.authorizeNetOneTimeKeys);
+      }
+
+      if (refs.nmiPlanIds || refs.nmiOneTimeKeys) {
+        let set = priceIdsByProvider.get("nmi");
+        if (!set) {
+          set = new Set<string>();
+          priceIdsByProvider.set("nmi", set);
+        }
+        addIdValues(set, refs.nmiPlanIds);
+        addIdValues(set, refs.nmiOneTimeKeys);
+      }
+    }
+
+    const providers: Doc<"providerEvents">["provider"][] = [
+      "stripe",
+      "authorize_net",
+      "nmi",
+    ];
+
+    const latestByProvider = [];
+    for (const provider of providers) {
+      const customerIds = customerIdsByProvider.get(provider) ?? new Set();
+      const priceIds = priceIdsByProvider.get(provider) ?? new Set();
+      if (customerIds.size === 0 && priceIds.size === 0) {
+        latestByProvider.push({
+          provider,
+          event: null,
+          matchType: "none",
+        });
+        continue;
+      }
+
+      const recentEvents = await ctx.db
+        .query("providerEvents")
+        .withIndex("by_provider_time", (q) => q.eq("provider", provider))
+        .order("desc")
+        .take(scanLimit);
+
+      let matchedEvent: Doc<"providerEvents"> | null = null;
+      let matchType: "customer" | "price" | "none" = "none";
+
+      for (const event of recentEvents) {
+        if (event.providerCustomerId && customerIds.has(event.providerCustomerId)) {
+          matchedEvent = event;
+          matchType = "customer";
+          break;
+        }
+        if (hasAnyOverlap(event.providerPriceIds, priceIds)) {
+          matchedEvent = event;
+          matchType = "price";
+          break;
+        }
+      }
+
+      latestByProvider.push({
+        provider,
+        event: matchedEvent,
+        matchType,
+      });
+    }
+
+    return {
+      guildId: args.guildId,
+      scanLimit,
+      evaluatedAt: now,
+      providers: latestByProvider,
     };
   },
 });
