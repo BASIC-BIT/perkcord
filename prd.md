@@ -556,6 +556,7 @@ Progress (2026-01-12): Added Playwright visual regression tests tagged @visual w
 * Use Storybook snapshots for UI elements that do not require a full app context
   (cards, tables, forms, navigation, tier mapping components).
 Progress (2026-01-12): Added Storybook configuration and scripts for component-level development with an initial Authorize.Net card story.
+Progress (2026-01-12): Added Storybook test runner to capture component screenshots into a stable storybook-snapshots folder, with scripts to run and update snapshots.
 
 **18.4 Linting and formatting (rigorous, not overboard)**
 
