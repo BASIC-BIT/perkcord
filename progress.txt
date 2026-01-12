@@ -43,3 +43,4 @@
 2026-01-12: Added admin tier management REST endpoints plus admin portal forms for creating and updating tier mappings.
 2026-01-12: Added member session cookie after Discord OAuth and linked Stripe customer IDs to Discord users during checkout for provider-customer mapping.
 2026-01-12: Added REST API endpoint and admin health panel to surface failed outbound webhook deliveries for dead-letter visibility.
+2026-01-12: Added REST API endpoint and admin portal card to display role sync request history for member snapshots.

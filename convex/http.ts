@@ -8,6 +8,7 @@ import {
   getProviderEventDiagnostics,
   listFailedOutboundWebhooks,
   getMemberSnapshot,
+  listRoleSyncRequests,
   listAuditEvents,
   listMembers,
   listTiers,
@@ -101,6 +102,12 @@ http.route({
   path: "/api/grants/revoke",
   method: "POST",
   handler: revokeManualGrant,
+});
+
+http.route({
+  path: "/api/role-sync",
+  method: "GET",
+  handler: listRoleSyncRequests,
 });
 
 http.route({

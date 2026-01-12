@@ -100,6 +100,22 @@ type FailedOutboundWebhookResponse = {
 type AuditEventsResponse = {
   events: AuditEventSummary[];
 };
+type RoleSyncRequest = {
+  _id: string;
+  scope: string;
+  discordUserId?: string;
+  status: string;
+  requestedAt: number;
+  requestedByActorType?: string;
+  requestedByActorId?: string;
+  reason?: string;
+  lastError?: string;
+  completedAt?: number;
+  updatedAt?: number;
+};
+type RoleSyncRequestsResponse = {
+  requests: RoleSyncRequest[];
+};
 type GuildDiagnostics = {
   checkedAt: number;
   overallStatus: string;
@@ -249,6 +265,8 @@ export default async function AdminPage({
   let memberSearchResults: MemberIdentity[] | null = null;
   let memberSnapshotError: string | null = null;
   let memberSnapshot: MemberSnapshotResponse | null = null;
+  let roleSyncError: string | null = null;
+  let roleSyncRequests: RoleSyncRequest[] | null = null;
   let activeMemberCountsError: string | null = null;
   let activeMemberCounts: ActiveMemberCountsResponse | null = null;
   let guildDiagnosticsError: string | null = null;
@@ -303,6 +321,22 @@ export default async function AdminPage({
         memberSnapshotError = result.error;
       } else {
         memberSnapshot = result.data ?? null;
+      }
+
+      const roleSyncResult = await fetchConvexJson<RoleSyncRequestsResponse>(
+        convexUrl,
+        convexApiKey,
+        "/api/role-sync",
+        {
+          guildId,
+          discordUserId: memberId,
+          limit: 10,
+        }
+      );
+      if (roleSyncResult.error) {
+        roleSyncError = roleSyncResult.error;
+      } else {
+        roleSyncRequests = roleSyncResult.data?.requests ?? [];
       }
     }
 
@@ -404,6 +438,8 @@ export default async function AdminPage({
     }
     if (memberId) {
       memberSnapshotError =
+        "Convex REST configuration missing (PERKCORD_CONVEX_HTTP_URL, PERKCORD_REST_API_KEY).";
+      roleSyncError =
         "Convex REST configuration missing (PERKCORD_CONVEX_HTTP_URL, PERKCORD_REST_API_KEY).";
     }
     if (guildId) {
@@ -1395,6 +1431,9 @@ export default async function AdminPage({
             {memberSnapshotError && (
               <div className="banner error">{memberSnapshotError}</div>
             )}
+            {roleSyncError && (
+              <div className="banner error">{roleSyncError}</div>
+            )}
             {memberSnapshot && (
               <div className="snapshot-grid">
                 <div className="snapshot-card">
@@ -1468,6 +1507,52 @@ export default async function AdminPage({
                         </li>
                       ))}
                     </ul>
+                  )}
+                </div>
+                <div className="snapshot-card">
+                  <h3>Role sync history</h3>
+                  {roleSyncRequests ? (
+                    roleSyncRequests.length === 0 ? (
+                      <p>No role sync requests found.</p>
+                    ) : (
+                      <ul className="audit-list">
+                        {roleSyncRequests.map((request) => (
+                          <li key={request._id} className="audit-item">
+                            <div className="audit-title">
+                              {request.scope === "guild" ? "Guild sync" : "User sync"} •{" "}
+                              {request.status}
+                            </div>
+                            <div className="audit-meta">
+                              <span>
+                                Requested: {formatTimestamp(request.requestedAt)}
+                              </span>
+                              <span>
+                                Updated: {formatTimestamp(request.updatedAt)}
+                              </span>
+                              {request.completedAt && (
+                                <span>
+                                  Completed: {formatTimestamp(request.completedAt)}
+                                </span>
+                              )}
+                              <span>
+                                Requested by: {request.requestedByActorType ?? "system"}
+                                {request.requestedByActorId
+                                  ? ` (${request.requestedByActorId})`
+                                  : ""}
+                              </span>
+                              {request.reason && (
+                                <span>Reason: {request.reason}</span>
+                              )}
+                              {request.lastError && (
+                                <span>Error: {request.lastError}</span>
+                              )}
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    )
+                  ) : (
+                    <p>Role sync history is unavailable.</p>
                   )}
                 </div>
               </div>

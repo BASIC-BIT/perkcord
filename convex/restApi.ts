@@ -557,6 +557,32 @@ export const listAuditEvents = httpAction(async (ctx, request) => {
   }
 });
 
+export const listRoleSyncRequests = httpAction(async (ctx, request) => {
+  if (request.method !== "GET") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  const authError = authorizeRequest(request);
+  if (authError) {
+    return authError;
+  }
+
+  try {
+    const url = new URL(request.url);
+    const guildId = getRequiredParam(url, "guildId");
+    const discordUserId = getOptionalParam(url, "discordUserId");
+    const limit = getOptionalInteger(url, "limit");
+    const requests = await ctx.runQuery(api.roleSync.listRoleSyncRequests, {
+      guildId,
+      discordUserId,
+      limit,
+    });
+    return jsonResponse({ requests });
+  } catch (error) {
+    return handleError(error);
+  }
+});
+
 export const getActiveMemberCounts = httpAction(async (ctx, request) => {
   if (request.method !== "GET") {
     return jsonResponse({ error: "Method not allowed." }, 405);
