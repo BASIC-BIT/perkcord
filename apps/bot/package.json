@@ -1,0 +1,18 @@
+{
+  "name": "perkcord-bot",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "convex": "^1.14.1",
+    "discord.js": "^14.14.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "typescript": "^5.5.0"
+  }
+}

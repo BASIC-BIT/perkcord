@@ -30,3 +30,4 @@
 2026-01-12: Added provider event processing job to convert normalized Stripe/Authorize.Net events into entitlement grants with audit trails and membership webhooks.
 2026-01-12: Added REST API endpoint to request admin force-sync (guild or user) role sync jobs.
 2026-01-12: Added member flow stub pages in the Next.js app (tier selection, Discord connect placeholder, payment placeholder, celebration page with Discord deep link hint).
+2026-01-12: Added Discord bot worker skeleton that upserts guilds, runs onboarding diagnostics, and processes role sync requests by applying role deltas from Convex entitlements.
