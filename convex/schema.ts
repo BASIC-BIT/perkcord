@@ -130,4 +130,26 @@ export default defineSchema({
       "subjectDiscordUserId",
       "timestamp",
     ]),
+
+  guildDiagnostics: defineTable({
+    guildId: v.id("guilds"),
+    checkedAt: v.number(),
+    botUserId: v.optional(v.string()),
+    botRoleId: v.optional(v.string()),
+    permissionsOk: v.boolean(),
+    missingPermissions: v.array(v.string()),
+    roleHierarchyOk: v.boolean(),
+    blockedRoleIds: v.array(v.string()),
+    rolesExistOk: v.boolean(),
+    missingRoleIds: v.array(v.string()),
+    checkedRoleIds: v.array(v.string()),
+    overallStatus: v.union(
+      v.literal("pass"),
+      v.literal("warn"),
+      v.literal("fail")
+    ),
+    notes: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_guild", ["guildId"]),
 });

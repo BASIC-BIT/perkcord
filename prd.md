@@ -407,6 +407,7 @@ Progress (2026-01-12): Added member identity upsert mutation for Discord OAuth l
 Progress (2026-01-12): Added role sync request table and admin mutation for force sync requests (guild/user) with audit events.
 Progress (2026-01-12): Added role sync request claim/completion mutations for bot workers with audit events.
 Progress (2026-01-12): Added Convex query to compute desired role IDs for a member from active entitlements for bot role sync.
+Progress (2026-01-12): Added guild diagnostics schema plus upsert/get mutations for onboarding checks with audit events.
 
 **Milestone 3 — Stripe integration**
 
@@ -448,3 +449,4 @@ Progress (2026-01-12): Added Convex query to compute desired role IDs for a memb
 * Admin can resolve “why no role?” via audit timeline without digging through logs
 * Webhook failures or Discord API failures self-heal via reconciliation within a bounded window
 * Stripe + Authorize.Net both proven end-to-end in sandbox mode (NMI later)
+
