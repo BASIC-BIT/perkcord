@@ -583,6 +583,7 @@ Progress (2026-01-12): Added flat ESLint configs for web, bot, and convex packag
 * Unit tests for validation rules and error paths.
 * Keep webhook signature verification covered by tests with idempotency cases.  
 Progress (2026-01-12): Added server-side env validation helpers for web routes to enforce required configuration with consistent errors.
+Progress (2026-01-12): Added unit tests for Stripe and Authorize.Net checkout config validation error paths.
 
 **18.6 Local checks and CI gates**
 

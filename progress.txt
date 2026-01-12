@@ -72,3 +72,4 @@
 2026-01-12: Added server-side env validation helpers for web routes to require critical configuration values.
 2026-01-12: Added docs/testing.md documenting test commands, snapshot update steps, and VLM review guidance for visual diffs.
 2026-01-12: Added scc + lizard code metrics checks with shared ignore allowlist, docs update, and CI job.
+2026-01-12: Added unit tests for Stripe and Authorize.Net checkout config validation error paths.
