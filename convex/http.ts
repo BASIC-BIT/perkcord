@@ -6,6 +6,7 @@ import {
   createTier,
   createManualGrant,
   getActiveMemberCounts,
+  getRevenueIndicators,
   getGuildDiagnostics,
   getProviderEventDiagnostics,
   listFailedOutboundWebhooks,
@@ -90,6 +91,12 @@ http.route({
   path: "/api/reporting/active-members",
   method: "GET",
   handler: getActiveMemberCounts,
+});
+
+http.route({
+  path: "/api/reporting/revenue",
+  method: "GET",
+  handler: getRevenueIndicators,
 });
 
 http.route({

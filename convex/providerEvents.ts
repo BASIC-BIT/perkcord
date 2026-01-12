@@ -55,6 +55,22 @@ const coerceScanLimit = (limit?: number) => {
   return Math.min(limit, 1000);
 };
 
+const coerceWindowDays = (value?: number) => {
+  if (value === undefined) {
+    return 30;
+  }
+  if (!Number.isFinite(value) || value <= 0 || !Number.isInteger(value)) {
+    throw new Error("windowDays must be a positive integer.");
+  }
+  return Math.min(value, 365);
+};
+
+const providers: Doc<"providerEvents">["provider"][] = [
+  "stripe",
+  "authorize_net",
+  "nmi",
+];
+
 const addIdValues = (target: Set<string>, values?: string[]) => {
   if (!values) {
     return;
@@ -212,12 +228,6 @@ export const getLatestProviderEventsForGuild = query({
       }
     }
 
-    const providers: Doc<"providerEvents">["provider"][] = [
-      "stripe",
-      "authorize_net",
-      "nmi",
-    ];
-
     const latestByProvider = [];
     for (const provider of providers) {
       const customerIds = customerIdsByProvider.get(provider) ?? new Set();
@@ -265,6 +275,188 @@ export const getLatestProviderEventsForGuild = query({
       scanLimit,
       evaluatedAt: now,
       providers: latestByProvider,
+    };
+  },
+});
+
+export const getRevenueIndicatorsForGuild = query({
+  args: {
+    guildId: v.id("guilds"),
+    scanLimit: v.optional(v.number()),
+    windowDays: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const scanLimit = coerceScanLimit(args.scanLimit);
+    const windowDays = coerceWindowDays(args.windowDays);
+    const now = Date.now();
+    const windowStart = now - windowDays * 24 * 60 * 60 * 1000;
+
+    const guild = await ctx.db.get(args.guildId);
+    if (!guild) {
+      throw new Error("Guild not found for provider event lookup.");
+    }
+
+    const customerLinks = await ctx.db
+      .query("providerCustomerLinks")
+      .withIndex("by_guild", (q) => q.eq("guildId", args.guildId))
+      .collect();
+
+    const customerIdsByProvider = new Map<
+      Doc<"providerEvents">["provider"],
+      Set<string>
+    >();
+    for (const link of customerLinks) {
+      let set = customerIdsByProvider.get(link.provider);
+      if (!set) {
+        set = new Set<string>();
+        customerIdsByProvider.set(link.provider, set);
+      }
+      set.add(link.providerCustomerId);
+    }
+
+    const tiers = await ctx.db
+      .query("tiers")
+      .withIndex("by_guild", (q) => q.eq("guildId", args.guildId))
+      .collect();
+
+    const priceIdsByProvider = new Map<
+      Doc<"providerEvents">["provider"],
+      Set<string>
+    >();
+
+    for (const tier of tiers) {
+      const refs = tier.providerRefs;
+      if (!refs) {
+        continue;
+      }
+
+      if (refs.stripeSubscriptionPriceIds || refs.stripeOneTimePriceIds) {
+        let set = priceIdsByProvider.get("stripe");
+        if (!set) {
+          set = new Set<string>();
+          priceIdsByProvider.set("stripe", set);
+        }
+        addIdValues(set, refs.stripeSubscriptionPriceIds);
+        addIdValues(set, refs.stripeOneTimePriceIds);
+      }
+
+      if (refs.authorizeNetSubscriptionIds || refs.authorizeNetOneTimeKeys) {
+        let set = priceIdsByProvider.get("authorize_net");
+        if (!set) {
+          set = new Set<string>();
+          priceIdsByProvider.set("authorize_net", set);
+        }
+        addIdValues(set, refs.authorizeNetSubscriptionIds);
+        addIdValues(set, refs.authorizeNetOneTimeKeys);
+      }
+
+      if (refs.nmiPlanIds || refs.nmiOneTimeKeys) {
+        let set = priceIdsByProvider.get("nmi");
+        if (!set) {
+          set = new Set<string>();
+          priceIdsByProvider.set("nmi", set);
+        }
+        addIdValues(set, refs.nmiPlanIds);
+        addIdValues(set, refs.nmiOneTimeKeys);
+      }
+    }
+
+    const totals = {
+      scannedEvents: 0,
+      matchedEvents: 0,
+      paymentSucceeded: 0,
+      paymentFailed: 0,
+      refunds: 0,
+      chargebacksOpened: 0,
+      chargebacksClosed: 0,
+    };
+
+    const providersSummary = [];
+    for (const provider of providers) {
+      const customerIds = customerIdsByProvider.get(provider) ?? new Set();
+      const priceIds = priceIdsByProvider.get(provider) ?? new Set();
+      const summary = {
+        provider,
+        scannedEvents: 0,
+        matchedEvents: 0,
+        paymentSucceeded: 0,
+        paymentFailed: 0,
+        refunds: 0,
+        chargebacksOpened: 0,
+        chargebacksClosed: 0,
+      };
+
+      if (customerIds.size === 0 && priceIds.size === 0) {
+        providersSummary.push(summary);
+        continue;
+      }
+
+      const recentEvents = await ctx.db
+        .query("providerEvents")
+        .withIndex("by_provider_time", (q) => q.eq("provider", provider))
+        .order("desc")
+        .take(scanLimit);
+
+      for (const event of recentEvents) {
+        summary.scannedEvents += 1;
+        if (event.receivedAt < windowStart) {
+          break;
+        }
+        const eventTimestamp = event.occurredAt ?? event.receivedAt;
+        if (eventTimestamp < windowStart) {
+          continue;
+        }
+
+        const matchesCustomer =
+          event.providerCustomerId &&
+          customerIds.has(event.providerCustomerId);
+        const matchesPrice = hasAnyOverlap(event.providerPriceIds, priceIds);
+        if (!matchesCustomer && !matchesPrice) {
+          continue;
+        }
+
+        summary.matchedEvents += 1;
+        switch (event.normalizedEventType) {
+          case "PAYMENT_SUCCEEDED":
+            summary.paymentSucceeded += 1;
+            break;
+          case "PAYMENT_FAILED":
+            summary.paymentFailed += 1;
+            break;
+          case "REFUND_ISSUED":
+            summary.refunds += 1;
+            break;
+          case "CHARGEBACK_OPENED":
+            summary.chargebacksOpened += 1;
+            break;
+          case "CHARGEBACK_CLOSED":
+            summary.chargebacksClosed += 1;
+            break;
+          default:
+            break;
+        }
+      }
+
+      totals.scannedEvents += summary.scannedEvents;
+      totals.matchedEvents += summary.matchedEvents;
+      totals.paymentSucceeded += summary.paymentSucceeded;
+      totals.paymentFailed += summary.paymentFailed;
+      totals.refunds += summary.refunds;
+      totals.chargebacksOpened += summary.chargebacksOpened;
+      totals.chargebacksClosed += summary.chargebacksClosed;
+
+      providersSummary.push(summary);
+    }
+
+    return {
+      guildId: args.guildId,
+      evaluatedAt: now,
+      windowDays,
+      windowStart,
+      windowEnd: now,
+      scanLimit,
+      providers: providersSummary,
+      totals,
     };
   },
 });

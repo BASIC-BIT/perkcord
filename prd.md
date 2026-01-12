@@ -453,7 +453,8 @@ Progress (2026-01-12): Added Authorize.Net subscription checkout flow with immed
 * outbound webhooks + minimal REST API
 * admin dashboard health panes
 Progress (2026-01-12): Added Convex query to report active member counts by tier for admin reporting.
-Progress (2026-01-12): Added provider event diagnostics query to surface the latest webhook per provider for a guild (matched by customer or price ids).        
+Progress (2026-01-12): Added revenue indicators reporting for the admin health overview, derived from provider events with a not-accounting disclaimer.
+Progress (2026-01-12): Added provider event diagnostics query to surface the latest webhook per provider for a guild (matched by customer or price ids).
 Progress (2026-01-12): Added minimal REST API HTTP endpoints for tier listing, member search, member snapshots, and audit timelines guarded by PERKCORD_REST_API_KEY.
 Progress (2026-01-12): Added outbound webhook endpoint schema plus create/update/list mutations with signing secrets and audit events.
 Progress (2026-01-12): Added REST API endpoints to list/create/update outbound webhook endpoints for customer configuration.

@@ -64,6 +64,35 @@ type ActiveMemberCount = {
 type ActiveMemberCountsResponse = {
   tiers: ActiveMemberCount[];
 };
+type RevenueIndicatorSummary = {
+  provider: string;
+  scannedEvents: number;
+  matchedEvents: number;
+  paymentSucceeded: number;
+  paymentFailed: number;
+  refunds: number;
+  chargebacksOpened: number;
+  chargebacksClosed: number;
+};
+type RevenueIndicatorTotals = {
+  scannedEvents: number;
+  matchedEvents: number;
+  paymentSucceeded: number;
+  paymentFailed: number;
+  refunds: number;
+  chargebacksOpened: number;
+  chargebacksClosed: number;
+};
+type RevenueIndicatorsResponse = {
+  guildId: string;
+  evaluatedAt: number;
+  windowDays: number;
+  windowStart: number;
+  windowEnd: number;
+  scanLimit: number;
+  providers: RevenueIndicatorSummary[];
+  totals: RevenueIndicatorTotals;
+};
 type ProviderEventSummary = {
   _id: string;
   provider: string;
@@ -332,6 +361,7 @@ export default async function AdminPage({
   const memberSearch = getParam(searchParams?.memberSearch);
   const memberId = getParam(searchParams?.memberId);
   const scanLimit = getNumberParam(searchParams?.scanLimit);
+  const revenueWindowDays = getNumberParam(searchParams?.revenueWindowDays);
   const auditLimit = getNumberParam(searchParams?.auditLimit);
   const failedLimit = getNumberParam(searchParams?.failedLimit);
   const convexUrl = process.env.PERKCORD_CONVEX_HTTP_URL?.trim();
@@ -345,6 +375,8 @@ export default async function AdminPage({
   let roleSyncRequests: RoleSyncRequest[] | null = null;
   let activeMemberCountsError: string | null = null;
   let activeMemberCounts: ActiveMemberCountsResponse | null = null;
+  let revenueIndicatorsError: string | null = null;
+  let revenueIndicators: RevenueIndicatorsResponse | null = null;
   let guildDiagnosticsError: string | null = null;
   let guildDiagnostics: GuildDiagnostics | null = null;
   let providerDiagnosticsError: string | null = null;
@@ -461,6 +493,23 @@ export default async function AdminPage({
         activeMemberCounts = countsResult.data ?? null;
       }
 
+      const revenueResult =
+        await fetchConvexJson<RevenueIndicatorsResponse>(
+          convexUrl,
+          convexApiKey,
+          "/api/reporting/revenue",
+          {
+            guildId,
+            scanLimit,
+            windowDays: revenueWindowDays,
+          }
+        );
+      if (revenueResult.error) {
+        revenueIndicatorsError = revenueResult.error;
+      } else {
+        revenueIndicators = revenueResult.data ?? null;
+      }
+
       const guildDiagnosticsResult =
         await fetchConvexJson<GuildDiagnosticsResponse>(
           convexUrl,
@@ -542,6 +591,8 @@ export default async function AdminPage({
       guildDiagnosticsError =
         "Convex REST configuration missing (PERKCORD_CONVEX_HTTP_URL, PERKCORD_REST_API_KEY).";
       tierListError =
+        "Convex REST configuration missing (PERKCORD_CONVEX_HTTP_URL, PERKCORD_REST_API_KEY).";
+      revenueIndicatorsError =
         "Convex REST configuration missing (PERKCORD_CONVEX_HTTP_URL, PERKCORD_REST_API_KEY).";
       failedWebhookError =
         "Convex REST configuration missing (PERKCORD_CONVEX_HTTP_URL, PERKCORD_REST_API_KEY).";
@@ -1286,6 +1337,20 @@ export default async function AdminPage({
                 />
               </label>
               <label className="field">
+                <span>Revenue window days (optional)</span>
+                <input
+                  className="input"
+                  name="revenueWindowDays"
+                  type="number"
+                  min={1}
+                  max={365}
+                  placeholder="30"
+                  defaultValue={
+                    revenueWindowDays ? String(revenueWindowDays) : ""
+                  }
+                />
+              </label>
+              <label className="field">
                 <span>Failed webhook limit (optional)</span>
                 <input
                   className="input"
@@ -1314,6 +1379,9 @@ export default async function AdminPage({
             )}
             {activeMemberCountsError && (
               <div className="banner error">{activeMemberCountsError}</div>
+            )}
+            {revenueIndicatorsError && (
+              <div className="banner error">{revenueIndicatorsError}</div>
             )}
             {providerDiagnosticsError && (
               <div className="banner error">{providerDiagnosticsError}</div>
@@ -1422,6 +1490,91 @@ export default async function AdminPage({
                     )
                   ) : (
                     <p>Active member counts are unavailable.</p>
+                  )}
+                </div>
+                <div className="snapshot-card">
+                  <h3>Revenue indicators</h3>
+                  {revenueIndicators ? (
+                    <>
+                      <div className="meta">
+                        <span>
+                          Window: last {revenueIndicators.windowDays} days
+                        </span>
+                        <span>
+                          From: {formatTimestamp(revenueIndicators.windowStart)}
+                        </span>
+                        <span>
+                          Evaluated:{" "}
+                          {formatTimestamp(revenueIndicators.evaluatedAt)}
+                        </span>
+                        <span>Scan limit: {revenueIndicators.scanLimit}</span>
+                      </div>
+                      <div className="meta">
+                        <span>
+                          Counts derived from provider events; not accounting.
+                        </span>
+                      </div>
+                      <ul className="audit-list">
+                        <li className="audit-item">
+                          <div className="audit-title">Totals</div>
+                          <div className="audit-meta">
+                            <span>
+                              Payments succeeded:{" "}
+                              {revenueIndicators.totals.paymentSucceeded}
+                            </span>
+                            <span>
+                              Payments failed:{" "}
+                              {revenueIndicators.totals.paymentFailed}
+                            </span>
+                            <span>
+                              Refunds: {revenueIndicators.totals.refunds}
+                            </span>
+                            <span>
+                              Chargebacks opened:{" "}
+                              {revenueIndicators.totals.chargebacksOpened}
+                            </span>
+                            <span>
+                              Chargebacks closed:{" "}
+                              {revenueIndicators.totals.chargebacksClosed}
+                            </span>
+                            <span>
+                              Matched events:{" "}
+                              {revenueIndicators.totals.matchedEvents}
+                            </span>
+                          </div>
+                        </li>
+                      </ul>
+                      <ul className="audit-list">
+                        {revenueIndicators.providers.map((provider) => (
+                          <li key={provider.provider} className="audit-item">
+                            <div className="audit-title">
+                              {formatProviderLabel(provider.provider)}
+                            </div>
+                            <div className="audit-meta">
+                              <span>
+                                Payments succeeded: {provider.paymentSucceeded}
+                              </span>
+                              <span>
+                                Payments failed: {provider.paymentFailed}
+                              </span>
+                              <span>Refunds: {provider.refunds}</span>
+                              <span>
+                                Chargebacks opened:{" "}
+                                {provider.chargebacksOpened}
+                              </span>
+                              <span>
+                                Chargebacks closed:{" "}
+                                {provider.chargebacksClosed}
+                              </span>
+                              <span>Matched events: {provider.matchedEvents}</span>
+                              <span>Scanned events: {provider.scannedEvents}</span>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  ) : (
+                    <p>Revenue indicators are unavailable.</p>
                   )}
                 </div>
                 <div className="snapshot-card">

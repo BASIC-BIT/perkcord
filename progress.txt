@@ -73,3 +73,4 @@
 2026-01-12: Added docs/testing.md documenting test commands, snapshot update steps, and VLM review guidance for visual diffs.
 2026-01-12: Added scc + lizard code metrics checks with shared ignore allowlist, docs update, and CI job.
 2026-01-12: Added unit tests for Stripe and Authorize.Net checkout config validation error paths.
+2026-01-12: Added revenue indicators reporting in the admin health overview derived from provider events (not accounting).

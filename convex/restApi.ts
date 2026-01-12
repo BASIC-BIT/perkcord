@@ -675,6 +675,35 @@ export const getActiveMemberCounts = httpAction(async (ctx, request) => {
   }
 });
 
+export const getRevenueIndicators = httpAction(async (ctx, request) => {
+  if (request.method !== "GET") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  const authError = authorizeRequest(request);
+  if (authError) {
+    return authError;
+  }
+
+  try {
+    const url = new URL(request.url);
+    const guildId = getRequiredParam(url, "guildId");
+    const scanLimit = getOptionalInteger(url, "scanLimit");
+    const windowDays = getOptionalInteger(url, "windowDays");
+    const indicators = await ctx.runQuery(
+      api.providerEvents.getRevenueIndicatorsForGuild,
+      {
+        guildId,
+        scanLimit,
+        windowDays,
+      }
+    );
+    return jsonResponse(indicators);
+  } catch (error) {
+    return handleError(error);
+  }
+});
+
 export const getProviderEventDiagnostics = httpAction(async (ctx, request) => {
   if (request.method !== "GET") {
     return jsonResponse({ error: "Method not allowed." }, 405);
