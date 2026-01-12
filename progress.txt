@@ -9,3 +9,4 @@
 2026-01-12: Added role sync request claim/completion mutations for bot workers with audit events.
 2026-01-12: Added Convex query to compute desired role IDs for a member from active entitlements for bot role sync.
 2026-01-12: Added guild diagnostics schema plus upsert/get mutations for onboarding checks with audit events.
+2026-01-12: Added provider event log table plus idempotent record/mark processed mutations for webhook dedupe.

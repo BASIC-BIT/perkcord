@@ -414,6 +414,7 @@ Progress (2026-01-12): Added guild diagnostics schema plus upsert/get mutations 
 * subscription + one-time
 * webhooks + reconciliation
 * end-to-end member flow
+Progress (2026-01-12): Added provider event log table plus idempotent record/mark processed mutations to dedupe webhook events across Stripe/Authorize.Net/NMI.
 
 **Milestone 4 — Authorize.Net integration**
 

@@ -15,6 +15,25 @@ const roleSyncRequestStatus = v.union(
   v.literal("completed"),
   v.literal("failed")
 );
+const providerName = v.union(
+  v.literal("stripe"),
+  v.literal("authorize_net"),
+  v.literal("nmi")
+);
+const normalizedProviderEventType = v.union(
+  v.literal("PAYMENT_SUCCEEDED"),
+  v.literal("PAYMENT_FAILED"),
+  v.literal("SUBSCRIPTION_ACTIVE"),
+  v.literal("SUBSCRIPTION_PAST_DUE"),
+  v.literal("SUBSCRIPTION_CANCELED"),
+  v.literal("REFUND_ISSUED"),
+  v.literal("CHARGEBACK_OPENED"),
+  v.literal("CHARGEBACK_CLOSED")
+);
+const providerEventStatus = v.union(
+  v.literal("processed"),
+  v.literal("failed")
+);
 
 const entitlementSource = v.union(
   v.literal("stripe_subscription"),
@@ -94,6 +113,25 @@ export default defineSchema({
     .index("by_guild_user", ["guildId", "discordUserId"])
     .index("by_tier", ["tierId"])
     .index("by_source_ref", ["sourceRefProvider", "sourceRefId"]),
+
+  providerEvents: defineTable({
+    provider: providerName,
+    providerEventId: v.string(),
+    providerEventType: v.optional(v.string()),
+    normalizedEventType: normalizedProviderEventType,
+    providerObjectId: v.optional(v.string()),
+    providerCustomerId: v.optional(v.string()),
+    occurredAt: v.optional(v.number()),
+    receivedAt: v.number(),
+    processedAt: v.optional(v.number()),
+    processedStatus: v.optional(providerEventStatus),
+    lastError: v.optional(v.string()),
+    payloadSummaryJson: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_provider_event", ["provider", "providerEventId"])
+    .index("by_provider_time", ["provider", "receivedAt"]),
 
   roleSyncRequests: defineTable({
     guildId: v.id("guilds"),
