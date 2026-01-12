@@ -9,4 +9,10 @@ crons.interval(
   api.entitlements.expireEntitlementGrants
 );
 
+crons.interval(
+  "retry failed role sync requests",
+  { minutes: 10 },
+  api.roleSync.retryFailedRoleSyncRequests
+);
+
 export default crons;

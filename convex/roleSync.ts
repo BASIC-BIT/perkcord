@@ -18,6 +18,36 @@ const coerceLimit = (limit?: number) => {
   return Math.min(limit, 200);
 };
 
+const coerceRetryLimit = (limit?: number) => {
+  if (limit === undefined) {
+    return 25;
+  }
+  if (!Number.isFinite(limit) || limit <= 0 || !Number.isInteger(limit)) {
+    throw new Error("limit must be a positive integer.");
+  }
+  return Math.min(limit, 200);
+};
+
+const coerceAsOf = (value?: number) => {
+  if (value === undefined) {
+    return Date.now();
+  }
+  if (!Number.isFinite(value) || !Number.isInteger(value) || value < 0) {
+    throw new Error("asOf must be a non-negative integer.");
+  }
+  return value;
+};
+
+const coerceRetryAfterMs = (value?: number) => {
+  if (value === undefined) {
+    return 10 * 60 * 1000;
+  }
+  if (!Number.isFinite(value) || !Number.isInteger(value) || value <= 0) {
+    throw new Error("retryAfterMs must be a positive integer.");
+  }
+  return value;
+};
+
 const isGrantEffective = (
   grant: Doc<"entitlementGrants">,
   now: number
@@ -32,6 +62,90 @@ const isGrantEffective = (
     return false;
   }
   return true;
+};
+
+const getScopeKey = (request: Doc<"roleSyncRequests">) => {
+  if (request.scope === "guild") {
+    return `guild:${request.guildId}`;
+  }
+  return `user:${request.guildId}:${request.discordUserId ?? "unknown"}`;
+};
+
+const getLastFailureTimestamp = (request: Doc<"roleSyncRequests">) => {
+  return request.completedAt ?? request.updatedAt ?? request.requestedAt;
+};
+
+const hasPendingOrInProgress = async (
+  ctx: { db: any },
+  request: Doc<"roleSyncRequests">
+) => {
+  const statuses: Doc<"roleSyncRequests">["status"][] = [
+    "pending",
+    "in_progress",
+  ];
+
+  if (request.scope === "user") {
+    if (!request.discordUserId) {
+      return true;
+    }
+    for (const status of statuses) {
+      const existing = await ctx.db
+        .query("roleSyncRequests")
+        .withIndex("by_guild_user_status", (q) =>
+          q
+            .eq("guildId", request.guildId)
+            .eq("discordUserId", request.discordUserId)
+            .eq("status", status)
+        )
+        .take(1);
+      if (existing.length > 0) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  for (const status of statuses) {
+    const existing = await ctx.db
+      .query("roleSyncRequests")
+      .withIndex("by_guild_status", (q) =>
+        q.eq("guildId", request.guildId).eq("status", status)
+      )
+      .order("desc")
+      .take(50);
+    if (existing.some((item) => item.scope === "guild")) {
+      return true;
+    }
+  }
+  return false;
+};
+
+const getLatestRequestForScope = async (
+  ctx: { db: any },
+  request: Doc<"roleSyncRequests">
+) => {
+  if (request.scope === "user") {
+    if (!request.discordUserId) {
+      return null;
+    }
+    const [latest] = await ctx.db
+      .query("roleSyncRequests")
+      .withIndex("by_guild_user_time", (q) =>
+        q
+          .eq("guildId", request.guildId)
+          .eq("discordUserId", request.discordUserId)
+      )
+      .order("desc")
+      .take(1);
+    return latest ?? null;
+  }
+
+  const recent = await ctx.db
+    .query("roleSyncRequests")
+    .withIndex("by_guild_time", (q) => q.eq("guildId", request.guildId))
+    .order("desc")
+    .take(100);
+  return recent.find((item) => item.scope === "guild") ?? null;
 };
 
 export const getDesiredRolesForMember = query({
@@ -296,5 +410,105 @@ export const completeRoleSyncRequest = mutation({
     });
 
     return args.requestId;
+  },
+});
+
+export const retryFailedRoleSyncRequests = mutation({
+  args: {
+    limit: v.optional(v.number()),
+    retryAfterMs: v.optional(v.number()),
+    asOf: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const now = coerceAsOf(args.asOf);
+    const retryAfterMs = coerceRetryAfterMs(args.retryAfterMs);
+    let remaining = coerceRetryLimit(args.limit);
+
+    const guilds = await ctx.db.query("guilds").collect();
+    const retriedRequestIds: Array<Doc<"roleSyncRequests">["_id"]> = [];
+    const seenScopeKeys = new Set<string>();
+
+    for (const guild of guilds) {
+      if (remaining <= 0) {
+        break;
+      }
+      const failedRequests = await ctx.db
+        .query("roleSyncRequests")
+        .withIndex("by_guild_status", (q) =>
+          q.eq("guildId", guild._id).eq("status", "failed")
+        )
+        .order("desc")
+        .take(remaining);
+
+      for (const request of failedRequests) {
+        if (remaining <= 0) {
+          break;
+        }
+        const scopeKey = getScopeKey(request);
+        if (seenScopeKeys.has(scopeKey)) {
+          continue;
+        }
+        seenScopeKeys.add(scopeKey);
+
+        const lastFailureAt = getLastFailureTimestamp(request);
+        if (now - lastFailureAt < retryAfterMs) {
+          continue;
+        }
+
+        const latestRequest = await getLatestRequestForScope(ctx, request);
+        if (
+          latestRequest &&
+          latestRequest._id !== request._id &&
+          latestRequest.status !== "failed"
+        ) {
+          continue;
+        }
+
+        if (await hasPendingOrInProgress(ctx, request)) {
+          continue;
+        }
+
+        if (request.scope === "user" && !request.discordUserId) {
+          continue;
+        }
+
+        const requestId = await ctx.db.insert("roleSyncRequests", {
+          guildId: request.guildId,
+          scope: request.scope,
+          discordUserId: request.discordUserId,
+          status: "pending",
+          requestedAt: now,
+          requestedByActorType: "system",
+          requestedByActorId: "role_sync_retry",
+          reason: `Retry after failed request ${request._id}`,
+          updatedAt: now,
+        });
+
+        await ctx.db.insert("auditEvents", {
+          guildId: request.guildId,
+          timestamp: now,
+          actorType: "system",
+          actorId: "role_sync_retry",
+          subjectDiscordUserId: request.discordUserId,
+          eventType: "role_sync.retry_requested",
+          correlationId: requestId,
+          payloadJson: JSON.stringify({
+            requestId,
+            scope: request.scope,
+            discordUserId: request.discordUserId ?? null,
+            previousRequestId: request._id,
+          }),
+        });
+
+        retriedRequestIds.push(requestId);
+        remaining -= 1;
+      }
+    }
+
+    return {
+      retriedCount: retriedRequestIds.length,
+      retriedRequestIds,
+      evaluatedAt: now,
+    };
   },
 });

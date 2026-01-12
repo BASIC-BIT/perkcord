@@ -442,6 +442,7 @@ Progress (2026-01-12): Added minimal REST API HTTP endpoints for tier listing, m
 
 * retries, rate limits, audit UX polish, error handling
 Progress (2026-01-12): Added scheduled job to expire entitlement grants past validThrough with audit events.
+Progress (2026-01-12): Added scheduled job to retry failed role sync requests with safeguards to avoid duplicate retries.
 
 **Milestone 7 — NMI integration (later)**
 
