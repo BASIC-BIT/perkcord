@@ -64,3 +64,4 @@
 2026-01-12: Added REST API guild listing and admin portal guild selector to choose a managed guild.
 2026-01-12: Added NMI subscription reconciliation in provider reconciliation with configurable API URL/security key and flexible response parsing.
 2026-01-12: Hardened NMI webhook ingestion with fallback hashed event IDs when event_id is missing.
+2026-01-12: Applied default subscription grace period (7 days) and cancel-at-period-end behavior when entitlement policies omit them.

@@ -407,6 +407,7 @@ Progress (2026-01-12): Added admin portal member lookup panels with member searc
 Progress (2026-01-12): Added admin portal manual grant/revoke forms with Convex REST API proxy routes and tier hints.
 Progress (2026-01-12): Added admin tier management REST endpoints plus admin portal forms for creating and updating tier mappings.
 Progress (2026-01-12): Added guild listing REST API plus admin portal guild selector to choose a managed guild.
+Progress (2026-01-12): Applied default subscription grace period (7 days) and cancel-at-period-end behavior when entitlement policies omit them.
 
 **Milestone 2 — Discord bot roles**
 

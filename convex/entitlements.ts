@@ -6,6 +6,7 @@ import {
   enqueueOutboundWebhookDeliveries,
 } from "./outboundWebhookQueue";
 import { enqueueRoleConnectionUpdate } from "./roleConnectionQueue";
+import { applyEntitlementPolicyDefaults } from "./entitlementPolicyDefaults";
 
 const entitlementStatus = v.union(
   v.literal("active"),
@@ -150,14 +151,17 @@ export const createTier = mutation({
 
     const roleIds = normalizeRoleIds(args.roleIds);
     validateRoleIds(roleIds);
-    validateEntitlementPolicy(args.entitlementPolicy);
+    const normalizedPolicy = applyEntitlementPolicyDefaults(
+      args.entitlementPolicy
+    );
+    validateEntitlementPolicy(normalizedPolicy);
 
     const tierId = await ctx.db.insert("tiers", {
       guildId: args.guildId,
       name: args.name,
       description: args.description,
       roleIds,
-      entitlementPolicy: args.entitlementPolicy,
+      entitlementPolicy: normalizedPolicy,
       providerRefs: args.providerRefs as ProviderRefs | undefined,
       createdAt: now,
       updatedAt: now,
@@ -210,7 +214,9 @@ export const updateTier = mutation({
       validateRoleIds(nextRoleIds);
     }
 
-    const nextPolicy = args.entitlementPolicy ?? tier.entitlementPolicy;
+    const nextPolicy = args.entitlementPolicy
+      ? applyEntitlementPolicyDefaults(args.entitlementPolicy)
+      : tier.entitlementPolicy;
     validateEntitlementPolicy(nextPolicy as EntitlementPolicy);
 
     const patch: Partial<Doc<"tiers">> = {};

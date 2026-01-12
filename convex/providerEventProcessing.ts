@@ -6,6 +6,10 @@ import {
   enqueueOutboundWebhookDeliveries,
 } from "./outboundWebhookQueue";
 import { enqueueRoleConnectionUpdate } from "./roleConnectionQueue";
+import {
+  getCancelAtPeriodEnd,
+  getGracePeriodDays,
+} from "./entitlementPolicyDefaults";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const providers: Doc<"providerEvents">["provider"][] = [
@@ -197,7 +201,7 @@ const computeNextValidThrough = (
   if (nextStatus === "canceled" || nextStatus === "expired") {
     if (
       purchaseKind === "subscription" &&
-      tier.entitlementPolicy.cancelAtPeriodEnd &&
+      getCancelAtPeriodEnd(tier.entitlementPolicy) &&
       next !== undefined &&
       next > now
     ) {
@@ -207,7 +211,7 @@ const computeNextValidThrough = (
   }
 
   if (nextStatus === "past_due" && purchaseKind === "subscription") {
-    const graceDays = tier.entitlementPolicy.gracePeriodDays;
+    const graceDays = getGracePeriodDays(tier.entitlementPolicy);
     if (graceDays !== undefined) {
       const candidate = now + graceDays * DAY_MS;
       if (next === undefined || candidate > next) {
