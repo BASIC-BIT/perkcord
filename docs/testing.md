@@ -37,6 +37,15 @@ Snapshot locations:
 - `cd convex`
 - Lint: `npm run lint`
 
+## Code metrics (size + complexity)
+
+From the repo root (bash):
+- Install scc: `go install github.com/boyter/scc/v3@latest`
+- Install lizard: `python -m pip install lizard`
+- Run metrics: `bash scripts/check-metrics.sh`
+
+Ignore allowlist lives in `scripts/metrics-ignore.txt`.
+
 ## Visual review workflow (VLM)
 
 - After any UI change, run the visual suites and update snapshots intentionally.

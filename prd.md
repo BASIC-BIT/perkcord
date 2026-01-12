@@ -604,9 +604,11 @@ pre-commit hooks; rely on explicit commands and CI enforcement.
 **18.7 Complexity and size checks**
 
 * Add `scc` and `lizard` for code size and complexity checks.
-* Use a clear ignore allowlist for known exceptions, kept small and reviewed.
-* Use failures to prompt refactors of large or complex modules into smaller,
+* Use a clear ignore allowlist for known exceptions, kept small and reviewed.   
+* Use failures to prompt refactors of large or complex modules into smaller,    
   atomic components.
+Progress (2026-01-12): Added scc + lizard metrics script with a shared ignore
+allowlist and CI job to enforce size/complexity checks.
 
 **18.8 Documentation and VLM enablement**
 

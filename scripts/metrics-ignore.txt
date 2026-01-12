@@ -1,0 +1,13 @@
+# Keep this allowlist small and review changes intentionally.
+node_modules
+dist
+build
+.next
+storybook-static
+storybook-snapshots
+test-results
+playwright-report
+coverage
+visual.spec.ts-snapshots
+_generated
+.git
