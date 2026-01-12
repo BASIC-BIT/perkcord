@@ -62,6 +62,21 @@ const getOptionalInteger = (url: URL, key: string) => {
   return parsed;
 };
 
+const getOptionalBooleanParam = (url: URL, key: string) => {
+  const value = getOptionalParam(url, key);
+  if (value === undefined) {
+    return undefined;
+  }
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "true" || normalized === "1") {
+    return true;
+  }
+  if (normalized === "false" || normalized === "0") {
+    return false;
+  }
+  throw new Error(`${key} must be a boolean.`);
+};
+
 const readJsonBody = async (request: Request) => {
   let body: unknown;
   try {
@@ -105,6 +120,17 @@ const getOptionalBodyInteger = (body: Record<string, unknown>, key: string) => {
   }
   if (!Number.isInteger(value)) {
     throw new Error(`${key} must be an integer.`);
+  }
+  return value;
+};
+
+const getOptionalBodyBoolean = (body: Record<string, unknown>, key: string) => {
+  const value = body[key];
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  if (typeof value !== "boolean") {
+    throw new Error(`${key} must be a boolean.`);
   }
   return value;
 };
@@ -353,6 +379,17 @@ const allowedGrantStatuses = new Set([
   "suspended_dispute",
 ]);
 
+const allowedOutboundEventTypes = new Set([
+  "membership.activated",
+  "membership.updated",
+  "membership.canceled",
+  "membership.expired",
+  "grant.created",
+  "grant.revoked",
+  "role_sync.succeeded",
+  "role_sync.failed",
+]);
+
 const allowedRoleSyncScopes = new Set(["guild", "user"]);
 const getOptionalGrantStatus = (
   body: Record<string, unknown>,
@@ -377,6 +414,19 @@ const getRequiredRoleSyncScope = (
     throw new Error(`${key} must be one of: guild, user.`);
   }
   return value as "guild" | "user";
+};
+
+const getOptionalOutboundEventTypes = (body: Record<string, unknown>) => {
+  const eventTypes = getOptionalBodyStringArray(body, "eventTypes");
+  if (!eventTypes) {
+    return undefined;
+  }
+  for (const eventType of eventTypes) {
+    if (!allowedOutboundEventTypes.has(eventType)) {
+      throw new Error("eventTypes must be valid outbound webhook event names.");
+    }
+  }
+  return eventTypes;
 };
 const handleError = (error: unknown) => {
   const message = error instanceof Error ? error.message : "Unexpected error.";
@@ -683,6 +733,115 @@ export const listFailedOutboundWebhooks = httpAction(async (ctx, request) => {
     return handleError(error);
   }
 });
+
+export const listOutboundWebhookEndpoints = httpAction(async (ctx, request) => {
+  if (request.method !== "GET") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  const authError = authorizeRequest(request);
+  if (authError) {
+    return authError;
+  }
+
+  try {
+    const url = new URL(request.url);
+    const guildId = getRequiredParam(url, "guildId");
+    const activeOnly = getOptionalBooleanParam(url, "activeOnly");
+    const endpoints = await ctx.runQuery(
+      api.outboundWebhooks.listOutboundWebhookEndpoints,
+      {
+        guildId,
+        activeOnly,
+      }
+    );
+    return jsonResponse({ endpoints });
+  } catch (error) {
+    return handleError(error);
+  }
+});
+
+export const createOutboundWebhookEndpoint = httpAction(
+  async (ctx, request) => {
+    if (request.method !== "POST") {
+      return jsonResponse({ error: "Method not allowed." }, 405);
+    }
+
+    const authError = authorizeRequest(request);
+    if (authError) {
+      return authError;
+    }
+
+    try {
+      const body = await readJsonBody(request);
+      const guildId = getRequiredBodyString(body, "guildId");
+      const url = getRequiredBodyString(body, "url");
+      const actorId = getRequiredBodyString(body, "actorId");
+      const eventTypes = getOptionalOutboundEventTypes(body);
+      const isActive = getOptionalBodyBoolean(body, "isActive");
+
+      const result = await ctx.runMutation(
+        api.outboundWebhooks.createOutboundWebhookEndpoint,
+        {
+          guildId,
+          url,
+          eventTypes,
+          isActive,
+          actorId,
+          actorType: "admin",
+        }
+      );
+
+      return jsonResponse(result, 200);
+    } catch (error) {
+      return handleError(error);
+    }
+  }
+);
+
+export const updateOutboundWebhookEndpoint = httpAction(
+  async (ctx, request) => {
+    if (request.method !== "POST") {
+      return jsonResponse({ error: "Method not allowed." }, 405);
+    }
+
+    const authError = authorizeRequest(request);
+    if (authError) {
+      return authError;
+    }
+
+    try {
+      const body = await readJsonBody(request);
+      const guildId = getRequiredBodyString(body, "guildId");
+      const endpointId = getRequiredBodyString(body, "endpointId");
+      const actorId = getRequiredBodyString(body, "actorId");
+      const url = getOptionalBodyString(body, "url");
+      const eventTypes = getOptionalOutboundEventTypes(body);
+      const isActive = getOptionalBodyBoolean(body, "isActive");
+
+      if (url === undefined && eventTypes === undefined && isActive === undefined) {
+        throw new Error("At least one update field is required.");
+      }
+
+      const updatedId = await ctx.runMutation(
+        api.outboundWebhooks.updateOutboundWebhookEndpoint,
+        {
+          guildId,
+          endpointId,
+          url,
+          eventTypes,
+          isActive,
+          actorId,
+          actorType: "admin",
+        }
+      );
+
+      return jsonResponse({ endpointId: updatedId }, 200);
+    } catch (error) {
+      return handleError(error);
+    }
+  }
+);
 
 export const createManualGrant = httpAction(async (ctx, request) => {
   if (request.method !== "POST") {

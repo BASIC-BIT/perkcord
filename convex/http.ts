@@ -1,12 +1,14 @@
 import { httpRouter } from "convex/server";
 import { authorizeNetWebhook } from "./authorizeNetWebhooks";
 import {
+  createOutboundWebhookEndpoint,
   createTier,
   createManualGrant,
   getActiveMemberCounts,
   getGuildDiagnostics,
   getProviderEventDiagnostics,
   listFailedOutboundWebhooks,
+  listOutboundWebhookEndpoints,
   getMemberSnapshot,
   listRoleSyncRequests,
   listAuditEvents,
@@ -15,6 +17,7 @@ import {
   requestRoleSync,
   registerRoleConnectionMetadata,
   revokeManualGrant,
+  updateOutboundWebhookEndpoint,
   updateTier,
 } from "./restApi";
 import { stripeWebhook } from "./stripeWebhooks";
@@ -91,6 +94,24 @@ http.route({
   path: "/api/webhooks/failed",
   method: "GET",
   handler: listFailedOutboundWebhooks,
+});
+
+http.route({
+  path: "/api/outbound-webhooks",
+  method: "GET",
+  handler: listOutboundWebhookEndpoints,
+});
+
+http.route({
+  path: "/api/outbound-webhooks",
+  method: "POST",
+  handler: createOutboundWebhookEndpoint,
+});
+
+http.route({
+  path: "/api/outbound-webhooks/update",
+  method: "POST",
+  handler: updateOutboundWebhookEndpoint,
 });
 
 http.route({
