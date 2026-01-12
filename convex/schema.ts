@@ -121,6 +121,7 @@ export default defineSchema({
     normalizedEventType: normalizedProviderEventType,
     providerObjectId: v.optional(v.string()),
     providerCustomerId: v.optional(v.string()),
+    providerPriceIds: v.optional(v.array(v.string())),
     occurredAt: v.optional(v.number()),
     receivedAt: v.number(),
     processedAt: v.optional(v.number()),

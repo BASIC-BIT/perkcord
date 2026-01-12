@@ -153,6 +153,47 @@ const getStripeCustomerId = (obj?: Record<string, unknown>) => {
   return undefined;
 };
 
+const addStripePriceId = (priceIds: Set<string>, value: unknown) => {
+  if (typeof value === "string") {
+    priceIds.add(value);
+    return;
+  }
+  if (value && typeof value === "object") {
+    const id = (value as { id?: unknown }).id;
+    if (typeof id === "string") {
+      priceIds.add(id);
+    }
+  }
+};
+
+const collectStripePriceIds = (items: unknown, priceIds: Set<string>) => {
+  if (!Array.isArray(items)) {
+    return;
+  }
+  for (const item of items) {
+    if (!item || typeof item !== "object") {
+      continue;
+    }
+    const record = item as Record<string, unknown>;
+    addStripePriceId(priceIds, record.price);
+    addStripePriceId(priceIds, record.plan);
+  }
+};
+
+const getStripePriceIds = (obj?: Record<string, unknown>) => {
+  const priceIds = new Set<string>();
+  if (!obj) {
+    return [];
+  }
+  addStripePriceId(priceIds, obj.price);
+  addStripePriceId(priceIds, obj.plan);
+  const items = (obj.items as { data?: unknown } | undefined)?.data;
+  const lines = (obj.lines as { data?: unknown } | undefined)?.data;
+  collectStripePriceIds(items, priceIds);
+  collectStripePriceIds(lines, priceIds);
+  return Array.from(priceIds);
+};
+
 export const stripeWebhook = httpAction(async (ctx, request) => {
   if (request.method !== "POST") {
     return new Response("Method not allowed.", { status: 405 });
@@ -192,6 +233,7 @@ export const stripeWebhook = httpAction(async (ctx, request) => {
   const object = event.data?.object;
   const objectId = getStripeObjectId(object);
   const customerId = getStripeCustomerId(object);
+  const priceIds = getStripePriceIds(object);
   const occurredAt =
     typeof event.created === "number" ? event.created * 1000 : undefined;
 
@@ -201,6 +243,7 @@ export const stripeWebhook = httpAction(async (ctx, request) => {
     objectType: typeof object?.object === "string" ? object.object : undefined,
     objectId: objectId ?? null,
     customerId: customerId ?? null,
+    priceIds: priceIds.length > 0 ? priceIds : undefined,
     livemode: typeof event.livemode === "boolean" ? event.livemode : undefined,
   });
 
@@ -211,6 +254,7 @@ export const stripeWebhook = httpAction(async (ctx, request) => {
     normalizedEventType,
     providerObjectId: objectId,
     providerCustomerId: customerId,
+    providerPriceIds: priceIds.length > 0 ? priceIds : undefined,
     occurredAt,
     payloadSummaryJson,
   });

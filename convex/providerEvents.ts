@@ -24,6 +24,17 @@ const processedStatus = v.union(
   v.literal("failed")
 );
 
+const normalizeOptionalStringArray = (values?: string[]) => {
+  if (!values) {
+    return undefined;
+  }
+  const trimmed = values.map((value) => value.trim()).filter(Boolean);
+  if (trimmed.length === 0) {
+    return undefined;
+  }
+  return Array.from(new Set(trimmed));
+};
+
 export const recordProviderEvent = mutation({
   args: {
     provider: providerName,
@@ -32,6 +43,7 @@ export const recordProviderEvent = mutation({
     normalizedEventType: normalizedProviderEventType,
     providerObjectId: v.optional(v.string()),
     providerCustomerId: v.optional(v.string()),
+    providerPriceIds: v.optional(v.array(v.string())),
     occurredAt: v.optional(v.number()),
     payloadSummaryJson: v.optional(v.string()),
   },
@@ -59,6 +71,7 @@ export const recordProviderEvent = mutation({
     const providerEventType = args.providerEventType?.trim();
     const providerObjectId = args.providerObjectId?.trim();
     const providerCustomerId = args.providerCustomerId?.trim();
+    const providerPriceIds = normalizeOptionalStringArray(args.providerPriceIds);
 
     const eventId = await ctx.db.insert("providerEvents", {
       provider: args.provider,
@@ -67,6 +80,7 @@ export const recordProviderEvent = mutation({
       normalizedEventType: args.normalizedEventType,
       providerObjectId: providerObjectId ? providerObjectId : undefined,
       providerCustomerId: providerCustomerId ? providerCustomerId : undefined,
+      providerPriceIds,
       occurredAt: args.occurredAt,
       receivedAt: now,
       payloadSummaryJson: args.payloadSummaryJson,
