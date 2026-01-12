@@ -72,6 +72,23 @@ type ProviderDiagnosticsResponse = {
   evaluatedAt: number;
   providers: ProviderDiagnosticsEntry[];
 };
+type GuildDiagnostics = {
+  checkedAt: number;
+  overallStatus: string;
+  permissionsOk: boolean;
+  missingPermissions: string[];
+  roleHierarchyOk: boolean;
+  blockedRoleIds: string[];
+  rolesExistOk: boolean;
+  missingRoleIds: string[];
+  checkedRoleIds: string[];
+  botUserId?: string;
+  botRoleId?: string;
+  notes?: string;
+};
+type GuildDiagnosticsResponse = {
+  diagnostics: GuildDiagnostics | null;
+};
 
 type FetchResult<T> = { data?: T; error?: string };
 
@@ -196,6 +213,8 @@ export default async function AdminPage({
   let memberSnapshot: MemberSnapshotResponse | null = null;
   let activeMemberCountsError: string | null = null;
   let activeMemberCounts: ActiveMemberCountsResponse | null = null;
+  let guildDiagnosticsError: string | null = null;
+  let guildDiagnostics: GuildDiagnostics | null = null;
   let providerDiagnosticsError: string | null = null;
   let providerDiagnostics: ProviderDiagnosticsResponse | null = null;
   let healthConfigError: string | null = null;
@@ -258,6 +277,21 @@ export default async function AdminPage({
         activeMemberCounts = countsResult.data ?? null;
       }
 
+      const guildDiagnosticsResult =
+        await fetchConvexJson<GuildDiagnosticsResponse>(
+          convexUrl,
+          convexApiKey,
+          "/api/diagnostics/guild",
+          {
+            guildId,
+          }
+        );
+      if (guildDiagnosticsResult.error) {
+        guildDiagnosticsError = guildDiagnosticsResult.error;
+      } else {
+        guildDiagnostics = guildDiagnosticsResult.data?.diagnostics ?? null;
+      }
+
       const diagnosticsResult =
         await fetchConvexJson<ProviderDiagnosticsResponse>(
           convexUrl,
@@ -285,6 +319,8 @@ export default async function AdminPage({
     }
     if (guildId) {
       healthConfigError =
+        "Convex REST configuration missing (PERKCORD_CONVEX_HTTP_URL, PERKCORD_REST_API_KEY).";
+      guildDiagnosticsError =
         "Convex REST configuration missing (PERKCORD_CONVEX_HTTP_URL, PERKCORD_REST_API_KEY).";
     }
   }
@@ -404,6 +440,9 @@ export default async function AdminPage({
             {healthConfigError && (
               <div className="banner error">{healthConfigError}</div>
             )}
+            {guildDiagnosticsError && (
+              <div className="banner error">{guildDiagnosticsError}</div>
+            )}
             {activeMemberCountsError && (
               <div className="banner error">{activeMemberCountsError}</div>
             )}
@@ -412,6 +451,81 @@ export default async function AdminPage({
             )}
             {guildId && !healthConfigError && (
               <div className="snapshot-grid">
+                <div className="snapshot-card">
+                  <h3>Onboarding diagnostics</h3>
+                  {guildDiagnostics ? (
+                    <>
+                      <div className="meta">
+                        <span>
+                          Checked: {formatTimestamp(guildDiagnostics.checkedAt)}
+                        </span>
+                        <span>Overall: {guildDiagnostics.overallStatus}</span>
+                        {guildDiagnostics.botRoleId && (
+                          <span>Bot role: {guildDiagnostics.botRoleId}</span>
+                        )}
+                      </div>
+                      <ul className="audit-list">
+                        <li className="audit-item">
+                          <div className="audit-title">Permissions</div>
+                          <div className="audit-meta">
+                            <span>
+                              {guildDiagnostics.permissionsOk
+                                ? "OK"
+                                : "Missing"}
+                            </span>
+                            {!guildDiagnostics.permissionsOk &&
+                              guildDiagnostics.missingPermissions.length >
+                                0 && (
+                                <span>
+                                  Missing:{" "}
+                                  {guildDiagnostics.missingPermissions.join(
+                                    ", "
+                                  )}
+                                </span>
+                              )}
+                          </div>
+                        </li>
+                        <li className="audit-item">
+                          <div className="audit-title">Role hierarchy</div>
+                          <div className="audit-meta">
+                            <span>
+                              {guildDiagnostics.roleHierarchyOk
+                                ? "OK"
+                                : "Blocked"}
+                            </span>
+                            {!guildDiagnostics.roleHierarchyOk &&
+                              guildDiagnostics.blockedRoleIds.length > 0 && (
+                                <span>
+                                  Blocked roles:{" "}
+                                  {guildDiagnostics.blockedRoleIds.join(", ")}
+                                </span>
+                              )}
+                          </div>
+                        </li>
+                        <li className="audit-item">
+                          <div className="audit-title">Roles present</div>
+                          <div className="audit-meta">
+                            <span>
+                              {guildDiagnostics.rolesExistOk ? "OK" : "Missing"}
+                            </span>
+                            {!guildDiagnostics.rolesExistOk &&
+                              guildDiagnostics.missingRoleIds.length > 0 && (
+                                <span>
+                                  Missing roles:{" "}
+                                  {guildDiagnostics.missingRoleIds.join(", ")}
+                                </span>
+                              )}
+                          </div>
+                        </li>
+                      </ul>
+                      {guildDiagnostics.notes && (
+                        <p>Notes: {guildDiagnostics.notes}</p>
+                      )}
+                    </>
+                  ) : (
+                    <p>Onboarding diagnostics are unavailable.</p>
+                  )}
+                </div>
                 <div className="snapshot-card">
                   <h3>Active members by tier</h3>
                   {activeMemberCounts ? (

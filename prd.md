@@ -416,6 +416,7 @@ Progress (2026-01-12): Added guild diagnostics schema plus upsert/get mutations 
 Progress (2026-01-12): Added Convex query to list recent role sync requests by guild or user for admin diagnostics.
 Progress (2026-01-12): Added Discord bot worker skeleton that upserts guilds, runs onboarding diagnostics, and processes role sync requests by applying role deltas from Convex entitlements.
 Progress (2026-01-12): Added admin portal force sync form and API route to request role sync jobs via the Convex REST API.
+Progress (2026-01-12): Added REST API endpoint and admin health card to surface guild onboarding diagnostics (permissions, role hierarchy, missing roles).
 
 **Milestone 3 — Stripe integration**
 

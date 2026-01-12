@@ -297,6 +297,31 @@ export const getProviderEventDiagnostics = httpAction(async (ctx, request) => {
   }
 });
 
+export const getGuildDiagnostics = httpAction(async (ctx, request) => {
+  if (request.method !== "GET") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  const authError = authorizeRequest(request);
+  if (authError) {
+    return authError;
+  }
+
+  try {
+    const url = new URL(request.url);
+    const guildId = getRequiredParam(url, "guildId");
+    const diagnostics = await ctx.runQuery(
+      api.diagnostics.getGuildDiagnostics,
+      {
+        guildId,
+      }
+    );
+    return jsonResponse({ diagnostics });
+  } catch (error) {
+    return handleError(error);
+  }
+});
+
 export const createManualGrant = httpAction(async (ctx, request) => {
   if (request.method !== "POST") {
     return jsonResponse({ error: "Method not allowed." }, 405);

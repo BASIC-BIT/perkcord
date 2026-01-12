@@ -3,6 +3,7 @@ import { authorizeNetWebhook } from "./authorizeNetWebhooks";
 import {
   createManualGrant,
   getActiveMemberCounts,
+  getGuildDiagnostics,
   getProviderEventDiagnostics,
   getMemberSnapshot,
   listAuditEvents,
@@ -61,6 +62,12 @@ http.route({
   path: "/api/diagnostics/provider-events",
   method: "GET",
   handler: getProviderEventDiagnostics,
+});
+
+http.route({
+  path: "/api/diagnostics/guild",
+  method: "GET",
+  handler: getGuildDiagnostics,
 });
 
 http.route({
