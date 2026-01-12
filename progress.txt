@@ -16,3 +16,4 @@
 2026-01-12: Added Authorize.Net webhook HTTP endpoint with signature verification and normalized provider event logging.
 2026-01-12: Added query to report active member counts by tier for admin reporting.
 2026-01-12: Added scheduled job to expire entitlement grants past validThrough with audit events.
+2026-01-12: Added admin member search query to find linked Discord users by id or username.

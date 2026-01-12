@@ -1,4 +1,4 @@
-import { mutation } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
 
@@ -8,6 +8,26 @@ const oauthPayload = v.object({
   refreshTokenEnc: v.string(),
   expiresAt: v.number(),
 });
+
+const coerceLimit = (limit?: number) => {
+  if (limit === undefined) {
+    return 25;
+  }
+  if (!Number.isFinite(limit) || limit <= 0 || !Number.isInteger(limit)) {
+    throw new Error("limit must be a positive integer.");
+  }
+  return Math.min(limit, 200);
+};
+
+const normalizeSearch = (value?: string) => {
+  if (value === undefined) {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+};
+
+const isLikelyDiscordId = (value: string) => /^\d{15,20}$/.test(value);
 
 export const upsertMemberIdentity = mutation({
   args: {
@@ -115,5 +135,58 @@ export const upsertMemberIdentity = mutation({
     });
 
     return existing._id;
+  },
+});
+
+export const searchMembers = query({
+  args: {
+    guildId: v.id("guilds"),
+    search: v.optional(v.string()),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const search = normalizeSearch(args.search);
+    const limit = coerceLimit(args.limit);
+
+    if (search && isLikelyDiscordId(search)) {
+      const match = await ctx.db
+        .query("memberIdentities")
+        .withIndex("by_guild_user", (q) =>
+          q.eq("guildId", args.guildId).eq("discordUserId", search)
+        )
+        .unique();
+
+      return match ? [match] : [];
+    }
+
+    const members = await ctx.db
+      .query("memberIdentities")
+      .withIndex("by_guild", (q) => q.eq("guildId", args.guildId))
+      .collect();
+
+    members.sort((a, b) => b.updatedAt - a.updatedAt);
+
+    if (!search) {
+      return members.slice(0, limit);
+    }
+
+    const normalized = search.toLowerCase();
+    const results: Doc<"memberIdentities">[] = [];
+
+    for (const member of members) {
+      if (results.length >= limit) {
+        break;
+      }
+      if (member.discordUserId.includes(normalized)) {
+        results.push(member);
+        continue;
+      }
+      const username = member.discordUsername?.toLowerCase();
+      if (username && username.includes(normalized)) {
+        results.push(member);
+      }
+    }
+
+    return results;
   },
 });

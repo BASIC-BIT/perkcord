@@ -93,7 +93,9 @@ export default defineSchema({
     ),
     createdAt: v.number(),
     updatedAt: v.number(),
-  }).index("by_guild_user", ["guildId", "discordUserId"]),
+  })
+    .index("by_guild_user", ["guildId", "discordUserId"])
+    .index("by_guild", ["guildId"]),
 
   entitlementGrants: defineTable({
     guildId: v.id("guilds"),
