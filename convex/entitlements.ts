@@ -75,3 +75,63 @@ export const createManualGrant = mutation({
     return grantId;
   },
 });
+
+export const revokeEntitlementGrant = mutation({
+  args: {
+    guildId: v.id("guilds"),
+    grantId: v.id("entitlementGrants"),
+    actorId: v.string(),
+    note: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const grant = await ctx.db.get(args.grantId);
+    if (!grant) {
+      throw new Error("Entitlement grant not found.");
+    }
+    if (grant.guildId !== args.guildId) {
+      throw new Error("Entitlement grant does not belong to guild.");
+    }
+
+    const nextStatus = grant.status === "canceled" ? grant.status : "canceled";
+    const nextValidThrough =
+      grant.validThrough === undefined || grant.validThrough > now
+        ? now
+        : grant.validThrough;
+
+    const shouldPatch =
+      nextStatus !== grant.status ||
+      nextValidThrough !== grant.validThrough ||
+      (args.note !== undefined && args.note !== grant.note);
+
+    if (shouldPatch) {
+      await ctx.db.patch(args.grantId, {
+        status: nextStatus,
+        validThrough: nextValidThrough,
+        note: args.note ?? grant.note,
+        updatedAt: now,
+      });
+    }
+
+    await ctx.db.insert("auditEvents", {
+      guildId: args.guildId,
+      timestamp: now,
+      actorType: "admin",
+      actorId: args.actorId,
+      eventType: "grant.revoked",
+      correlationId: args.grantId,
+      payloadJson: JSON.stringify({
+        grantId: args.grantId,
+        tierId: grant.tierId,
+        discordUserId: grant.discordUserId,
+        previousStatus: grant.status,
+        status: nextStatus,
+        previousValidThrough: grant.validThrough,
+        validThrough: nextValidThrough,
+        note: args.note,
+      }),
+    });
+
+    return args.grantId;
+  },
+});
