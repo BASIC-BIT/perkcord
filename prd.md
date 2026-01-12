@@ -435,6 +435,7 @@ Progress (2026-01-12): Added Convex query to report active member counts by tier
 **Milestone 6 — Phase 1 hardening**
 
 * retries, rate limits, audit UX polish, error handling
+Progress (2026-01-12): Added scheduled job to expire entitlement grants past validThrough with audit events.
 
 **Milestone 7 — NMI integration (later)**
 

@@ -112,6 +112,7 @@ export default defineSchema({
   })
     .index("by_guild_user", ["guildId", "discordUserId"])
     .index("by_tier", ["tierId"])
+    .index("by_status_validThrough", ["status", "validThrough"])
     .index("by_source_ref", ["sourceRefProvider", "sourceRefId"]),
 
   providerEvents: defineTable({

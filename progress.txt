@@ -15,3 +15,4 @@
 2026-01-12: Captured Stripe price IDs on webhook ingestion and stored them on provider events for downstream entitlement mapping.
 2026-01-12: Added Authorize.Net webhook HTTP endpoint with signature verification and normalized provider event logging.
 2026-01-12: Added query to report active member counts by tier for admin reporting.
+2026-01-12: Added scheduled job to expire entitlement grants past validThrough with audit events.

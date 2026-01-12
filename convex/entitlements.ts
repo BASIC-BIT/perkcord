@@ -110,6 +110,22 @@ const isGrantEffective = (grant: Doc<"entitlementGrants">, now: number) => {
   return true;
 };
 
+const coerceExpirationLimit = (limit?: number) => {
+  if (limit === undefined) {
+    return 200;
+  }
+  assertPositiveInteger(limit, "limit");
+  return Math.min(limit, 1000);
+};
+
+const coerceExpirationTime = (value?: number) => {
+  if (value === undefined) {
+    return Date.now();
+  }
+  assertNonNegativeInteger(value, "asOf");
+  return value;
+};
+
 export const createTier = mutation({
   args: {
     guildId: v.id("guilds"),
@@ -471,5 +487,78 @@ export const getActiveMemberCountsByTier = query({
       tierName: tier.name,
       activeMemberCount: membersByTier.get(tier._id)?.size ?? 0,
     }));
+  },
+});
+
+export const expireEntitlementGrants = mutation({
+  args: {
+    asOf: v.optional(v.number()),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const now = coerceExpirationTime(args.asOf);
+    let remaining = coerceExpirationLimit(args.limit);
+    const expiredGrantIds: Array<Doc<"entitlementGrants">["_id"]> = [];
+
+    for (const status of activeGrantStatuses) {
+      if (remaining <= 0) {
+        break;
+      }
+      const candidates = await ctx.db
+        .query("entitlementGrants")
+        .withIndex("by_status_validThrough", (q) =>
+          q.eq("status", status).lt("validThrough", now)
+        )
+        .take(remaining);
+
+      for (const grant of candidates) {
+        if (remaining <= 0) {
+          break;
+        }
+        const current = await ctx.db.get(grant._id);
+        if (!current) {
+          continue;
+        }
+        if (!activeGrantStatuses.includes(current.status)) {
+          continue;
+        }
+        if (
+          current.validThrough === undefined ||
+          current.validThrough > now
+        ) {
+          continue;
+        }
+
+        await ctx.db.patch(grant._id, {
+          status: "expired",
+          updatedAt: now,
+        });
+
+        await ctx.db.insert("auditEvents", {
+          guildId: current.guildId,
+          timestamp: now,
+          actorType: "system",
+          subjectDiscordUserId: current.discordUserId,
+          subjectTierId: current.tierId,
+          subjectGrantId: grant._id,
+          eventType: "grant.expired",
+          correlationId: grant._id,
+          payloadJson: JSON.stringify({
+            grantId: grant._id,
+            previousStatus: current.status,
+            validThrough: current.validThrough,
+          }),
+        });
+
+        expiredGrantIds.push(grant._id);
+        remaining -= 1;
+      }
+    }
+
+    return {
+      expiredCount: expiredGrantIds.length,
+      expiredGrantIds,
+      evaluatedAt: now,
+    };
   },
 });
