@@ -46,3 +46,4 @@
 2026-01-12: Added REST API endpoint and admin portal card to display role sync request history for member snapshots.
 2026-01-12: Added Authorize.Net one-time checkout flow with Accept.js tokenization, server transaction route, and webhook invoiceNumber fallback for tier mapping.
 2026-01-12: Added Authorize.Net subscription checkout flow with immediate authCaptureTransaction + ARB subscription creation, including env-based billing interval config and pay page labels.
+2026-01-12: Polished admin audit event UI with badges, ID chips, and payload previews for faster diagnostics.

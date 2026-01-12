@@ -36,6 +36,7 @@ type AuditEventSummary = {
   subjectTierId?: string;
   subjectGrantId?: string;
   correlationId?: string;
+  payloadJson?: string;
 };
 type MemberSearchResponse = {
   members: MemberIdentity[];
@@ -172,6 +173,64 @@ const formatTimestamp = (value?: number) => {
     return "N/A";
   }
   return new Date(value).toLocaleString();
+};
+
+const formatActor = (event: AuditEventSummary) => {
+  const actorType = event.actorType ?? "system";
+  return event.actorId ? `${actorType} (${event.actorId})` : actorType;
+};
+
+const formatAuditPayload = (payloadJson?: string) => {
+  if (!payloadJson) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(payloadJson);
+    return JSON.stringify(parsed, null, 2);
+  } catch (error) {
+    return payloadJson;
+  }
+};
+
+const AuditEventContent = ({ event }: { event: AuditEventSummary }) => {
+  const payload = formatAuditPayload(event.payloadJson);
+  return (
+    <>
+      <div className="audit-title">
+        <span className="audit-type">{event.eventType}</span>
+      </div>
+      <div className="audit-meta">
+        <span>{formatTimestamp(event.timestamp)}</span>
+        <span>Actor: {formatActor(event)}</span>
+        {event.subjectDiscordUserId && (
+          <span>
+            Member: <span className="audit-id">{event.subjectDiscordUserId}</span>
+          </span>
+        )}
+        {event.subjectTierId && (
+          <span>
+            Tier: <span className="audit-id">{event.subjectTierId}</span>
+          </span>
+        )}
+        {event.subjectGrantId && (
+          <span>
+            Grant: <span className="audit-id">{event.subjectGrantId}</span>
+          </span>
+        )}
+        {event.correlationId && (
+          <span>
+            Correlation: <span className="audit-id">{event.correlationId}</span>
+          </span>
+        )}
+      </div>
+      {payload && (
+        <details className="audit-details">
+          <summary>Payload</summary>
+          <pre>{payload}</pre>
+        </details>
+      )}
+    </>
+  );
 };
 
 const formatProviderLabel = (provider: string) => {
@@ -1287,30 +1346,7 @@ export default async function AdminPage({
                       <ul className="audit-list">
                         {auditEvents.map((event) => (
                           <li key={event._id} className="audit-item">
-                            <div className="audit-title">{event.eventType}</div>
-                            <div className="audit-meta">
-                              <span>{formatTimestamp(event.timestamp)}</span>
-                              <span>
-                                Actor: {event.actorType ?? "system"}
-                                {event.actorId ? ` (${event.actorId})` : ""}
-                              </span>
-                              {event.subjectDiscordUserId && (
-                                <span>
-                                  Member: {event.subjectDiscordUserId}
-                                </span>
-                              )}
-                              {event.subjectTierId && (
-                                <span>Tier: {event.subjectTierId}</span>
-                              )}
-                              {event.subjectGrantId && (
-                                <span>Grant: {event.subjectGrantId}</span>
-                              )}
-                              {event.correlationId && (
-                                <span>
-                                  Correlation: {event.correlationId}
-                                </span>
-                              )}
-                            </div>
+                            <AuditEventContent event={event} />
                           </li>
                         ))}
                       </ul>
@@ -1496,14 +1532,7 @@ export default async function AdminPage({
                     <ul className="audit-list">
                       {memberSnapshot.auditEvents.map((event) => (
                         <li key={event._id} className="audit-item">
-                          <div className="audit-title">{event.eventType}</div>
-                          <div className="audit-meta">
-                            <span>{formatTimestamp(event.timestamp)}</span>
-                            <span>
-                              Actor: {event.actorType ?? "system"}
-                              {event.actorId ? ` (${event.actorId})` : ""}
-                            </span>
-                          </div>
+                          <AuditEventContent event={event} />
                         </li>
                       ))}
                     </ul>
