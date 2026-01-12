@@ -1,5 +1,6 @@
 import { httpRouter } from "convex/server";
 import { authorizeNetWebhook } from "./authorizeNetWebhooks";
+import { nmiWebhook } from "./nmiWebhooks";
 import {
   createOutboundWebhookEndpoint,
   createTier,
@@ -34,6 +35,12 @@ http.route({
   path: "/webhooks/authorize-net",
   method: "POST",
   handler: authorizeNetWebhook,
+});
+
+http.route({
+  path: "/webhooks/nmi",
+  method: "POST",
+  handler: nmiWebhook,
 });
 
 http.route({

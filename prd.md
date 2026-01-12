@@ -483,6 +483,7 @@ Progress (2026-01-12): Added provider reconciliation action + cron to poll Strip
 * subscription + one-time
 * webhooks + reconciliation
 * end-to-end member flow
+Progress (2026-01-12): Added initial NMI webhook endpoint with signature verification and normalized provider event logging for recognized event types.
 
 **Milestone 8 — Phase 1.5 (optional)**
 
