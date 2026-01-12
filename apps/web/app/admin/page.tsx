@@ -17,6 +17,16 @@ type TierSummary = {
 type TierListResponse = {
   tiers: TierSummary[];
 };
+type GuildSummary = {
+  _id: string;
+  discordGuildId: string;
+  name: string;
+  createdAt?: number;
+  updatedAt?: number;
+};
+type GuildListResponse = {
+  guilds: GuildSummary[];
+};
 type GrantSummary = {
   _id: string;
   tierId: string;
@@ -344,10 +354,26 @@ export default async function AdminPage({
   let auditEventsError: string | null = null;
   let auditEvents: AuditEventSummary[] | null = null;
   let healthConfigError: string | null = null;
+  let guildListError: string | null = null;
+  let guildList: GuildSummary[] | null = null;
   let tierListError: string | null = null;
   let tierList: TierSummary[] | null = null;
 
   if (session && convexUrl && convexApiKey) {
+    const guildResult = await fetchConvexJson<GuildListResponse>(
+      convexUrl,
+      convexApiKey,
+      "/api/guilds",
+      {
+        limit: 50,
+      }
+    );
+    if (guildResult.error) {
+      guildListError = guildResult.error;
+    } else {
+      guildList = guildResult.data?.guilds ?? [];
+    }
+
     if (memberSearch && !guildId) {
       memberSearchError = "Guild ID is required to search members.";
     }
@@ -497,7 +523,9 @@ export default async function AdminPage({
         auditEvents = auditResult.data?.events ?? [];
       }
     }
-  } else if (session && (memberSearch || memberId || guildId)) {
+  } else if (session) {
+    guildListError =
+      "Convex REST configuration missing (PERKCORD_CONVEX_HTTP_URL, PERKCORD_REST_API_KEY).";
     if (memberSearch) {
       memberSearchError =
         "Convex REST configuration missing (PERKCORD_CONVEX_HTTP_URL, PERKCORD_REST_API_KEY).";
@@ -620,6 +648,42 @@ export default async function AdminPage({
             </div>
           )}
           <section className="panel">
+            <h2>Guild selection</h2>
+            <p>Select the guild you want to manage in this session.</p>
+            {guildListError && (
+              <div className="banner error">{guildListError}</div>
+            )}
+            {guildList && guildList.length > 0 ? (
+              <form className="form" action="/admin" method="get">
+                <label className="field">
+                  <span>Guild</span>
+                  <select
+                    className="input"
+                    name="guildId"
+                    defaultValue={guildId ?? ""}
+                  >
+                    <option value="">Select a guild</option>
+                    {guildList.map((guild) => (
+                      <option key={guild._id} value={guild._id}>
+                        {guild.name} ({guild.discordGuildId})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <div className="tier-actions">
+                  <button className="button secondary" type="submit">
+                    Load guild
+                  </button>
+                </div>
+              </form>
+            ) : !guildListError ? (
+              <p>
+                No guilds found yet. Invite the bot to a server to begin
+                onboarding.
+              </p>
+            ) : null}
+          </section>
+          <section className="panel">
             <h2>Force role sync</h2>
             <p>
               Request a bot resync for a single member or an entire guild. This
@@ -632,6 +696,7 @@ export default async function AdminPage({
                   className="input"
                   name="guildId"
                   placeholder="123456789012345678"
+                  defaultValue={guildId ?? ""}
                   required
                 />
               </label>

@@ -10,6 +10,7 @@ import {
   getProviderEventDiagnostics,
   listFailedOutboundWebhooks,
   listOutboundWebhookEndpoints,
+  listGuilds,
   getMemberSnapshot,
   listRoleSyncRequests,
   listAuditEvents,
@@ -47,6 +48,12 @@ http.route({
   path: "/api/tiers",
   method: "GET",
   handler: listTiers,
+});
+
+http.route({
+  path: "/api/guilds",
+  method: "GET",
+  handler: listGuilds,
 });
 
 http.route({

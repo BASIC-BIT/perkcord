@@ -553,6 +553,26 @@ export const listMembers = httpAction(async (ctx, request) => {
   }
 });
 
+export const listGuilds = httpAction(async (ctx, request) => {
+  if (request.method !== "GET") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  const authError = authorizeRequest(request);
+  if (authError) {
+    return authError;
+  }
+
+  try {
+    const url = new URL(request.url);
+    const limit = getOptionalInteger(url, "limit");
+    const guilds = await ctx.runQuery(api.guilds.listGuilds, { limit });
+    return jsonResponse({ guilds });
+  } catch (error) {
+    return handleError(error);
+  }
+});
+
 export const getMemberSnapshot = httpAction(async (ctx, request) => {
   if (request.method !== "GET") {
     return jsonResponse({ error: "Method not allowed." }, 405);

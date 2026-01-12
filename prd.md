@@ -406,6 +406,7 @@ Progress (2026-01-12): Added admin portal skeleton Next.js app with Discord OAut
 Progress (2026-01-12): Added admin portal member lookup panels with member search, snapshots, and audit timelines via the Convex REST API.
 Progress (2026-01-12): Added admin portal manual grant/revoke forms with Convex REST API proxy routes and tier hints.
 Progress (2026-01-12): Added admin tier management REST endpoints plus admin portal forms for creating and updating tier mappings.
+Progress (2026-01-12): Added guild listing REST API plus admin portal guild selector to choose a managed guild.
 
 **Milestone 2 — Discord bot roles**
 

@@ -61,3 +61,4 @@
 2026-01-12: Added GitHub Actions secret scanning workflow using Gitleaks.
 2026-01-12: Added provider reconciliation action + cron to poll Stripe/Authorize.Net subscription status and emit normalized provider events.
 2026-01-12: Added initial NMI webhook endpoint with signature verification and normalized provider event logging for recognized event types.
+2026-01-12: Added REST API guild listing and admin portal guild selector to choose a managed guild.
