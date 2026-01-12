@@ -442,6 +442,7 @@ Progress (2026-01-12): Added minimal REST API HTTP endpoints for tier listing, m
 Progress (2026-01-12): Added outbound webhook endpoint schema plus create/update/list mutations with signing secrets and audit events.
 Progress (2026-01-12): Added outbound webhook delivery queue with retry/backoff processing, cron dispatch, and enqueue hooks for grant + role sync events.
 Progress (2026-01-12): Added REST API admin endpoints to create and revoke manual entitlement grants.
+Progress (2026-01-12): Added REST API endpoint to request admin force-sync (guild or user) role sync jobs.
 
 **Milestone 6 — Phase 1 hardening**
 

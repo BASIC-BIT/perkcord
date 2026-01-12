@@ -118,6 +118,7 @@ const allowedGrantStatuses = new Set([
   "suspended_dispute",
 ]);
 
+const allowedRoleSyncScopes = new Set(["guild", "user"]);
 const getOptionalGrantStatus = (
   body: Record<string, unknown>,
   key: string
@@ -132,6 +133,16 @@ const getOptionalGrantStatus = (
   return value;
 };
 
+const getRequiredRoleSyncScope = (
+  body: Record<string, unknown>,
+  key: string
+) => {
+  const value = getRequiredBodyString(body, key);
+  if (!allowedRoleSyncScopes.has(value)) {
+    throw new Error(`${key} must be one of: guild, user.`);
+  }
+  return value as "guild" | "user";
+};
 const handleError = (error: unknown) => {
   const message = error instanceof Error ? error.message : "Unexpected error.";
   return jsonResponse({ error: message }, 400);
@@ -300,6 +311,46 @@ export const revokeManualGrant = httpAction(async (ctx, request) => {
     });
 
     return jsonResponse({ grantId }, 200);
+  } catch (error) {
+    return handleError(error);
+  }
+});
+
+export const requestRoleSync = httpAction(async (ctx, request) => {
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  const authError = authorizeRequest(request);
+  if (authError) {
+    return authError;
+  }
+
+  try {
+    const body = await readJsonBody(request);
+    const guildId = getRequiredBodyString(body, "guildId");
+    const scope = getRequiredRoleSyncScope(body, "scope");
+    const actorId = getRequiredBodyString(body, "actorId");
+    const reason = getOptionalBodyString(body, "reason");
+    const discordUserId = getOptionalBodyString(body, "discordUserId");
+
+    if (scope === "user" && !discordUserId) {
+      throw new Error("discordUserId is required for user scope.");
+    }
+    if (scope === "guild" && discordUserId) {
+      throw new Error("discordUserId is only allowed for user scope.");
+    }
+
+    const requestId = await ctx.runMutation(api.roleSync.requestRoleSync, {
+      guildId,
+      scope,
+      discordUserId,
+      actorId,
+      actorType: "admin",
+      reason,
+    });
+
+    return jsonResponse({ requestId }, 200);
   } catch (error) {
     return handleError(error);
   }

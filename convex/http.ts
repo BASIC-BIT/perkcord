@@ -6,6 +6,7 @@ import {
   listAuditEvents,
   listMembers,
   listTiers,
+  requestRoleSync,
   revokeManualGrant,
 } from "./restApi";
 import { stripeWebhook } from "./stripeWebhooks";
@@ -58,6 +59,12 @@ http.route({
   path: "/api/grants/revoke",
   method: "POST",
   handler: revokeManualGrant,
+});
+
+http.route({
+  path: "/api/role-sync",
+  method: "POST",
+  handler: requestRoleSync,
 });
 
 export default http;
