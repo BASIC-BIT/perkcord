@@ -205,7 +205,18 @@ export const authorizeNetWebhook = httpAction(async (ctx, request) => {
   const providerObjectId = getAuthorizeNetObjectId(payload);
   const providerCustomerId = getAuthorizeNetCustomerId(payload);
   const merchantReferenceId = getPayloadField(payload, "merchantReferenceId");
-  const providerPriceIds = merchantReferenceId ? [merchantReferenceId] : undefined;
+  const invoiceNumber =
+    getPayloadField(payload, "invoiceNumber") ??
+    getNestedPayloadField(payload, "order", "invoiceNumber");
+  const priceIdSet = new Set<string>();
+  if (merchantReferenceId) {
+    priceIdSet.add(merchantReferenceId);
+  }
+  if (invoiceNumber) {
+    priceIdSet.add(invoiceNumber);
+  }
+  const providerPriceIds =
+    priceIdSet.size > 0 ? Array.from(priceIdSet) : undefined;
   const occurredAt = parseAuthorizeNetEventDate(event.eventDate);
 
   const payloadSummaryJson = JSON.stringify({

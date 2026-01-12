@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { resolveAuthorizeNetCheckoutConfig } from "@/lib/authorizeNetCheckout";
 import { resolveStripeCheckoutConfig } from "@/lib/stripeCheckout";
+import { AuthorizeNetCard } from "./AuthorizeNetCard";
 import { getTier } from "../tiers";
 
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -32,9 +34,17 @@ export default function PaymentPage({
       ? "Pay once with Stripe"
       : "Pay with Stripe"
     : "Stripe not configured";
-  const celebrateUrl = `/subscribe/celebrate?tier=${tier.id}${
-    guildId ? `&guildId=${guildId}` : ""
-  }`;
+  const authorizeNetConfigResult = resolveAuthorizeNetCheckoutConfig(tier.id);
+  const authorizeNetConfig = authorizeNetConfigResult.ok
+    ? authorizeNetConfigResult.config
+    : null;
+  const authorizeNetApiLoginId =
+    process.env.NEXT_PUBLIC_AUTHORIZE_NET_API_LOGIN_ID?.trim() ?? null;
+  const authorizeNetClientKey =
+    process.env.NEXT_PUBLIC_AUTHORIZE_NET_CLIENT_KEY?.trim() ?? null;
+  const authorizeNetError = authorizeNetConfigResult.ok
+    ? null
+    : authorizeNetConfigResult.error;
   const backUrl = `/subscribe/connect?tier=${tier.id}${
     guildId ? `&guildId=${guildId}` : ""
   }`;
@@ -49,8 +59,7 @@ export default function PaymentPage({
         </div>
       )}
       <p>
-        Choose a payment method. Stripe checkout will redirect when configured;
-        Authorize.Net remains a placeholder.
+        Choose a payment method. Stripe checkout will redirect when configured.
       </p>
       <div className="tier-summary">
         <div className="tier-header">
@@ -78,10 +87,14 @@ export default function PaymentPage({
         </div>
         <div className="payment-card">
           <h3>Authorize.Net checkout</h3>
-          <p>Tokenized card capture via Accept.js.</p>
-          <Link className="button" href={celebrateUrl}>
-            Pay with Authorize.Net (stub)
-          </Link>
+          <AuthorizeNetCard
+            tierId={tier.id}
+            guildId={guildId ?? null}
+            amount={authorizeNetConfig?.amount ?? null}
+            apiLoginId={authorizeNetApiLoginId}
+            clientKey={authorizeNetClientKey}
+            configError={authorizeNetError}
+          />
         </div>
       </div>
       <p style={{ marginTop: 24 }}>

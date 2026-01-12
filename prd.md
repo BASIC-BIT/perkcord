@@ -442,6 +442,7 @@ Progress (2026-01-12): Added member session cookie after Discord OAuth and linke
 Progress (2026-01-12): Added Authorize.Net webhook HTTP endpoint with signature verification and normalized provider event logging.
 Progress (2026-01-12): Captured Authorize.Net merchantReferenceId on webhook ingestion to map provider events back to tier configuration.
 Progress (2026-01-12): Added provider event processing job to map normalized Stripe/Authorize.Net events into entitlement grants with audit trails and outbound membership webhooks.
+Progress (2026-01-12): Added Authorize.Net one-time checkout flow in the member pay page using Accept.js tokenization, a server route to submit authCaptureTransaction requests, and webhook parsing fallback for invoiceNumber tier keys.
 
 **Milestone 5 — Platform surface**
 
