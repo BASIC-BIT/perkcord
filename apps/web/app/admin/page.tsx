@@ -214,6 +214,10 @@ export default async function AdminPage({
   const grantStatus = getParam(searchParams?.grantStatus);
   const grantId = getParam(searchParams?.grantId);
   const grantMessage = getParam(searchParams?.grantMessage);
+  const tierAction = getParam(searchParams?.tierAction);
+  const tierStatus = getParam(searchParams?.tierStatus);
+  const tierOutcomeId = getParam(searchParams?.tierId);
+  const tierMessage = getParam(searchParams?.tierMessage);
   const guildId = getParam(searchParams?.guildId);
   const memberSearch = getParam(searchParams?.memberSearch);
   const memberId = getParam(searchParams?.memberId);
@@ -393,6 +397,22 @@ export default async function AdminPage({
             grantMessage ? `: ${grantMessage}` : "."
           }`
         : null;
+  const tierActionLabel =
+    tierAction === "update"
+      ? "update"
+      : tierAction === "create"
+        ? "create"
+        : "action";
+  const tierBanner =
+    tierStatus === "success"
+      ? tierAction === "update"
+        ? `Tier updated${tierOutcomeId ? ` (${tierOutcomeId})` : ""}.`
+        : `Tier created${tierOutcomeId ? ` (${tierOutcomeId})` : ""}.`
+      : tierStatus === "error"
+        ? `Tier ${tierActionLabel} failed${
+            tierMessage ? `: ${tierMessage}` : "."
+          }`
+        : null;
 
   return (
     <main className="card">
@@ -428,6 +448,15 @@ export default async function AdminPage({
               }`}
             >
               {grantBanner}
+            </div>
+          )}
+          {tierStatus && tierBanner && (
+            <div
+              className={`banner ${
+                tierStatus === "error" ? "error" : "success"
+              }`}
+            >
+              {tierBanner}
             </div>
           )}
           <section className="panel">
@@ -478,14 +507,311 @@ export default async function AdminPage({
             </form>
           </section>
           <section className="panel">
+            <h2>Tier management</h2>
+            <p>
+              Create or update tiers, mapping roles and provider product IDs.
+              Use comma-separated IDs for lists.
+            </p>
+            {tierListError && (
+              <div className="banner error">{tierListError}</div>
+            )}
+            <div className="snapshot-grid">
+              <div className="snapshot-card">
+                <h3>Create tier</h3>
+                <form
+                  className="form"
+                  action="/api/admin/tiers/create"
+                  method="post"
+                >
+                  <label className="field">
+                    <span>Guild ID</span>
+                    <input
+                      className="input"
+                      name="guildId"
+                      placeholder="123456789012345678"
+                      defaultValue={guildId ?? ""}
+                      required
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Name</span>
+                    <input
+                      className="input"
+                      name="name"
+                      placeholder="Pro"
+                      required
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Description (optional)</span>
+                    <textarea
+                      className="input"
+                      name="description"
+                      rows={2}
+                      placeholder="Access to premium channels."
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Role IDs (comma-separated)</span>
+                    <input
+                      className="input"
+                      name="roleIds"
+                      placeholder="1234, 5678"
+                      required
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Entitlement kind</span>
+                    <select
+                      className="input"
+                      name="policyKind"
+                      defaultValue="subscription"
+                    >
+                      <option value="subscription">subscription</option>
+                      <option value="one_time">one_time</option>
+                    </select>
+                  </label>
+                  <label className="field">
+                    <span>Duration days (one-time)</span>
+                    <input
+                      className="input"
+                      type="number"
+                      name="policyDurationDays"
+                      min={1}
+                      placeholder="30"
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Lifetime (one-time)</span>
+                    <input type="checkbox" name="policyLifetime" />
+                  </label>
+                  <label className="field">
+                    <span>Grace period days (subscription)</span>
+                    <input
+                      className="input"
+                      type="number"
+                      name="policyGracePeriodDays"
+                      min={0}
+                      placeholder="7"
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Cancel at period end (subscription)</span>
+                    <input type="checkbox" name="policyCancelAtPeriodEnd" />
+                  </label>
+                  <label className="field">
+                    <span>Stripe subscription price IDs</span>
+                    <input
+                      className="input"
+                      name="stripeSubscriptionPriceIds"
+                      placeholder="price_123, price_456"
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Stripe one-time price IDs</span>
+                    <input
+                      className="input"
+                      name="stripeOneTimePriceIds"
+                      placeholder="price_123, price_456"
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Authorize.Net subscription IDs</span>
+                    <input
+                      className="input"
+                      name="authorizeNetSubscriptionIds"
+                      placeholder="123456"
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Authorize.Net one-time keys</span>
+                    <input
+                      className="input"
+                      name="authorizeNetOneTimeKeys"
+                      placeholder="ONE_TIME_KEY"
+                    />
+                  </label>
+                  <label className="field">
+                    <span>NMI plan IDs (optional)</span>
+                    <input
+                      className="input"
+                      name="nmiPlanIds"
+                      placeholder="plan_abc"
+                    />
+                  </label>
+                  <label className="field">
+                    <span>NMI one-time keys (optional)</span>
+                    <input
+                      className="input"
+                      name="nmiOneTimeKeys"
+                      placeholder="NMI_ONETIME"
+                    />
+                  </label>
+                  <div className="tier-actions">
+                    <button className="button" type="submit">
+                      Create tier
+                    </button>
+                  </div>
+                </form>
+              </div>
+              <div className="snapshot-card">
+                <h3>Update tier</h3>
+                <form
+                  className="form"
+                  action="/api/admin/tiers/update"
+                  method="post"
+                >
+                  <label className="field">
+                    <span>Guild ID</span>
+                    <input
+                      className="input"
+                      name="guildId"
+                      placeholder="123456789012345678"
+                      defaultValue={guildId ?? ""}
+                      required
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Tier ID</span>
+                    <input
+                      className="input"
+                      name="tierId"
+                      list="tier-options-admin"
+                      placeholder="tier_id"
+                      required
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Name (optional)</span>
+                    <input className="input" name="name" placeholder="Pro" />
+                  </label>
+                  <label className="field">
+                    <span>Description (optional)</span>
+                    <textarea
+                      className="input"
+                      name="description"
+                      rows={2}
+                      placeholder="Access to premium channels."
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Role IDs (comma-separated)</span>
+                    <input
+                      className="input"
+                      name="roleIds"
+                      placeholder="1234, 5678"
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Entitlement kind (leave blank to keep)</span>
+                    <select className="input" name="policyKind" defaultValue="">
+                      <option value="">Leave unchanged</option>
+                      <option value="subscription">subscription</option>
+                      <option value="one_time">one_time</option>
+                    </select>
+                  </label>
+                  <label className="field">
+                    <span>Duration days (one-time)</span>
+                    <input
+                      className="input"
+                      type="number"
+                      name="policyDurationDays"
+                      min={1}
+                      placeholder="30"
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Lifetime (one-time)</span>
+                    <input type="checkbox" name="policyLifetime" />
+                  </label>
+                  <label className="field">
+                    <span>Grace period days (subscription)</span>
+                    <input
+                      className="input"
+                      type="number"
+                      name="policyGracePeriodDays"
+                      min={0}
+                      placeholder="7"
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Cancel at period end (subscription)</span>
+                    <input type="checkbox" name="policyCancelAtPeriodEnd" />
+                  </label>
+                  <label className="field">
+                    <span>Stripe subscription price IDs</span>
+                    <input
+                      className="input"
+                      name="stripeSubscriptionPriceIds"
+                      placeholder="price_123, price_456"
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Stripe one-time price IDs</span>
+                    <input
+                      className="input"
+                      name="stripeOneTimePriceIds"
+                      placeholder="price_123, price_456"
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Authorize.Net subscription IDs</span>
+                    <input
+                      className="input"
+                      name="authorizeNetSubscriptionIds"
+                      placeholder="123456"
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Authorize.Net one-time keys</span>
+                    <input
+                      className="input"
+                      name="authorizeNetOneTimeKeys"
+                      placeholder="ONE_TIME_KEY"
+                    />
+                  </label>
+                  <label className="field">
+                    <span>NMI plan IDs (optional)</span>
+                    <input
+                      className="input"
+                      name="nmiPlanIds"
+                      placeholder="plan_abc"
+                    />
+                  </label>
+                  <label className="field">
+                    <span>NMI one-time keys (optional)</span>
+                    <input
+                      className="input"
+                      name="nmiOneTimeKeys"
+                      placeholder="NMI_ONETIME"
+                    />
+                  </label>
+                  <div className="tier-actions">
+                    <button className="button" type="submit">
+                      Update tier
+                    </button>
+                  </div>
+                </form>
+                {tierList && tierList.length > 0 && (
+                  <datalist id="tier-options-admin">
+                    {tierList.map((tier) => (
+                      <option
+                        key={tier._id}
+                        value={tier._id}
+                        label={tier.name}
+                      />
+                    ))}
+                  </datalist>
+                )}
+              </div>
+            </div>
+          </section>
+          <section className="panel">
             <h2>Manual grants</h2>
             <p>
               Create or revoke entitlements with audit trails. Leave valid dates
               empty for immediate, ongoing access.
             </p>
-            {tierListError && (
-              <div className="banner error">{tierListError}</div>
-            )}
             <div className="snapshot-grid">
               <div className="snapshot-card">
                 <h3>Create grant</h3>

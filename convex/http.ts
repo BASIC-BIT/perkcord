@@ -1,6 +1,7 @@
 import { httpRouter } from "convex/server";
 import { authorizeNetWebhook } from "./authorizeNetWebhooks";
 import {
+  createTier,
   createManualGrant,
   getActiveMemberCounts,
   getGuildDiagnostics,
@@ -11,6 +12,7 @@ import {
   listTiers,
   requestRoleSync,
   revokeManualGrant,
+  updateTier,
 } from "./restApi";
 import { stripeWebhook } from "./stripeWebhooks";
 
@@ -32,6 +34,18 @@ http.route({
   path: "/api/tiers",
   method: "GET",
   handler: listTiers,
+});
+
+http.route({
+  path: "/api/tiers",
+  method: "POST",
+  handler: createTier,
+});
+
+http.route({
+  path: "/api/tiers/update",
+  method: "POST",
+  handler: updateTier,
 });
 
 http.route({

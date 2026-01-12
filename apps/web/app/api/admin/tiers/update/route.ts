@@ -1,0 +1,304 @@
+import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import { getSessionFromCookies } from "@/lib/session";
+
+type PolicyKind = "subscription" | "one_time";
+
+const readFormValue = (form: FormData, key: string) => {
+  const value = form.get(key);
+  if (typeof value !== "string") {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+};
+
+const readFormFlag = (form: FormData, key: string) => form.get(key) !== null;
+
+const buildRedirect = (
+  request: Request,
+  params: Record<string, string | undefined>
+) => {
+  const url = new URL("/admin", request.url);
+  for (const [key, value] of Object.entries(params)) {
+    if (value) {
+      url.searchParams.set(key, value);
+    }
+  }
+  return NextResponse.redirect(url);
+};
+
+const normalizeBaseUrl = (value: string) => {
+  const trimmed = value.trim();
+  return trimmed.endsWith("/") ? trimmed.slice(0, -1) : trimmed;
+};
+
+const clampMessage = (value: string, max = 160) => {
+  if (value.length <= max) {
+    return value;
+  }
+  return `${value.slice(0, max - 3)}...`;
+};
+
+const parseCommaList = (value: string | null) => {
+  if (!value) {
+    return null;
+  }
+  const items = value
+    .split(",")
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+  return items.length > 0 ? items : null;
+};
+
+const parseOptionalInteger = (
+  value: string | null,
+  label: string,
+  options?: { min?: number }
+) => {
+  if (!value) {
+    return undefined;
+  }
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || !Number.isInteger(parsed)) {
+    throw new Error(`${label} must be an integer.`);
+  }
+  if (options?.min !== undefined && parsed < options.min) {
+    throw new Error(`${label} must be at least ${options.min}.`);
+  }
+  return parsed;
+};
+
+const parsePolicyKind = (value: string | null): PolicyKind | null => {
+  if (!value) {
+    return null;
+  }
+  if (value === "subscription" || value === "one_time") {
+    return value;
+  }
+  throw new Error("Policy kind must be subscription or one_time.");
+};
+
+export async function POST(request: Request) {
+  const secret = process.env.PERKCORD_SESSION_SECRET?.trim();
+  if (!secret) {
+    return buildRedirect(request, {
+      tierAction: "update",
+      tierStatus: "error",
+      tierMessage: "Session secret missing.",
+    });
+  }
+
+  const session = getSessionFromCookies(cookies(), secret);
+  if (!session) {
+    return buildRedirect(request, {
+      tierAction: "update",
+      tierStatus: "error",
+      tierMessage: "Unauthorized.",
+    });
+  }
+
+  const convexUrl = process.env.PERKCORD_CONVEX_HTTP_URL?.trim();
+  const apiKey = process.env.PERKCORD_REST_API_KEY?.trim();
+  if (!convexUrl || !apiKey) {
+    return buildRedirect(request, {
+      tierAction: "update",
+      tierStatus: "error",
+      tierMessage: "Convex REST configuration missing.",
+    });
+  }
+
+  let form: FormData;
+  try {
+    form = await request.formData();
+  } catch {
+    return buildRedirect(request, {
+      tierAction: "update",
+      tierStatus: "error",
+      tierMessage: "Invalid form submission.",
+    });
+  }
+
+  const guildId = readFormValue(form, "guildId");
+  const tierId = readFormValue(form, "tierId");
+  const name = readFormValue(form, "name");
+  const description = readFormValue(form, "description");
+  const roleIdsRaw = readFormValue(form, "roleIds");
+  const policyKindRaw = readFormValue(form, "policyKind");
+  const policyDurationRaw = readFormValue(form, "policyDurationDays");
+  const policyGraceRaw = readFormValue(form, "policyGracePeriodDays");
+  const policyLifetime = readFormFlag(form, "policyLifetime");
+  const cancelAtPeriodEnd = readFormFlag(form, "policyCancelAtPeriodEnd");
+
+  if (!guildId) {
+    return buildRedirect(request, {
+      tierAction: "update",
+      tierStatus: "error",
+      tierMessage: "Guild ID is required.",
+    });
+  }
+  if (!tierId) {
+    return buildRedirect(request, {
+      tierAction: "update",
+      tierStatus: "error",
+      tierMessage: "Tier ID is required.",
+      guildId,
+    });
+  }
+
+  let policyKind: PolicyKind | null = null;
+  let durationDays: number | undefined;
+  let gracePeriodDays: number | undefined;
+  try {
+    policyKind = parsePolicyKind(policyKindRaw);
+    durationDays = parseOptionalInteger(policyDurationRaw, "Duration days", {
+      min: 1,
+    });
+    gracePeriodDays = parseOptionalInteger(
+      policyGraceRaw,
+      "Grace period days",
+      { min: 0 }
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Invalid policy.";
+    return buildRedirect(request, {
+      tierAction: "update",
+      tierStatus: "error",
+      tierMessage: clampMessage(message),
+      guildId,
+      tierId,
+    });
+  }
+
+  if (policyKind) {
+    if (policyKind === "subscription") {
+      if (durationDays !== undefined || policyLifetime) {
+        return buildRedirect(request, {
+          tierAction: "update",
+          tierStatus: "error",
+          tierMessage: "Subscriptions cannot set duration days or lifetime.",
+          guildId,
+          tierId,
+        });
+      }
+    }
+
+    if (policyKind === "one_time") {
+      const hasDuration = durationDays !== undefined;
+      if ((hasDuration ? 1 : 0) + (policyLifetime ? 1 : 0) !== 1) {
+        return buildRedirect(request, {
+          tierAction: "update",
+          tierStatus: "error",
+          tierMessage:
+            "One-time tiers require duration days or lifetime (not both).",
+          guildId,
+          tierId,
+        });
+      }
+    }
+  }
+
+  const roleIds = roleIdsRaw ? parseCommaList(roleIdsRaw) : null;
+  if (roleIdsRaw && !roleIds) {
+    return buildRedirect(request, {
+      tierAction: "update",
+      tierStatus: "error",
+      tierMessage: "Role IDs must include at least one value.",
+      guildId,
+      tierId,
+    });
+  }
+
+  const providerRefs: Record<string, string[]> = {};
+  const stripeSubscriptionPriceIds = parseCommaList(
+    readFormValue(form, "stripeSubscriptionPriceIds")
+  );
+  if (stripeSubscriptionPriceIds) {
+    providerRefs.stripeSubscriptionPriceIds = stripeSubscriptionPriceIds;
+  }
+  const stripeOneTimePriceIds = parseCommaList(
+    readFormValue(form, "stripeOneTimePriceIds")
+  );
+  if (stripeOneTimePriceIds) {
+    providerRefs.stripeOneTimePriceIds = stripeOneTimePriceIds;
+  }
+  const authorizeNetSubscriptionIds = parseCommaList(
+    readFormValue(form, "authorizeNetSubscriptionIds")
+  );
+  if (authorizeNetSubscriptionIds) {
+    providerRefs.authorizeNetSubscriptionIds = authorizeNetSubscriptionIds;
+  }
+  const authorizeNetOneTimeKeys = parseCommaList(
+    readFormValue(form, "authorizeNetOneTimeKeys")
+  );
+  if (authorizeNetOneTimeKeys) {
+    providerRefs.authorizeNetOneTimeKeys = authorizeNetOneTimeKeys;
+  }
+  const nmiPlanIds = parseCommaList(readFormValue(form, "nmiPlanIds"));
+  if (nmiPlanIds) {
+    providerRefs.nmiPlanIds = nmiPlanIds;
+  }
+  const nmiOneTimeKeys = parseCommaList(readFormValue(form, "nmiOneTimeKeys"));
+  if (nmiOneTimeKeys) {
+    providerRefs.nmiOneTimeKeys = nmiOneTimeKeys;
+  }
+
+  const endpoint = `${normalizeBaseUrl(convexUrl)}/api/tiers/update`;
+
+  try {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-perkcord-api-key": apiKey,
+      },
+      body: JSON.stringify({
+        guildId,
+        tierId,
+        actorId: session.userId,
+        name: name ?? undefined,
+        description: description ?? undefined,
+        roleIds: roleIds ?? undefined,
+        entitlementPolicy: policyKind
+          ? {
+              kind: policyKind,
+              durationDays: durationDays ?? undefined,
+              isLifetime: policyLifetime ? true : undefined,
+              gracePeriodDays: gracePeriodDays ?? undefined,
+              cancelAtPeriodEnd: cancelAtPeriodEnd ? true : undefined,
+            }
+          : undefined,
+        providerRefs: Object.keys(providerRefs).length > 0 ? providerRefs : undefined,
+      }),
+    });
+
+    const payload = await response.json().catch(() => null);
+    if (!response.ok) {
+      const message =
+        payload?.error ?? `Tier update failed with status ${response.status}.`;
+      return buildRedirect(request, {
+        tierAction: "update",
+        tierStatus: "error",
+        tierMessage: clampMessage(String(message)),
+        guildId,
+        tierId,
+      });
+    }
+
+    return buildRedirect(request, {
+      tierAction: "update",
+      tierStatus: "success",
+      tierId: payload?.tierId ? String(payload.tierId) : tierId,
+      guildId,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Tier update failed.";
+    return buildRedirect(request, {
+      tierAction: "update",
+      tierStatus: "error",
+      tierMessage: clampMessage(message),
+      guildId,
+      tierId,
+    });
+  }
+}

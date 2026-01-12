@@ -109,6 +109,241 @@ const getOptionalBodyInteger = (body: Record<string, unknown>, key: string) => {
   return value;
 };
 
+const hasBodyKey = (body: Record<string, unknown>, key: string) =>
+  Object.prototype.hasOwnProperty.call(body, key);
+
+const getOptionalBodyStringArray = (
+  body: Record<string, unknown>,
+  key: string,
+  options?: { allowEmpty?: boolean }
+) => {
+  if (!hasBodyKey(body, key)) {
+    return undefined;
+  }
+  const value = body[key];
+  if (!Array.isArray(value)) {
+    throw new Error(`${key} must be an array of strings.`);
+  }
+  const cleaned = value
+    .map((item) => {
+      if (typeof item !== "string") {
+        throw new Error(`${key} must be an array of strings.`);
+      }
+      return item.trim();
+    })
+    .filter((item) => item.length > 0);
+  if (!options?.allowEmpty && cleaned.length === 0) {
+    throw new Error(`${key} must contain at least one value.`);
+  }
+  return cleaned;
+};
+
+const getRequiredBodyStringArray = (
+  body: Record<string, unknown>,
+  key: string
+) => {
+  const value = getOptionalBodyStringArray(body, key);
+  if (!value) {
+    throw new Error(`${key} is required.`);
+  }
+  return value;
+};
+
+const getOptionalBodyObject = (
+  body: Record<string, unknown>,
+  key: string
+) => {
+  if (!hasBodyKey(body, key)) {
+    return undefined;
+  }
+  const value = body[key];
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error(`${key} must be an object.`);
+  }
+  return value as Record<string, unknown>;
+};
+
+const getRequiredRecordString = (
+  record: Record<string, unknown>,
+  key: string,
+  scope: string
+) => {
+  const value = record[key];
+  if (typeof value !== "string" || value.trim().length === 0) {
+    throw new Error(`${scope}.${key} is required.`);
+  }
+  return value.trim();
+};
+
+const getOptionalRecordInteger = (
+  record: Record<string, unknown>,
+  key: string,
+  scope: string
+) => {
+  const value = record[key];
+  if (value === undefined) {
+    return undefined;
+  }
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw new Error(`${scope}.${key} must be an integer.`);
+  }
+  if (!Number.isInteger(value)) {
+    throw new Error(`${scope}.${key} must be an integer.`);
+  }
+  return value;
+};
+
+const getOptionalRecordBoolean = (
+  record: Record<string, unknown>,
+  key: string,
+  scope: string
+) => {
+  const value = record[key];
+  if (value === undefined) {
+    return undefined;
+  }
+  if (typeof value !== "boolean") {
+    throw new Error(`${scope}.${key} must be a boolean.`);
+  }
+  return value;
+};
+
+const getOptionalRecordStringArray = (
+  record: Record<string, unknown>,
+  key: string,
+  scope: string,
+  options?: { allowEmpty?: boolean }
+) => {
+  if (!Object.prototype.hasOwnProperty.call(record, key)) {
+    return undefined;
+  }
+  const value = record[key];
+  if (!Array.isArray(value)) {
+    throw new Error(`${scope}.${key} must be an array of strings.`);
+  }
+  const cleaned = value
+    .map((item) => {
+      if (typeof item !== "string") {
+        throw new Error(`${scope}.${key} must be an array of strings.`);
+      }
+      return item.trim();
+    })
+    .filter((item) => item.length > 0);
+  if (!options?.allowEmpty && cleaned.length === 0) {
+    throw new Error(`${scope}.${key} must contain at least one value.`);
+  }
+  return cleaned;
+};
+
+const getEntitlementPolicyFromBody = (
+  body: Record<string, unknown>,
+  required: boolean
+) => {
+  const record = getOptionalBodyObject(body, "entitlementPolicy");
+  if (!record) {
+    if (required) {
+      throw new Error("entitlementPolicy is required.");
+    }
+    return undefined;
+  }
+  const kind = getRequiredRecordString(record, "kind", "entitlementPolicy");
+  if (kind !== "subscription" && kind !== "one_time") {
+    throw new Error(
+      "entitlementPolicy.kind must be 'subscription' or 'one_time'."
+    );
+  }
+  const durationDays = getOptionalRecordInteger(
+    record,
+    "durationDays",
+    "entitlementPolicy"
+  );
+  const isLifetime = getOptionalRecordBoolean(
+    record,
+    "isLifetime",
+    "entitlementPolicy"
+  );
+  const gracePeriodDays = getOptionalRecordInteger(
+    record,
+    "gracePeriodDays",
+    "entitlementPolicy"
+  );
+  const cancelAtPeriodEnd = getOptionalRecordBoolean(
+    record,
+    "cancelAtPeriodEnd",
+    "entitlementPolicy"
+  );
+  return {
+    kind: kind as "subscription" | "one_time",
+    durationDays,
+    isLifetime,
+    gracePeriodDays,
+    cancelAtPeriodEnd,
+  };
+};
+
+const getProviderRefsFromBody = (body: Record<string, unknown>) => {
+  const record = getOptionalBodyObject(body, "providerRefs");
+  if (!record) {
+    return undefined;
+  }
+  const providerRefs: Record<string, string[]> = {};
+  const stripeSubscriptionPriceIds = getOptionalRecordStringArray(
+    record,
+    "stripeSubscriptionPriceIds",
+    "providerRefs",
+    { allowEmpty: true }
+  );
+  if (stripeSubscriptionPriceIds !== undefined) {
+    providerRefs.stripeSubscriptionPriceIds = stripeSubscriptionPriceIds;
+  }
+  const stripeOneTimePriceIds = getOptionalRecordStringArray(
+    record,
+    "stripeOneTimePriceIds",
+    "providerRefs",
+    { allowEmpty: true }
+  );
+  if (stripeOneTimePriceIds !== undefined) {
+    providerRefs.stripeOneTimePriceIds = stripeOneTimePriceIds;
+  }
+  const authorizeNetSubscriptionIds = getOptionalRecordStringArray(
+    record,
+    "authorizeNetSubscriptionIds",
+    "providerRefs",
+    { allowEmpty: true }
+  );
+  if (authorizeNetSubscriptionIds !== undefined) {
+    providerRefs.authorizeNetSubscriptionIds = authorizeNetSubscriptionIds;
+  }
+  const authorizeNetOneTimeKeys = getOptionalRecordStringArray(
+    record,
+    "authorizeNetOneTimeKeys",
+    "providerRefs",
+    { allowEmpty: true }
+  );
+  if (authorizeNetOneTimeKeys !== undefined) {
+    providerRefs.authorizeNetOneTimeKeys = authorizeNetOneTimeKeys;
+  }
+  const nmiPlanIds = getOptionalRecordStringArray(
+    record,
+    "nmiPlanIds",
+    "providerRefs",
+    { allowEmpty: true }
+  );
+  if (nmiPlanIds !== undefined) {
+    providerRefs.nmiPlanIds = nmiPlanIds;
+  }
+  const nmiOneTimeKeys = getOptionalRecordStringArray(
+    record,
+    "nmiOneTimeKeys",
+    "providerRefs",
+    { allowEmpty: true }
+  );
+  if (nmiOneTimeKeys !== undefined) {
+    providerRefs.nmiOneTimeKeys = nmiOneTimeKeys;
+  }
+  return providerRefs;
+};
+
 const allowedGrantStatuses = new Set([
   "active",
   "pending",
@@ -163,6 +398,80 @@ export const listTiers = httpAction(async (ctx, request) => {
     const guildId = getRequiredParam(url, "guildId");
     const tiers = await ctx.runQuery(api.entitlements.listTiers, { guildId });
     return jsonResponse({ tiers });
+  } catch (error) {
+    return handleError(error);
+  }
+});
+
+export const createTier = httpAction(async (ctx, request) => {
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  const authError = authorizeRequest(request);
+  if (authError) {
+    return authError;
+  }
+
+  try {
+    const body = await readJsonBody(request);
+    const guildId = getRequiredBodyString(body, "guildId");
+    const name = getRequiredBodyString(body, "name");
+    const description = getOptionalBodyString(body, "description");
+    const roleIds = getRequiredBodyStringArray(body, "roleIds");
+    const actorId = getRequiredBodyString(body, "actorId");
+    const entitlementPolicy = getEntitlementPolicyFromBody(body, true);
+    const providerRefs = getProviderRefsFromBody(body);
+
+    const tierId = await ctx.runMutation(api.entitlements.createTier, {
+      guildId,
+      name,
+      description,
+      roleIds,
+      entitlementPolicy,
+      providerRefs,
+      actorId,
+    });
+
+    return jsonResponse({ tierId }, 200);
+  } catch (error) {
+    return handleError(error);
+  }
+});
+
+export const updateTier = httpAction(async (ctx, request) => {
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  const authError = authorizeRequest(request);
+  if (authError) {
+    return authError;
+  }
+
+  try {
+    const body = await readJsonBody(request);
+    const guildId = getRequiredBodyString(body, "guildId");
+    const tierId = getRequiredBodyString(body, "tierId");
+    const actorId = getRequiredBodyString(body, "actorId");
+    const name = getOptionalBodyString(body, "name");
+    const description = getOptionalBodyString(body, "description");
+    const roleIds = getOptionalBodyStringArray(body, "roleIds");
+    const entitlementPolicy = getEntitlementPolicyFromBody(body, false);
+    const providerRefs = getProviderRefsFromBody(body);
+
+    const updatedTierId = await ctx.runMutation(api.entitlements.updateTier, {
+      guildId,
+      tierId,
+      name: name ?? undefined,
+      description: description ?? undefined,
+      roleIds: roleIds ?? undefined,
+      entitlementPolicy: entitlementPolicy ?? undefined,
+      providerRefs: providerRefs ?? undefined,
+      actorId,
+    });
+
+    return jsonResponse({ tierId: updatedTierId }, 200);
   } catch (error) {
     return handleError(error);
   }
