@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install dependencies
+        working-directory: apps/web
+        run: npm install --no-audit --no-fund
+      - name: Lint
+        working-directory: apps/web
+        run: npm run lint
+      - name: Typecheck
+        working-directory: apps/web
+        run: npm run typecheck
+
+  bot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install dependencies
+        working-directory: apps/bot
+        run: npm install --no-audit --no-fund
+      - name: Typecheck
+        working-directory: apps/bot
+        run: npm run typecheck
