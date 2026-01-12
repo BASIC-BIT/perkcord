@@ -404,6 +404,7 @@ Progress (2026-01-12): Added guild audit events feed query with optional member 
 Progress (2026-01-12): Added provider customer link table plus upsert/lookup mutations to map payment provider customer IDs to Discord users per guild.
 Progress (2026-01-12): Added admin portal skeleton Next.js app with Discord OAuth login and signed session cookie.
 Progress (2026-01-12): Added admin portal member lookup panels with member search, snapshots, and audit timelines via the Convex REST API.
+Progress (2026-01-12): Added admin portal manual grant/revoke forms with Convex REST API proxy routes and tier hints.
 
 **Milestone 2 — Discord bot roles**
 

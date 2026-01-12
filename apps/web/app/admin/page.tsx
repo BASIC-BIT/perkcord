@@ -14,6 +14,9 @@ type TierSummary = {
   _id: string;
   name: string;
 };
+type TierListResponse = {
+  tiers: TierSummary[];
+};
 type GrantSummary = {
   _id: string;
   tierId: string;
@@ -200,6 +203,10 @@ export default async function AdminPage({
   const forceSyncStatus = getParam(searchParams?.forceSync);
   const forceSyncRequestId = getParam(searchParams?.requestId);
   const forceSyncError = getParam(searchParams?.message);
+  const grantAction = getParam(searchParams?.grantAction);
+  const grantStatus = getParam(searchParams?.grantStatus);
+  const grantId = getParam(searchParams?.grantId);
+  const grantMessage = getParam(searchParams?.grantMessage);
   const guildId = getParam(searchParams?.guildId);
   const memberSearch = getParam(searchParams?.memberSearch);
   const memberId = getParam(searchParams?.memberId);
@@ -218,6 +225,8 @@ export default async function AdminPage({
   let providerDiagnosticsError: string | null = null;
   let providerDiagnostics: ProviderDiagnosticsResponse | null = null;
   let healthConfigError: string | null = null;
+  let tierListError: string | null = null;
+  let tierList: TierSummary[] | null = null;
 
   if (session && convexUrl && convexApiKey) {
     if (memberSearch && !guildId) {
@@ -263,6 +272,20 @@ export default async function AdminPage({
     }
 
     if (guildId) {
+      const tiersResult = await fetchConvexJson<TierListResponse>(
+        convexUrl,
+        convexApiKey,
+        "/api/tiers",
+        {
+          guildId,
+        }
+      );
+      if (tiersResult.error) {
+        tierListError = tiersResult.error;
+      } else {
+        tierList = tiersResult.data?.tiers ?? [];
+      }
+
       const countsResult = await fetchConvexJson<ActiveMemberCountsResponse>(
         convexUrl,
         convexApiKey,
@@ -322,8 +345,27 @@ export default async function AdminPage({
         "Convex REST configuration missing (PERKCORD_CONVEX_HTTP_URL, PERKCORD_REST_API_KEY).";
       guildDiagnosticsError =
         "Convex REST configuration missing (PERKCORD_CONVEX_HTTP_URL, PERKCORD_REST_API_KEY).";
+      tierListError =
+        "Convex REST configuration missing (PERKCORD_CONVEX_HTTP_URL, PERKCORD_REST_API_KEY).";
     }
   }
+
+  const grantActionLabel =
+    grantAction === "revoke"
+      ? "revoke"
+      : grantAction === "create"
+        ? "create"
+        : "action";
+  const grantBanner =
+    grantStatus === "success"
+      ? grantAction === "revoke"
+        ? `Grant revoked${grantId ? ` (${grantId})` : ""}.`
+        : `Manual grant created${grantId ? ` (${grantId})` : ""}.`
+      : grantStatus === "error"
+        ? `Manual grant ${grantActionLabel} failed${
+            grantMessage ? `: ${grantMessage}` : "."
+          }`
+        : null;
 
   return (
     <main className="card">
@@ -350,6 +392,15 @@ export default async function AdminPage({
             <div className="banner error">
               Force sync failed
               {forceSyncError ? `: ${forceSyncError}` : "."}
+            </div>
+          )}
+          {grantStatus && grantBanner && (
+            <div
+              className={`banner ${
+                grantStatus === "error" ? "error" : "success"
+              }`}
+            >
+              {grantBanner}
             </div>
           )}
           <section className="panel">
@@ -398,6 +449,156 @@ export default async function AdminPage({
                 </button>
               </div>
             </form>
+          </section>
+          <section className="panel">
+            <h2>Manual grants</h2>
+            <p>
+              Create or revoke entitlements with audit trails. Leave valid dates
+              empty for immediate, ongoing access.
+            </p>
+            {tierListError && (
+              <div className="banner error">{tierListError}</div>
+            )}
+            <div className="snapshot-grid">
+              <div className="snapshot-card">
+                <h3>Create grant</h3>
+                <form
+                  className="form"
+                  action="/api/admin/grants/create"
+                  method="post"
+                >
+                  <label className="field">
+                    <span>Guild ID</span>
+                    <input
+                      className="input"
+                      name="guildId"
+                      placeholder="123456789012345678"
+                      defaultValue={guildId ?? ""}
+                      required
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Discord User ID</span>
+                    <input
+                      className="input"
+                      name="discordUserId"
+                      placeholder="112233445566778899"
+                      required
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Tier ID</span>
+                    <input
+                      className="input"
+                      name="tierId"
+                      list="tier-options"
+                      placeholder="tier_id"
+                      required
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Status</span>
+                    <select
+                      className="input"
+                      name="status"
+                      defaultValue="active"
+                    >
+                      <option value="active">active</option>
+                      <option value="pending">pending</option>
+                      <option value="past_due">past_due</option>
+                      <option value="canceled">canceled</option>
+                      <option value="expired">expired</option>
+                      <option value="suspended_dispute">
+                        suspended_dispute
+                      </option>
+                    </select>
+                  </label>
+                  <label className="field">
+                    <span>Valid from (optional)</span>
+                    <input
+                      className="input"
+                      type="datetime-local"
+                      name="validFrom"
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Valid through (optional)</span>
+                    <input
+                      className="input"
+                      type="datetime-local"
+                      name="validThrough"
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Note (optional)</span>
+                    <textarea
+                      className="input"
+                      name="note"
+                      rows={2}
+                      placeholder="Comped access after support ticket."
+                    />
+                  </label>
+                  <div className="tier-actions">
+                    <button className="button" type="submit">
+                      Create manual grant
+                    </button>
+                  </div>
+                </form>
+                {tierList && tierList.length > 0 && (
+                  <datalist id="tier-options">
+                    {tierList.map((tier) => (
+                      <option
+                        key={tier._id}
+                        value={tier._id}
+                        label={tier.name}
+                      />
+                    ))}
+                  </datalist>
+                )}
+              </div>
+              <div className="snapshot-card">
+                <h3>Revoke grant</h3>
+                <form
+                  className="form"
+                  action="/api/admin/grants/revoke"
+                  method="post"
+                >
+                  <label className="field">
+                    <span>Guild ID</span>
+                    <input
+                      className="input"
+                      name="guildId"
+                      placeholder="123456789012345678"
+                      defaultValue={guildId ?? ""}
+                      required
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Grant ID</span>
+                    <input
+                      className="input"
+                      name="grantId"
+                      placeholder="entitlement_grant_id"
+                      required
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Note (optional)</span>
+                    <textarea
+                      className="input"
+                      name="note"
+                      rows={2}
+                      placeholder="Revoked after cancellation."
+                    />
+                  </label>
+                  <div className="tier-actions">
+                    <button className="button secondary" type="submit">
+                      Revoke grant
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
           </section>
           <section className="panel">
             <h2>Health overview</h2>

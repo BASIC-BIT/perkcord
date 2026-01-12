@@ -37,3 +37,4 @@
 2026-01-12: Added admin portal member lookup panels for member search, snapshots, and audit timelines using the Convex REST API.
 2026-01-12: Added admin health overview panel plus REST endpoints for active member counts and latest provider events.
 2026-01-12: Added REST API endpoint and admin health card for guild onboarding diagnostics (permissions, role hierarchy, missing roles).
+2026-01-12: Added admin portal manual grant/revoke forms with Convex REST API proxy routes and tier hints.
