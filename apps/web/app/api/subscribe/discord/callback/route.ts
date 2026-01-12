@@ -7,6 +7,12 @@ import {
   fetchDiscordUser,
 } from "@/lib/discordOAuth";
 import { encryptSecret } from "@/lib/encryption";
+import {
+  MEMBER_SESSION_COOKIE,
+  MEMBER_SESSION_MAX_AGE_SECONDS,
+  createMemberSession,
+  encodeMemberSession,
+} from "@/lib/memberSession";
 
 type MemberOAuthContext = {
   guildId?: string;
@@ -79,6 +85,14 @@ export async function GET(request: Request) {
     );
   }
 
+  const sessionSecret = process.env.PERKCORD_SESSION_SECRET?.trim();
+  if (!sessionSecret) {
+    return NextResponse.json(
+      { error: "PERKCORD_SESSION_SECRET is not configured." },
+      { status: 500 }
+    );
+  }
+
   try {
     const token = await exchangeDiscordCode(code, redirectUri);
     if (!Number.isFinite(token.expires_in)) {
@@ -125,6 +139,7 @@ export async function GET(request: Request) {
       `${fallbackReturn.pathname}${fallbackReturn.search}`;
 
     const response = NextResponse.redirect(new URL(returnTo, request.url));
+    const memberSession = createMemberSession(user.id, discordGuildId);
     response.cookies.set(DISCORD_MEMBER_OAUTH_STATE_COOKIE, "", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -139,6 +154,17 @@ export async function GET(request: Request) {
       path: "/",
       maxAge: 0,
     });
+    response.cookies.set(
+      MEMBER_SESSION_COOKIE,
+      encodeMemberSession(memberSession, sessionSecret),
+      {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: MEMBER_SESSION_MAX_AGE_SECONDS,
+      }
+    );
     return response;
   } catch {
     return NextResponse.json(

@@ -41,3 +41,4 @@
 2026-01-12: Added Stripe checkout session creation API plus member pay page wiring with tier-based Stripe price configuration.
 2026-01-12: Added admin portal recent audit events feed for guild lifecycle visibility.
 2026-01-12: Added admin tier management REST endpoints plus admin portal forms for creating and updating tier mappings.
+2026-01-12: Added member session cookie after Discord OAuth and linked Stripe customer IDs to Discord users during checkout for provider-customer mapping.

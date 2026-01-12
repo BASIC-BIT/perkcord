@@ -1,5 +1,7 @@
+import { ConvexHttpClient } from "convex/browser";
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
+import { getMemberSessionFromCookies } from "@/lib/memberSession";
 import { resolveStripeCheckoutConfig } from "@/lib/stripeCheckout";
 
 export const runtime = "nodejs";
@@ -84,6 +86,47 @@ export async function POST(request: Request) {
     });
   }
 
+  const sessionSecret = process.env.PERKCORD_SESSION_SECRET?.trim();
+  if (!sessionSecret) {
+    return buildPayRedirect(request, {
+      tierId,
+      guildId,
+      mode,
+      error: "PERKCORD_SESSION_SECRET is not configured.",
+    });
+  }
+
+  const memberSession = getMemberSessionFromCookies(
+    request.cookies,
+    sessionSecret
+  );
+  if (!memberSession) {
+    return buildPayRedirect(request, {
+      tierId,
+      guildId,
+      mode,
+      error: "Connect Discord before starting checkout.",
+    });
+  }
+  if (memberSession.discordGuildId !== guildId) {
+    return buildPayRedirect(request, {
+      tierId,
+      guildId,
+      mode,
+      error: "Discord session does not match this server.",
+    });
+  }
+
+  const convexUrl = process.env.CONVEX_URL?.trim();
+  if (!convexUrl) {
+    return buildPayRedirect(request, {
+      tierId,
+      guildId,
+      mode,
+      error: "CONVEX_URL is not configured.",
+    });
+  }
+
   const baseUrl = new URL(request.url).origin;
   const successUrl = new URL("/subscribe/celebrate", baseUrl);
   successUrl.searchParams.set("tier", tierId);
@@ -99,8 +142,50 @@ export async function POST(request: Request) {
 
   try {
     const stripe = new Stripe(stripeSecret);
+    const convex = new ConvexHttpClient(convexUrl);
+    const guild = (await convex.query("guilds:getGuildByDiscordId", {
+      discordGuildId: guildId,
+    })) as { _id: string } | null;
+    if (!guild?._id) {
+      return buildPayRedirect(request, {
+        tierId,
+        guildId,
+        mode,
+        error: "Guild not found for checkout.",
+      });
+    }
+
+    const existingLink = (await convex.query(
+      "providerCustomers:getProviderCustomerLinkForUser",
+      {
+        guildId: guild._id,
+        provider: "stripe",
+        discordUserId: memberSession.discordUserId,
+      }
+    )) as { providerCustomerId?: string } | null;
+
+    let customerId = existingLink?.providerCustomerId ?? null;
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        metadata: {
+          guildId,
+          discordUserId: memberSession.discordUserId,
+        },
+      });
+      customerId = customer.id;
+      await convex.mutation("providerCustomers:upsertProviderCustomerLink", {
+        guildId: guild._id,
+        provider: "stripe",
+        providerCustomerId: customerId,
+        discordUserId: memberSession.discordUserId,
+        actorType: "system",
+        actorId: "member_checkout",
+      });
+    }
+
     const session = await stripe.checkout.sessions.create({
       mode: configResult.config.mode,
+      customer: customerId,
       line_items: [
         {
           price: configResult.config.priceId,

@@ -133,3 +133,23 @@ export const getProviderCustomerLink = query({
       .unique();
   },
 });
+
+export const getProviderCustomerLinkForUser = query({
+  args: {
+    guildId: v.id("guilds"),
+    provider: providerName,
+    discordUserId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const discordUserId = normalizeId(args.discordUserId, "Discord user id");
+
+    const links = await ctx.db
+      .query("providerCustomerLinks")
+      .withIndex("by_guild_user", (q) =>
+        q.eq("guildId", args.guildId).eq("discordUserId", discordUserId)
+      )
+      .collect();
+
+    return links.find((link) => link.provider === args.provider) ?? null;
+  },
+});
