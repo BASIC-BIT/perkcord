@@ -77,3 +77,4 @@
 2026-01-12: Added root check/check:ci scripts to mirror CI gates plus metrics, documented them, and added Convex format scripts.
 2026-01-12: Added Playwright smoke test that injects a signed admin session cookie and verifies core admin panels render.
 2026-01-12: Added bot runtime env validation helpers for required config values, including URL checks and numeric bounds.
+2026-01-12: Added NMI hosted checkout config resolver plus a member pay page card that links to env-configured hosted payment URLs.

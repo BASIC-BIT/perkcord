@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { resolveAuthorizeNetCheckoutConfig } from "@/lib/authorizeNetCheckout";
+import { resolveNmiCheckoutConfig } from "@/lib/nmiCheckout";
 import { resolveStripeCheckoutConfig } from "@/lib/stripeCheckout";
 import { AuthorizeNetCard } from "./AuthorizeNetCard";
 import { getTier } from "../tiers";
@@ -50,6 +51,20 @@ export default function PaymentPage({
       ? `Subscription billed every ${authorizeNetConfig.intervalLabel}.`
       : "One-time checkout."
     : "Authorize.Net checkout is not configured yet.";
+  const nmiConfigResult = resolveNmiCheckoutConfig(tier.id);
+  const nmiConfig = nmiConfigResult.ok ? nmiConfigResult.config : null;
+  const nmiReady = Boolean(nmiConfig && guildId);
+  const nmiError = nmiConfigResult.ok ? null : nmiConfigResult.error;
+  const nmiDescription = nmiConfig
+    ? nmiConfig.mode === "subscription"
+      ? "Subscription checkout via NMI hosted payment."
+      : "One-time checkout via NMI hosted payment."
+    : "NMI checkout is not configured yet.";
+  const nmiLabel = nmiConfig
+    ? nmiConfig.mode === "subscription"
+      ? "Subscribe with NMI"
+      : "Pay with NMI"
+    : "NMI not configured";
   const backUrl = `/subscribe/connect?tier=${tier.id}${
     guildId ? `&guildId=${guildId}` : ""
   }`;
@@ -107,6 +122,20 @@ export default function PaymentPage({
             clientKey={authorizeNetClientKey}
             configError={authorizeNetError}
           />
+        </div>
+        <div className="payment-card">
+          <h3>NMI hosted checkout</h3>
+          <p>{nmiDescription}</p>
+          {nmiError && <p className="subtle">{nmiError}</p>}
+          <a
+            className={`button${nmiReady ? "" : " disabled"}`}
+            href={nmiReady ? nmiConfig?.hostedUrl : undefined}
+            target={nmiReady ? "_blank" : undefined}
+            rel={nmiReady ? "noreferrer" : undefined}
+            aria-disabled={!nmiReady}
+          >
+            {nmiLabel}
+          </a>
         </div>
       </div>
       <p style={{ marginTop: 24 }}>

@@ -490,6 +490,7 @@ Progress (2026-01-12): Added provider reconciliation action + cron to poll Strip
 Progress (2026-01-12): Added initial NMI webhook endpoint with signature verification and normalized provider event logging for recognized event types.
 Progress (2026-01-12): Added NMI subscription reconciliation in provider reconciliation with configurable NMI API URL/security key and flexible response parsing.
 Progress (2026-01-12): Added fallback hashed event IDs for NMI webhooks when event_id is missing to keep ingestion idempotent.
+Progress (2026-01-12): Added NMI hosted checkout config resolver plus a member pay page card that links to env-configured hosted payment URLs.
 
 **Milestone 8 — Phase 1.5 (optional)**
 
