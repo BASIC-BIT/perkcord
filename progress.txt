@@ -1,1 +1,2 @@
 2026-01-12: Added initial Convex schema for core entitlements tables (guilds, tiers, member identities, entitlement grants, audit events).
+2026-01-12: Added Convex mutation for manual entitlement grants with audit events.
