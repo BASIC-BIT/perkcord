@@ -205,6 +205,7 @@ export const authorizeNetWebhook = httpAction(async (ctx, request) => {
   const providerObjectId = getAuthorizeNetObjectId(payload);
   const providerCustomerId = getAuthorizeNetCustomerId(payload);
   const merchantReferenceId = getPayloadField(payload, "merchantReferenceId");
+  const providerPriceIds = merchantReferenceId ? [merchantReferenceId] : undefined;
   const occurredAt = parseAuthorizeNetEventDate(event.eventDate);
 
   const payloadSummaryJson = JSON.stringify({
@@ -223,6 +224,7 @@ export const authorizeNetWebhook = httpAction(async (ctx, request) => {
     normalizedEventType,
     providerObjectId,
     providerCustomerId,
+    providerPriceIds,
     occurredAt,
     payloadSummaryJson,
   });

@@ -427,6 +427,7 @@ Progress (2026-01-12): Captured Stripe price IDs on webhook ingestion and stored
 * webhooks + reconciliation
 * end-to-end member flow
 Progress (2026-01-12): Added Authorize.Net webhook HTTP endpoint with signature verification and normalized provider event logging.
+Progress (2026-01-12): Captured Authorize.Net merchantReferenceId on webhook ingestion to map provider events back to tier configuration.
 
 **Milestone 5 — Platform surface**
 
