@@ -667,32 +667,82 @@ export default async function AdminPage({
             </form>
           </section>
           <section className="panel">
-            <h2>Linked Roles metadata</h2>
+            <h2>Linked Roles setup wizard</h2>
             <p>
-              Register the Role Connections metadata schema (is_active, tier,
-              member_since_days) for this Discord application.
+              Configure optional Linked Roles metadata. Bot roles remain the
+              primary access control.
             </p>
-            <form
-              className="form"
-              action="/api/admin/role-connections/register"
-              method="post"
-            >
-              <label className="field">
-                <span>Guild ID</span>
-                <input
-                  className="input"
-                  name="guildId"
-                  placeholder="123456789012345678"
-                  defaultValue={guildId ?? ""}
-                  required
-                />
-              </label>
-              <div className="tier-actions">
-                <button className="button secondary" type="submit">
-                  Register metadata schema
-                </button>
-              </div>
-            </form>
+            <ol className="step-list">
+              <li className="step-item">
+                <div className="step-title">Register metadata schema</div>
+                <p className="step-hint">
+                  This registers the Role Connections metadata fields for this
+                  Discord application (one-time per app).
+                </p>
+                <form
+                  className="form"
+                  action="/api/admin/role-connections/register"
+                  method="post"
+                >
+                  <label className="field">
+                    <span>Guild ID</span>
+                    <input
+                      className="input"
+                      name="guildId"
+                      placeholder="123456789012345678"
+                      defaultValue={guildId ?? ""}
+                      required
+                    />
+                  </label>
+                  <div className="tier-actions">
+                    <button className="button secondary" type="submit">
+                      Register metadata schema
+                    </button>
+                  </div>
+                </form>
+              </li>
+              <li className="step-item">
+                <div className="step-title">
+                  Create a Linked Role in Discord
+                </div>
+                <p className="step-hint">
+                  In the Discord Developer Portal, open your application and
+                  add a Linked Role that uses these fields.
+                </p>
+                <div className="meta-grid">
+                  <div className="meta-card">
+                    <span className="meta-key">is_active</span>
+                    <span className="meta-desc">
+                      Boolean, true when a member has an active entitlement.
+                    </span>
+                  </div>
+                  <div className="meta-card">
+                    <span className="meta-key">tier</span>
+                    <span className="meta-desc">
+                      Integer, higher numbers represent higher tiers.
+                    </span>
+                  </div>
+                  <div className="meta-card">
+                    <span className="meta-key">member_since_days</span>
+                    <span className="meta-desc">
+                      Integer, days since the member first received access.
+                    </span>
+                  </div>
+                </div>
+                <p className="step-hint">
+                  Suggested conditions: is_active equals true, tier greater than
+                  or equal to 1, member_since_days greater than or equal to 1.
+                </p>
+              </li>
+              <li className="step-item">
+                <div className="step-title">Verify member updates</div>
+                <p className="step-hint">
+                  Entitlement changes will sync metadata automatically. If a
+                  member connected before we requested{" "}
+                  <code>role_connections.write</code>, ask them to reconnect.
+                </p>
+              </li>
+            </ol>
           </section>
           <section className="panel">
             <h2>Tier management</h2>

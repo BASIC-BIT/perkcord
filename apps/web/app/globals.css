@@ -200,6 +200,82 @@ a:hover {
   background: #fffdfa;
 }
 
+.step-list {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0 0;
+  display: grid;
+  gap: 16px;
+  counter-reset: linked-role-steps;
+}
+
+.step-item {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px 16px 16px 56px;
+  background: #ffffff;
+  counter-increment: linked-role-steps;
+}
+
+.step-item::before {
+  content: counter(linked-role-steps);
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  background: #f5efe5;
+  color: var(--text);
+}
+
+.step-title {
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: var(--text);
+}
+
+.step-hint {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.meta-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  margin-bottom: 12px;
+}
+
+.meta-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  background: #fffbf4;
+}
+
+.meta-key {
+  display: block;
+  font-family: "SFMono-Regular", "Consolas", "Liberation Mono", monospace;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.meta-desc {
+  display: block;
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
 .form {
   display: grid;
   gap: 12px;

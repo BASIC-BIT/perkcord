@@ -481,6 +481,7 @@ Progress (2026-01-12): Polished admin audit event UI with badges, ID chips, and 
 * admin setup wizard for Linked Roles
 Progress (2026-01-12): Added admin-triggered endpoint to register Discord Role Connections metadata schema (is_active, tier, member_since_days).
 Progress (2026-01-12): Added role connection update queue + worker to sync Linked Roles metadata on entitlement changes using stored member OAuth tokens (with refresh).
+Progress (2026-01-12): Added admin portal Linked Roles setup wizard with step-by-step guidance and metadata registration form.
 
 ### 17) Success criteria
 
