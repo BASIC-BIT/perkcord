@@ -74,6 +74,12 @@ a:hover {
   color: var(--text);
 }
 
+.button.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+  cursor: not-allowed;
+}
+
 .meta {
   display: flex;
   flex-wrap: wrap;

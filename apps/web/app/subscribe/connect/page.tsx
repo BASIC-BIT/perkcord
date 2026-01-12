@@ -12,8 +12,11 @@ export default function ConnectDiscordPage({
   searchParams: SearchParams;
 }) {
   const tierParam = getParam(searchParams.tier);
+  const guildId = getParam(searchParams.guildId) ?? getParam(searchParams.guild);
   const tier = getTier(tierParam);
-  const nextUrl = `/subscribe/pay?tier=${tier.id}`;
+  const oauthUrl = guildId
+    ? `/api/subscribe/discord?guildId=${guildId}&tier=${tier.id}`
+    : null;
 
   return (
     <main className="card">
@@ -23,6 +26,11 @@ export default function ConnectDiscordPage({
         We link your Discord account to your purchase so the bot can grant
         access. Member OAuth will request the role_connections.write scope.
       </p>
+      {!guildId && (
+        <div className="banner">
+          Missing guildId. Add ?guildId=&lt;serverId&gt; to the URL to continue.
+        </div>
+      )}
       <div className="tier-summary">
         <div className="tier-header">
           <h3>{tier.name}</h3>
@@ -31,10 +39,17 @@ export default function ConnectDiscordPage({
         <p>{tier.description}</p>
       </div>
       <div className="tier-actions">
-        <Link className="button" href={nextUrl}>
-          Connect Discord (stub)
-        </Link>
-        <Link className="button secondary" href="/subscribe">
+        {oauthUrl ? (
+          <Link className="button" href={oauthUrl}>
+            Connect Discord
+          </Link>
+        ) : (
+          <span className="button disabled">Connect Discord</span>
+        )}
+        <Link
+          className="button secondary"
+          href={`/subscribe${guildId ? `?guildId=${guildId}` : ""}`}
+        >
           Change tier
         </Link>
       </div>

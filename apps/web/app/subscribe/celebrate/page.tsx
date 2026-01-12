@@ -12,10 +12,9 @@ export default function CelebratePage({
   searchParams: SearchParams;
 }) {
   const tierParam = getParam(searchParams.tier);
-  const guildId = getParam(searchParams.guildId);
+  const guildId = getParam(searchParams.guildId) ?? getParam(searchParams.guild);
   const tier = getTier(tierParam);
   const deepLink = `https://discord.com/channels/${guildId ?? "YOUR_GUILD_ID"}`;
-
   return (
     <main className="card">
       <p className="subtle">Step 4 of 4</p>

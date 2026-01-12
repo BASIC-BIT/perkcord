@@ -32,3 +32,4 @@
 2026-01-12: Added member flow stub pages in the Next.js app (tier selection, Discord connect placeholder, payment placeholder, celebration page with Discord deep link hint).
 2026-01-12: Added Discord bot worker skeleton that upserts guilds, runs onboarding diagnostics, and processes role sync requests by applying role deltas from Convex entitlements.
 2026-01-12: Added Discord bot role sync retry/backoff handling for rate limits and transient Discord API errors.
+2026-01-12: Added member Discord OAuth connect flow with role_connections.write scope, encrypted token storage, and Convex member identity linkage.

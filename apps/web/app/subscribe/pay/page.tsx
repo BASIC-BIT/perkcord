@@ -12,12 +12,14 @@ export default function PaymentPage({
   searchParams: SearchParams;
 }) {
   const tierParam = getParam(searchParams.tier);
-  const guildId = getParam(searchParams.guildId);
+  const guildId = getParam(searchParams.guildId) ?? getParam(searchParams.guild);
   const tier = getTier(tierParam);
   const celebrateUrl = `/subscribe/celebrate?tier=${tier.id}${
     guildId ? `&guildId=${guildId}` : ""
   }`;
-
+  const backUrl = `/subscribe/connect?tier=${tier.id}${
+    guildId ? `&guildId=${guildId}` : ""
+  }`;
   return (
     <main className="card">
       <p className="subtle">Step 3 of 4</p>
@@ -50,7 +52,7 @@ export default function PaymentPage({
         </div>
       </div>
       <p style={{ marginTop: 24 }}>
-        <Link className="button secondary" href={`/subscribe/connect?tier=${tier.id}`}>
+        <Link className="button secondary" href={backUrl}>
           Back to connect
         </Link>
       </p>

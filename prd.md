@@ -424,6 +424,7 @@ Progress (2026-01-12): Added provider event log table plus idempotent record/mar
 Progress (2026-01-12): Added Stripe webhook HTTP endpoint with signature verification and normalized provider event logging.
 Progress (2026-01-12): Captured Stripe price IDs on webhook ingestion and stored them on provider events for downstream entitlement mapping.
 Progress (2026-01-12): Added member flow stub pages in the Next.js app (tier selection, Discord connect placeholder, payment placeholder, celebration page with Discord deep link hint).
+Progress (2026-01-12): Added member Discord OAuth connect flow with role_connections.write scope, encrypted token storage, and Convex member identity linkage.
 
 **Milestone 4 — Authorize.Net integration**
 

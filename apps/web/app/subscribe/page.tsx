@@ -12,7 +12,7 @@ export default function SubscribePage({
   searchParams: SearchParams;
 }) {
   const highlight = getParam(searchParams.highlight);
-
+  const guildId = getParam(searchParams.guildId) ?? getParam(searchParams.guild);
   return (
     <main className="card">
       <p className="subtle">Step 1 of 4</p>
@@ -38,7 +38,12 @@ export default function SubscribePage({
               ))}
             </ul>
             <div className="tier-actions">
-              <Link className="button" href={`/subscribe/connect?tier=${tier.id}`}>
+              <Link
+                className="button"
+                href={`/subscribe/connect?tier=${tier.id}${
+                  guildId ? `&guildId=${guildId}` : ""
+                }`}
+              >
                 Choose {tier.name}
               </Link>
             </div>
