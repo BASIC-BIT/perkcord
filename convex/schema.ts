@@ -34,6 +34,16 @@ const providerEventStatus = v.union(
   v.literal("processed"),
   v.literal("failed")
 );
+const outboundWebhookEventType = v.union(
+  v.literal("membership.activated"),
+  v.literal("membership.updated"),
+  v.literal("membership.canceled"),
+  v.literal("membership.expired"),
+  v.literal("grant.created"),
+  v.literal("grant.revoked"),
+  v.literal("role_sync.succeeded"),
+  v.literal("role_sync.failed")
+);
 
 const entitlementSource = v.union(
   v.literal("stripe_subscription"),
@@ -152,6 +162,16 @@ export default defineSchema({
   })
     .index("by_provider_event", ["provider", "providerEventId"])
     .index("by_provider_time", ["provider", "receivedAt"]),
+
+  outboundWebhookEndpoints: defineTable({
+    guildId: v.id("guilds"),
+    url: v.string(),
+    eventTypes: v.array(outboundWebhookEventType),
+    signingSecret: v.string(),
+    isActive: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_guild", ["guildId"]),
 
   roleSyncRequests: defineTable({
     guildId: v.id("guilds"),

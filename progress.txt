@@ -24,3 +24,4 @@
 2026-01-12: Added minimal REST API HTTP endpoints for tier listing, member search, member snapshots, and audit timelines guarded by PERKCORD_REST_API_KEY.
 2026-01-12: Added scheduled job to retry failed role sync requests with safeguards against duplicate retries.
 2026-01-12: Added admin portal skeleton Next.js app with Discord OAuth login and signed session cookie.
+2026-01-12: Added outbound webhook endpoint schema plus create/update/list mutations with signing secrets and audit events.
