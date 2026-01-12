@@ -10,6 +10,10 @@ const entitlementStatus = v.union(
   v.literal("expired"),
   v.literal("suspended_dispute")
 );
+const activeGrantStatuses: Doc<"entitlementGrants">["status"][] = [
+  "active",
+  "past_due",
+];
 
 const entitlementPolicy = v.object({
   kind: v.union(v.literal("subscription"), v.literal("one_time")),
@@ -91,6 +95,19 @@ const validateRoleIds = (roleIds: string[]) => {
   if (roleIds.length === 0) {
     throw new Error("Tier must map to at least one role.");
   }
+};
+
+const isGrantEffective = (grant: Doc<"entitlementGrants">, now: number) => {
+  if (!activeGrantStatuses.includes(grant.status)) {
+    return false;
+  }
+  if (grant.validFrom > now) {
+    return false;
+  }
+  if (grant.validThrough !== undefined && grant.validThrough < now) {
+    return false;
+  }
+  return true;
 };
 
 export const createTier = mutation({
@@ -414,5 +431,45 @@ export const getMemberSnapshot = query({
       grants: grantsWithTier,
       auditEvents,
     };
+  },
+});
+
+export const getActiveMemberCountsByTier = query({
+  args: {
+    guildId: v.id("guilds"),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+
+    const tiers = await ctx.db
+      .query("tiers")
+      .withIndex("by_guild", (q) => q.eq("guildId", args.guildId))
+      .collect();
+    tiers.sort((a, b) => a.name.localeCompare(b.name));
+
+    const grants = await ctx.db
+      .query("entitlementGrants")
+      .withIndex("by_guild_user", (q) => q.eq("guildId", args.guildId))
+      .collect();
+
+    const membersByTier = new Map<string, Set<string>>();
+    for (const grant of grants) {
+      if (!isGrantEffective(grant, now)) {
+        continue;
+      }
+      const tierId = grant.tierId;
+      let members = membersByTier.get(tierId);
+      if (!members) {
+        members = new Set<string>();
+        membersByTier.set(tierId, members);
+      }
+      members.add(grant.discordUserId);
+    }
+
+    return tiers.map((tier) => ({
+      tierId: tier._id,
+      tierName: tier.name,
+      activeMemberCount: membersByTier.get(tier._id)?.size ?? 0,
+    }));
   },
 });

@@ -430,6 +430,7 @@ Progress (2026-01-12): Added Authorize.Net webhook HTTP endpoint with signature 
 
 * outbound webhooks + minimal REST API
 * admin dashboard health panes
+Progress (2026-01-12): Added Convex query to report active member counts by tier for admin reporting.
 
 **Milestone 6 — Phase 1 hardening**
 
