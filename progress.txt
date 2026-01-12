@@ -29,3 +29,4 @@
 2026-01-12: Added outbound webhook delivery queue with retry/backoff processing and enqueue hooks for grant/role sync events.
 2026-01-12: Added provider event processing job to convert normalized Stripe/Authorize.Net events into entitlement grants with audit trails and membership webhooks.
 2026-01-12: Added REST API endpoint to request admin force-sync (guild or user) role sync jobs.
+2026-01-12: Added member flow stub pages in the Next.js app (tier selection, Discord connect placeholder, payment placeholder, celebration page with Discord deep link hint).

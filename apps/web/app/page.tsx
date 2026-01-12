@@ -12,9 +12,12 @@ export default function HomePage() {
         <span>Phase: Admin skeleton</span>
         <span>Stack: Next.js + TypeScript</span>
       </div>
-      <p style={{ marginTop: 24 }}>
+      <p style={{ marginTop: 24 }} className="tier-actions">
         <Link className="button" href="/admin">
           Go to admin
+        </Link>
+        <Link className="button secondary" href="/subscribe">
+          Preview member flow
         </Link>
       </p>
     </main>

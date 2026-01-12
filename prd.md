@@ -422,6 +422,7 @@ Progress (2026-01-12): Added Convex query to list recent role sync requests by g
 Progress (2026-01-12): Added provider event log table plus idempotent record/mark processed mutations to dedupe webhook events across Stripe/Authorize.Net/NMI.
 Progress (2026-01-12): Added Stripe webhook HTTP endpoint with signature verification and normalized provider event logging.
 Progress (2026-01-12): Captured Stripe price IDs on webhook ingestion and stored them on provider events for downstream entitlement mapping.
+Progress (2026-01-12): Added member flow stub pages in the Next.js app (tier selection, Discord connect placeholder, payment placeholder, celebration page with Discord deep link hint).
 
 **Milestone 4 — Authorize.Net integration**
 
