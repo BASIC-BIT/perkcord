@@ -163,6 +163,7 @@ export default defineSchema({
     providerObjectId: v.optional(v.string()),
     providerCustomerId: v.optional(v.string()),
     providerPriceIds: v.optional(v.array(v.string())),
+    providerPeriodEnd: v.optional(v.number()),
     occurredAt: v.optional(v.number()),
     receivedAt: v.number(),
     processedAt: v.optional(v.number()),

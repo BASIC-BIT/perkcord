@@ -135,6 +135,53 @@ const normalizeStripeEvent = (
   }
 };
 
+const toOptionalUnixMs = (value: unknown) => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value < 1e12 ? value * 1000 : value;
+  }
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      return parsed < 1e12 ? parsed * 1000 : parsed;
+    }
+  }
+  return undefined;
+};
+
+const extractPeriodEndFromLines = (items: unknown) => {
+  if (!Array.isArray(items)) {
+    return undefined;
+  }
+  let max: number | undefined;
+  for (const item of items) {
+    if (!item || typeof item !== "object") {
+      continue;
+    }
+    const period = (item as { period?: unknown }).period;
+    if (!period || typeof period !== "object") {
+      continue;
+    }
+    const end = toOptionalUnixMs((period as { end?: unknown }).end);
+    if (end !== undefined && (max === undefined || end > max)) {
+      max = end;
+    }
+  }
+  return max;
+};
+
+const getStripePeriodEnd = (obj?: Record<string, unknown>) => {
+  if (!obj) {
+    return undefined;
+  }
+  const direct = toOptionalUnixMs(obj.current_period_end ?? obj.period_end);
+  if (direct !== undefined) {
+    return direct;
+  }
+  const lines = (obj.lines as { data?: unknown } | undefined)?.data;
+  const items = (obj.items as { data?: unknown } | undefined)?.data;
+  return extractPeriodEndFromLines(lines) ?? extractPeriodEndFromLines(items);
+};
+
 const getStripeObjectId = (obj?: Record<string, unknown>) => {
   return typeof obj?.id === "string" ? (obj.id as string) : undefined;
 };
@@ -234,6 +281,7 @@ export const stripeWebhook = httpAction(async (ctx, request) => {
   const objectId = getStripeObjectId(object);
   const customerId = getStripeCustomerId(object);
   const priceIds = getStripePriceIds(object);
+  const periodEnd = getStripePeriodEnd(object);
   const occurredAt =
     typeof event.created === "number" ? event.created * 1000 : undefined;
 
@@ -244,6 +292,7 @@ export const stripeWebhook = httpAction(async (ctx, request) => {
     objectId: objectId ?? null,
     customerId: customerId ?? null,
     priceIds: priceIds.length > 0 ? priceIds : undefined,
+    periodEnd: periodEnd ?? null,
     livemode: typeof event.livemode === "boolean" ? event.livemode : undefined,
   });
 
@@ -255,6 +304,7 @@ export const stripeWebhook = httpAction(async (ctx, request) => {
     providerObjectId: objectId,
     providerCustomerId: customerId,
     providerPriceIds: priceIds.length > 0 ? priceIds : undefined,
+    providerPeriodEnd: periodEnd,
     occurredAt,
     payloadSummaryJson,
   });

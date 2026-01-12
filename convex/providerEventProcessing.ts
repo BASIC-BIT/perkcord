@@ -47,6 +47,20 @@ const coerceEventTimestamp = (event: Doc<"providerEvents">) => {
   return event.occurredAt ?? event.receivedAt ?? Date.now();
 };
 
+const normalizePeriodEnd = (value?: number, min?: number) => {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (!Number.isFinite(value) || value <= 0) {
+    return undefined;
+  }
+  const rounded = Math.round(value);
+  if (min !== undefined && rounded < min) {
+    return undefined;
+  }
+  return rounded;
+};
+
 const mapEventToStatus = (
   eventType: Doc<"providerEvents">["normalizedEventType"]
 ): Doc<"entitlementGrants">["status"] => {
@@ -171,17 +185,23 @@ const computeNextValidThrough = (
   tier: Doc<"tiers">,
   purchaseKind: PurchaseKind,
   nextStatus: Doc<"entitlementGrants">["status"],
-  now: number
+  now: number,
+  eventPeriodEnd?: number
 ) => {
   let next = grant.validThrough;
+  if (purchaseKind === "subscription" && eventPeriodEnd !== undefined) {
+    if (next === undefined || eventPeriodEnd > next) {
+      next = eventPeriodEnd;
+    }
+  }
   if (nextStatus === "canceled" || nextStatus === "expired") {
     if (
       purchaseKind === "subscription" &&
       tier.entitlementPolicy.cancelAtPeriodEnd &&
-      grant.validThrough !== undefined &&
-      grant.validThrough > now
+      next !== undefined &&
+      next > now
     ) {
-      return grant.validThrough;
+      return next;
     }
     return now;
   }
@@ -406,11 +426,18 @@ export const processProviderEvents = mutation({
           }
 
           const validFrom = coerceEventTimestamp(event);
-          const validThrough = computeValidThroughForNewGrant(
-            tier,
-            purchaseKind,
+          const eventPeriodEnd = normalizePeriodEnd(
+            event.providerPeriodEnd,
             validFrom
           );
+          const validThrough =
+            purchaseKind === "subscription"
+              ? eventPeriodEnd
+              : computeValidThroughForNewGrant(
+                  tier,
+                  purchaseKind,
+                  validFrom
+                );
 
           const sourceRefProvider = event.provider;
           const resolvedSourceRefId = sourceRefId || event.providerEventId;
@@ -524,12 +551,17 @@ export const processProviderEvents = mutation({
           throw new Error("Provider mismatch for existing grant.");
         }
 
+        const eventPeriodEnd = normalizePeriodEnd(
+          event.providerPeriodEnd,
+          existingGrant.validFrom
+        );
         const nextValidThrough = computeNextValidThrough(
           existingGrant,
           tier,
           purchaseKind,
           nextStatus,
-          now
+          now,
+          eventPeriodEnd
         );
 
         const patch: Partial<Doc<"entitlementGrants">> = {};

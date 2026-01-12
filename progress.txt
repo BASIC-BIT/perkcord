@@ -56,3 +56,4 @@
 2026-01-12: Added Vitest unit tests for web encryption helpers and wired them into CI.
 2026-01-12: Added REST API endpoints to list/create/update outbound webhook endpoints for customer configuration.
 2026-01-12: Added Dependabot config for npm packages and GitHub Actions updates.
+2026-01-12: Captured Stripe subscription period end in provider events and applied it to subscription entitlements.

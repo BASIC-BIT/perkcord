@@ -35,6 +35,16 @@ const normalizeOptionalStringArray = (values?: string[]) => {
   return Array.from(new Set(trimmed));
 };
 
+const normalizeOptionalTimestamp = (value?: number) => {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error("providerPeriodEnd must be a positive number.");
+  }
+  return Math.round(value);
+};
+
 const coerceScanLimit = (limit?: number) => {
   if (limit === undefined) {
     return 200;
@@ -69,6 +79,7 @@ export const recordProviderEvent = mutation({
     providerObjectId: v.optional(v.string()),
     providerCustomerId: v.optional(v.string()),
     providerPriceIds: v.optional(v.array(v.string())),
+    providerPeriodEnd: v.optional(v.number()),
     occurredAt: v.optional(v.number()),
     payloadSummaryJson: v.optional(v.string()),
   },
@@ -97,6 +108,7 @@ export const recordProviderEvent = mutation({
     const providerObjectId = args.providerObjectId?.trim();
     const providerCustomerId = args.providerCustomerId?.trim();
     const providerPriceIds = normalizeOptionalStringArray(args.providerPriceIds);
+    const providerPeriodEnd = normalizeOptionalTimestamp(args.providerPeriodEnd);
 
     const eventId = await ctx.db.insert("providerEvents", {
       provider: args.provider,
@@ -106,6 +118,7 @@ export const recordProviderEvent = mutation({
       providerObjectId: providerObjectId ? providerObjectId : undefined,
       providerCustomerId: providerCustomerId ? providerCustomerId : undefined,
       providerPriceIds,
+      providerPeriodEnd,
       occurredAt: args.occurredAt,
       receivedAt: now,
       payloadSummaryJson: args.payloadSummaryJson,
