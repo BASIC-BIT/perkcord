@@ -403,6 +403,7 @@ Progress (2026-01-12): Added admin member search query to find linked Discord us
 Progress (2026-01-12): Added guild audit events feed query with optional member filter for admin timelines.
 Progress (2026-01-12): Added provider customer link table plus upsert/lookup mutations to map payment provider customer IDs to Discord users per guild.
 Progress (2026-01-12): Added admin portal skeleton Next.js app with Discord OAuth login and signed session cookie.
+Progress (2026-01-12): Added admin portal member lookup panels with member search, snapshots, and audit timelines via the Convex REST API.
 
 **Milestone 2 — Discord bot roles**
 
@@ -414,6 +415,7 @@ Progress (2026-01-12): Added Convex query to compute desired role IDs for a memb
 Progress (2026-01-12): Added guild diagnostics schema plus upsert/get mutations for onboarding checks with audit events.
 Progress (2026-01-12): Added Convex query to list recent role sync requests by guild or user for admin diagnostics.
 Progress (2026-01-12): Added Discord bot worker skeleton that upserts guilds, runs onboarding diagnostics, and processes role sync requests by applying role deltas from Convex entitlements.
+Progress (2026-01-12): Added admin portal force sync form and API route to request role sync jobs via the Convex REST API.
 
 **Milestone 3 — Stripe integration**
 

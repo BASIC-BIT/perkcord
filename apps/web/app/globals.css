@@ -98,6 +98,18 @@ a:hover {
   margin-bottom: 20px;
 }
 
+.banner.success {
+  background: #f0fdf4;
+  border-color: #b7ebc6;
+  color: #14532d;
+}
+
+.banner.error {
+  background: #fef2f2;
+  border-color: #f5b5b5;
+  color: #7f1d1d;
+}
+
 .subtle {
   font-size: 12px;
   letter-spacing: 0.12em;
@@ -178,4 +190,126 @@ a:hover {
   padding: 20px;
   background: #ffffff;
   box-shadow: 0 8px 24px rgba(27, 26, 23, 0.05);
+}
+
+.panel {
+  margin-top: 24px;
+  padding: 20px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: #fffdfa;
+}
+
+.form {
+  display: grid;
+  gap: 12px;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: #ffffff;
+  color: var(--text);
+  font: inherit;
+}
+
+.input:focus {
+  outline: 2px solid rgba(180, 83, 9, 0.2);
+  outline-offset: 2px;
+}
+
+.result-list {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0 0;
+  display: grid;
+  gap: 12px;
+}
+
+.result-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: #ffffff;
+}
+
+.result-meta {
+  display: grid;
+  gap: 4px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.result-meta strong {
+  color: var(--text);
+  font-size: 16px;
+}
+
+.snapshot-grid {
+  margin-top: 16px;
+  display: grid;
+  gap: 16px;
+}
+
+.snapshot-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  background: #ffffff;
+}
+
+.snapshot-card h3 {
+  margin: 0 0 8px;
+  font-size: 18px;
+}
+
+.snapshot-meta {
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.audit-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.audit-item {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 12px;
+}
+
+.audit-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.audit-title {
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.audit-meta {
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--muted);
 }
