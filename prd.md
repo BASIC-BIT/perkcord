@@ -476,6 +476,7 @@ Progress (2026-01-12): Added Vitest unit tests for web encryption helpers with a
 Progress (2026-01-12): Added Playwright e2e smoke test covering admin login landing and member flow stub pages, with a CI step.
 Progress (2026-01-12): Added Dependabot configuration for npm dependencies and GitHub Actions updates.
 Progress (2026-01-12): Added GitHub Actions secret scanning workflow using Gitleaks.
+Progress (2026-01-12): Added provider reconciliation action + cron to poll Stripe/Authorize.Net subscription status and emit normalized provider events.
 
 **Milestone 7 — NMI integration (later)**
 

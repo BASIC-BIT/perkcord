@@ -28,6 +28,12 @@ crons.interval(
 );
 
 crons.interval(
+  "reconcile provider subscriptions",
+  { minutes: 360 },
+  api.providerReconciliation.reconcileProviderSubscriptions
+);
+
+crons.interval(
   "sync role connections",
   { minutes: 2 },
   api.discordRoleConnections.processRoleConnectionUpdates
