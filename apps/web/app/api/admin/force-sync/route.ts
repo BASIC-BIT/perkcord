@@ -3,6 +3,8 @@ import { cookies } from "next/headers";
 import { getSessionFromCookies } from "@/lib/session";
 import { requireEnv, resolveEnvError } from "@/lib/serverEnv";
 
+const allowedScopes = new Set(["guild", "user"]);
+
 const readFormValue = (form: FormData, key: string) => {
   const value = form.get(key);
   if (typeof value !== "string") {
@@ -43,18 +45,16 @@ export async function POST(request: Request) {
     secret = requireEnv("PERKCORD_SESSION_SECRET", "Session secret missing.");
   } catch (error) {
     return buildRedirect(request, {
-      grantAction: "revoke",
-      grantStatus: "error",
-      grantMessage: resolveEnvError(error, "Session secret missing."),
+      forceSync: "error",
+      message: resolveEnvError(error, "Session secret missing."),
     });
   }
 
   const session = getSessionFromCookies(cookies(), secret);
   if (!session) {
     return buildRedirect(request, {
-      grantAction: "revoke",
-      grantStatus: "error",
-      grantMessage: "Unauthorized.",
+      forceSync: "error",
+      message: "Unauthorized.",
     });
   }
 
@@ -71,9 +71,8 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     return buildRedirect(request, {
-      grantAction: "revoke",
-      grantStatus: "error",
-      grantMessage: resolveEnvError(error, "Convex REST configuration missing."),
+      forceSync: "error",
+      message: resolveEnvError(error, "Convex REST configuration missing."),
     });
   }
 
@@ -82,33 +81,42 @@ export async function POST(request: Request) {
     form = await request.formData();
   } catch {
     return buildRedirect(request, {
-      grantAction: "revoke",
-      grantStatus: "error",
-      grantMessage: "Invalid form submission.",
+      forceSync: "error",
+      message: "Invalid form submission.",
     });
   }
 
   const guildId = readFormValue(form, "guildId");
-  const grantId = readFormValue(form, "grantId");
-  const note = readFormValue(form, "note");
+  const scope = readFormValue(form, "scope");
+  const discordUserId = readFormValue(form, "discordUserId");
+  const reason = readFormValue(form, "reason");
 
   if (!guildId) {
     return buildRedirect(request, {
-      grantAction: "revoke",
-      grantStatus: "error",
-      grantMessage: "Guild ID is required.",
+      forceSync: "error",
+      message: "Guild ID is required.",
     });
   }
-  if (!grantId) {
+  if (!scope || !allowedScopes.has(scope)) {
     return buildRedirect(request, {
-      grantAction: "revoke",
-      grantStatus: "error",
-      grantMessage: "Grant ID is required.",
-      guildId,
+      forceSync: "error",
+      message: "Scope must be guild or user.",
+    });
+  }
+  if (scope === "user" && !discordUserId) {
+    return buildRedirect(request, {
+      forceSync: "error",
+      message: "Discord user ID is required for user scope.",
+    });
+  }
+  if (scope === "guild" && discordUserId) {
+    return buildRedirect(request, {
+      forceSync: "error",
+      message: "Discord user ID is only for user scope.",
     });
   }
 
-  const endpoint = `${normalizeBaseUrl(convexUrl)}/api/grants/revoke`;
+  const endpoint = `${normalizeBaseUrl(convexUrl)}/api/role-sync`;
 
   try {
     const response = await fetch(endpoint, {
@@ -119,38 +127,34 @@ export async function POST(request: Request) {
       },
       body: JSON.stringify({
         guildId,
-        grantId,
+        scope,
+        discordUserId: discordUserId ?? undefined,
         actorId: session.userId,
-        note: note ?? undefined,
+        reason: reason ?? undefined,
       }),
     });
 
     const payload = await response.json().catch(() => null);
     if (!response.ok) {
       const message =
-        payload?.error ?? `Grant revoke failed with status ${response.status}.`;
+        payload?.error ??
+        `Force sync failed with status ${response.status}.`;
       return buildRedirect(request, {
-        grantAction: "revoke",
-        grantStatus: "error",
-        grantMessage: clampMessage(String(message)),
-        guildId,
+        forceSync: "error",
+        message: clampMessage(String(message)),
       });
     }
 
     return buildRedirect(request, {
-      grantAction: "revoke",
-      grantStatus: "success",
-      grantId: payload?.grantId ? String(payload.grantId) : undefined,
-      guildId,
+      forceSync: "success",
+      requestId: payload?.requestId ? String(payload.requestId) : undefined,
     });
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : "Grant revoke failed.";
+      error instanceof Error ? error.message : "Force sync request failed.";
     return buildRedirect(request, {
-      grantAction: "revoke",
-      grantStatus: "error",
-      grantMessage: clampMessage(message),
-      guildId,
+      forceSync: "error",
+      message: clampMessage(message),
     });
   }
 }

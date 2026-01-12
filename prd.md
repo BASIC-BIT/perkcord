@@ -581,7 +581,8 @@ Progress (2026-01-12): Added flat ESLint configs for web, bot, and convex packag
   * Webhook payloads
   * Entitlement policy updates and tier mapping
 * Unit tests for validation rules and error paths.
-* Keep webhook signature verification covered by tests with idempotency cases.
+* Keep webhook signature verification covered by tests with idempotency cases.  
+Progress (2026-01-12): Added server-side env validation helpers for web routes to enforce required configuration with consistent errors.
 
 **18.6 Local checks and CI gates**
 

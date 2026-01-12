@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getSessionFromCookies } from "@/lib/session";
+import { requireEnv, resolveEnvError } from "@/lib/serverEnv";
 
 const allowedStatuses = new Set([
   "active",
@@ -57,12 +58,14 @@ const parseOptionalDate = (value: string | null, label: string) => {
 };
 
 export async function POST(request: Request) {
-  const secret = process.env.PERKCORD_SESSION_SECRET?.trim();
-  if (!secret) {
+  let secret: string;
+  try {
+    secret = requireEnv("PERKCORD_SESSION_SECRET", "Session secret missing.");
+  } catch (error) {
     return buildRedirect(request, {
       grantAction: "create",
       grantStatus: "error",
-      grantMessage: "Session secret missing.",
+      grantMessage: resolveEnvError(error, "Session secret missing."),
     });
   }
 
@@ -75,13 +78,22 @@ export async function POST(request: Request) {
     });
   }
 
-  const convexUrl = process.env.PERKCORD_CONVEX_HTTP_URL?.trim();
-  const apiKey = process.env.PERKCORD_REST_API_KEY?.trim();
-  if (!convexUrl || !apiKey) {
+  let convexUrl: string;
+  let apiKey: string;
+  try {
+    convexUrl = requireEnv(
+      "PERKCORD_CONVEX_HTTP_URL",
+      "Convex REST configuration missing."
+    );
+    apiKey = requireEnv(
+      "PERKCORD_REST_API_KEY",
+      "Convex REST configuration missing."
+    );
+  } catch (error) {
     return buildRedirect(request, {
       grantAction: "create",
       grantStatus: "error",
-      grantMessage: "Convex REST configuration missing.",
+      grantMessage: resolveEnvError(error, "Convex REST configuration missing."),
     });
   }
 

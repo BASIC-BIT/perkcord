@@ -9,6 +9,7 @@ import {
   encodeSession,
   type AdminSession,
 } from "@/lib/session";
+import { requireEnv, resolveEnvError } from "@/lib/serverEnv";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -23,10 +24,20 @@ export async function GET(request: Request) {
     );
   }
 
-  const sessionSecret = process.env.PERKCORD_SESSION_SECRET?.trim();
-  if (!sessionSecret) {
+  let sessionSecret: string;
+  try {
+    sessionSecret = requireEnv(
+      "PERKCORD_SESSION_SECRET",
+      "PERKCORD_SESSION_SECRET is not configured."
+    );
+  } catch (error) {
     return NextResponse.json(
-      { error: "PERKCORD_SESSION_SECRET is not configured." },
+      {
+        error: resolveEnvError(
+          error,
+          "PERKCORD_SESSION_SECRET is not configured."
+        ),
+      },
       { status: 500 }
     );
   }

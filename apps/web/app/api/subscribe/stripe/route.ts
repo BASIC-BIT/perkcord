@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { getMemberSessionFromCookies } from "@/lib/memberSession";
 import { resolveStripeCheckoutConfig } from "@/lib/stripeCheckout";
+import { requireEnv, resolveEnvError } from "@/lib/serverEnv";
 
 export const runtime = "nodejs";
 
@@ -48,10 +49,15 @@ const buildPayRedirect = (
 };
 
 export async function POST(request: Request) {
-  const stripeSecret = process.env.STRIPE_SECRET_KEY?.trim();
-  if (!stripeSecret) {
+  let stripeSecret: string;
+  try {
+    stripeSecret = requireEnv(
+      "STRIPE_SECRET_KEY",
+      "Stripe checkout is not configured yet."
+    );
+  } catch (error) {
     return buildPayRedirect(request, {
-      error: "Stripe checkout is not configured yet.",
+      error: resolveEnvError(error, "Stripe checkout is not configured yet."),
     });
   }
 
@@ -86,13 +92,21 @@ export async function POST(request: Request) {
     });
   }
 
-  const sessionSecret = process.env.PERKCORD_SESSION_SECRET?.trim();
-  if (!sessionSecret) {
+  let sessionSecret: string;
+  try {
+    sessionSecret = requireEnv(
+      "PERKCORD_SESSION_SECRET",
+      "PERKCORD_SESSION_SECRET is not configured."
+    );
+  } catch (error) {
     return buildPayRedirect(request, {
       tierId,
       guildId,
       mode,
-      error: "PERKCORD_SESSION_SECRET is not configured.",
+      error: resolveEnvError(
+        error,
+        "PERKCORD_SESSION_SECRET is not configured."
+      ),
     });
   }
 
@@ -117,13 +131,15 @@ export async function POST(request: Request) {
     });
   }
 
-  const convexUrl = process.env.CONVEX_URL?.trim();
-  if (!convexUrl) {
+  let convexUrl: string;
+  try {
+    convexUrl = requireEnv("CONVEX_URL", "CONVEX_URL is not configured.");
+  } catch (error) {
     return buildPayRedirect(request, {
       tierId,
       guildId,
       mode,
-      error: "CONVEX_URL is not configured.",
+      error: resolveEnvError(error, "CONVEX_URL is not configured."),
     });
   }
 

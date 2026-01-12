@@ -13,6 +13,7 @@ import {
   createMemberSession,
   encodeMemberSession,
 } from "@/lib/memberSession";
+import { requireEnv, resolveEnvError } from "@/lib/serverEnv";
 
 type MemberOAuthContext = {
   guildId?: string;
@@ -69,26 +70,48 @@ export async function GET(request: Request) {
     );
   }
 
-  const redirectUri = process.env.DISCORD_MEMBER_REDIRECT_URI?.trim();
-  if (!redirectUri) {
+  let redirectUri: string;
+  try {
+    redirectUri = requireEnv(
+      "DISCORD_MEMBER_REDIRECT_URI",
+      "DISCORD_MEMBER_REDIRECT_URI is not configured."
+    );
+  } catch (error) {
     return NextResponse.json(
-      { error: "DISCORD_MEMBER_REDIRECT_URI is not configured." },
+      {
+        error: resolveEnvError(
+          error,
+          "DISCORD_MEMBER_REDIRECT_URI is not configured."
+        ),
+      },
       { status: 500 }
     );
   }
 
-  const convexUrl = process.env.CONVEX_URL?.trim();
-  if (!convexUrl) {
+  let convexUrl: string;
+  try {
+    convexUrl = requireEnv("CONVEX_URL", "CONVEX_URL is not configured.");
+  } catch (error) {
     return NextResponse.json(
-      { error: "CONVEX_URL is not configured." },
+      { error: resolveEnvError(error, "CONVEX_URL is not configured.") },
       { status: 500 }
     );
   }
 
-  const sessionSecret = process.env.PERKCORD_SESSION_SECRET?.trim();
-  if (!sessionSecret) {
+  let sessionSecret: string;
+  try {
+    sessionSecret = requireEnv(
+      "PERKCORD_SESSION_SECRET",
+      "PERKCORD_SESSION_SECRET is not configured."
+    );
+  } catch (error) {
     return NextResponse.json(
-      { error: "PERKCORD_SESSION_SECRET is not configured." },
+      {
+        error: resolveEnvError(
+          error,
+          "PERKCORD_SESSION_SECRET is not configured."
+        ),
+      },
       { status: 500 }
     );
   }

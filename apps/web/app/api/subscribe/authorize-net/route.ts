@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { getMemberSessionFromCookies } from "@/lib/memberSession";
 import { resolveAuthorizeNetCheckoutConfig } from "@/lib/authorizeNetCheckout";
+import { requireEnv, resolveEnvError } from "@/lib/serverEnv";
 
 export const runtime = "nodejs";
 
@@ -86,10 +87,22 @@ const addIntervalUtc = (
 };
 
 export async function POST(request: Request) {
-  const apiLoginId = process.env.AUTHORIZE_NET_API_LOGIN_ID?.trim();
-  const transactionKey = process.env.AUTHORIZE_NET_TRANSACTION_KEY?.trim();
-  if (!apiLoginId || !transactionKey) {
-    return jsonError("Authorize.Net credentials are not configured.", 500);
+  let apiLoginId: string;
+  let transactionKey: string;
+  try {
+    apiLoginId = requireEnv(
+      "AUTHORIZE_NET_API_LOGIN_ID",
+      "Authorize.Net credentials are not configured."
+    );
+    transactionKey = requireEnv(
+      "AUTHORIZE_NET_TRANSACTION_KEY",
+      "Authorize.Net credentials are not configured."
+    );
+  } catch (error) {
+    return jsonError(
+      resolveEnvError(error, "Authorize.Net credentials are not configured."),
+      500
+    );
   }
 
   let body: CheckoutPayload | null = null;
@@ -114,9 +127,17 @@ export async function POST(request: Request) {
     return jsonError(configResult.error);
   }
 
-  const sessionSecret = process.env.PERKCORD_SESSION_SECRET?.trim();
-  if (!sessionSecret) {
-    return jsonError("PERKCORD_SESSION_SECRET is not configured.", 500);
+  let sessionSecret: string;
+  try {
+    sessionSecret = requireEnv(
+      "PERKCORD_SESSION_SECRET",
+      "PERKCORD_SESSION_SECRET is not configured."
+    );
+  } catch (error) {
+    return jsonError(
+      resolveEnvError(error, "PERKCORD_SESSION_SECRET is not configured."),
+      500
+    );
   }
 
   const memberSession = getMemberSessionFromCookies(
@@ -130,9 +151,11 @@ export async function POST(request: Request) {
     return jsonError("Discord session does not match this server.", 403);
   }
 
-  const convexUrl = process.env.CONVEX_URL?.trim();
-  if (!convexUrl) {
-    return jsonError("CONVEX_URL is not configured.", 500);
+  let convexUrl: string;
+  try {
+    convexUrl = requireEnv("CONVEX_URL", "CONVEX_URL is not configured.");
+  } catch (error) {
+    return jsonError(resolveEnvError(error, "CONVEX_URL is not configured."), 500);
   }
 
   try {

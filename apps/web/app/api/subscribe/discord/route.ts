@@ -6,6 +6,7 @@ import {
   DISCORD_MEMBER_OAUTH_SCOPES,
   DISCORD_MEMBER_OAUTH_STATE_COOKIE,
 } from "@/lib/discordOAuth";
+import { requireEnv, resolveEnvError } from "@/lib/serverEnv";
 
 const readParam = (params: URLSearchParams, key: string) => {
   const value = params.get(key);
@@ -29,10 +30,20 @@ export async function GET(request: Request) {
     );
   }
 
-  const redirectUri = process.env.DISCORD_MEMBER_REDIRECT_URI?.trim();
-  if (!redirectUri) {
+  let redirectUri: string;
+  try {
+    redirectUri = requireEnv(
+      "DISCORD_MEMBER_REDIRECT_URI",
+      "DISCORD_MEMBER_REDIRECT_URI is not configured."
+    );
+  } catch (error) {
     return NextResponse.json(
-      { error: "DISCORD_MEMBER_REDIRECT_URI is not configured." },
+      {
+        error: resolveEnvError(
+          error,
+          "DISCORD_MEMBER_REDIRECT_URI is not configured."
+        ),
+      },
       { status: 500 }
     );
   }
