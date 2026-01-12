@@ -16,6 +16,12 @@ crons.interval(
 );
 
 crons.interval(
+  "process provider events",
+  { minutes: 2 },
+  api.providerEventProcessing.processProviderEvents
+);
+
+crons.interval(
   "deliver outbound webhooks",
   { minutes: 1 },
   api.outboundWebhooks.processOutboundWebhookDeliveries
