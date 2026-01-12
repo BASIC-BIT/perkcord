@@ -55,15 +55,13 @@ describe("resolveNmiCheckoutConfig", () => {
     const result = resolveNmiCheckoutConfig("starter");
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.config.hostedUrl).toBe(
-        "https://secure.nmi.com/pay/abc"
-      );
+      expect(result.config.hostedUrl).toBe("https://secure.nmi.com/pay/abc");
       expect(result.config.mode).toBeNull();
     }
   });
 
   it("normalizes recurring modes to subscription", () => {
-    process.env.NMI_STARTER_HOSTED_URL = "https://secure.nmi.com/pay/sub"; 
+    process.env.NMI_STARTER_HOSTED_URL = "https://secure.nmi.com/pay/sub";
     process.env.NMI_STARTER_MODE = "recurring";
     const result = resolveNmiCheckoutConfig("starter");
     expect(result.ok).toBe(true);

@@ -57,7 +57,7 @@ export type StripeCheckoutConfigResult =
 
 export const resolveStripeCheckoutConfig = (
   tierId: string,
-  modeOverride?: string | null
+  modeOverride?: string | null,
 ): StripeCheckoutConfigResult => {
   const envConfig = STRIPE_TIER_ENV[tierId];
   if (!envConfig) {

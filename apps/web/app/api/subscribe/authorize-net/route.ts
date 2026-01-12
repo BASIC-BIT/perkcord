@@ -62,27 +62,17 @@ const addMonthsUtc = (value: Date, months: number) => {
   const targetMonth = month + months;
   const targetYear = year + Math.floor(targetMonth / 12);
   const normalizedMonth = ((targetMonth % 12) + 12) % 12;
-  const lastDay = new Date(
-    Date.UTC(targetYear, normalizedMonth + 1, 0)
-  ).getUTCDate();
+  const lastDay = new Date(Date.UTC(targetYear, normalizedMonth + 1, 0)).getUTCDate();
   const safeDay = Math.min(day, lastDay);
   return new Date(Date.UTC(targetYear, normalizedMonth, safeDay));
 };
 
-const addIntervalUtc = (
-  value: Date,
-  length: number,
-  unit: "days" | "months"
-) => {
+const addIntervalUtc = (value: Date, length: number, unit: "days" | "months") => {
   if (unit === "months") {
     return addMonthsUtc(value, length);
   }
   return new Date(
-    Date.UTC(
-      value.getUTCFullYear(),
-      value.getUTCMonth(),
-      value.getUTCDate() + length
-    )
+    Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate() + length),
   );
 };
 
@@ -92,17 +82,14 @@ export async function POST(request: Request) {
   try {
     apiLoginId = requireEnv(
       "AUTHORIZE_NET_API_LOGIN_ID",
-      "Authorize.Net credentials are not configured."
+      "Authorize.Net credentials are not configured.",
     );
     transactionKey = requireEnv(
       "AUTHORIZE_NET_TRANSACTION_KEY",
-      "Authorize.Net credentials are not configured."
+      "Authorize.Net credentials are not configured.",
     );
   } catch (error) {
-    return jsonError(
-      resolveEnvError(error, "Authorize.Net credentials are not configured."),
-      500
-    );
+    return jsonError(resolveEnvError(error, "Authorize.Net credentials are not configured."), 500);
   }
 
   let body: CheckoutPayload | null = null;
@@ -131,19 +118,13 @@ export async function POST(request: Request) {
   try {
     sessionSecret = requireEnv(
       "PERKCORD_SESSION_SECRET",
-      "PERKCORD_SESSION_SECRET is not configured."
+      "PERKCORD_SESSION_SECRET is not configured.",
     );
   } catch (error) {
-    return jsonError(
-      resolveEnvError(error, "PERKCORD_SESSION_SECRET is not configured."),
-      500
-    );
+    return jsonError(resolveEnvError(error, "PERKCORD_SESSION_SECRET is not configured."), 500);
   }
 
-  const memberSession = getMemberSessionFromCookies(
-    request.cookies,
-    sessionSecret
-  );
+  const memberSession = getMemberSessionFromCookies(request.cookies, sessionSecret);
   if (!memberSession) {
     return jsonError("Connect Discord before starting checkout.", 401);
   }
@@ -167,17 +148,13 @@ export async function POST(request: Request) {
       return jsonError("Guild not found for checkout.", 404);
     }
 
-    const existingLink = (await convex.query(
-      "providerCustomers:getProviderCustomerLinkForUser",
-      {
-        guildId: guild._id,
-        provider: "authorize_net",
-        discordUserId: memberSession.discordUserId,
-      }
-    )) as { providerCustomerId?: string } | null;
+    const existingLink = (await convex.query("providerCustomers:getProviderCustomerLinkForUser", {
+      guildId: guild._id,
+      provider: "authorize_net",
+      discordUserId: memberSession.discordUserId,
+    })) as { providerCustomerId?: string } | null;
 
-    const providerCustomerId =
-      existingLink?.providerCustomerId ?? `anet_${randomUUID()}`;
+    const providerCustomerId = existingLink?.providerCustomerId ?? `anet_${randomUUID()}`;
 
     if (!existingLink?.providerCustomerId) {
       await convex.mutation("providerCustomers:upsertProviderCustomerLink", {
@@ -245,8 +222,8 @@ export async function POST(request: Request) {
         addIntervalUtc(
           new Date(),
           configResult.config.intervalLength,
-          configResult.config.intervalUnit
-        )
+          configResult.config.intervalUnit,
+        ),
       );
       const subscriptionRequest = {
         createSubscriptionRequest: {
@@ -291,13 +268,8 @@ export async function POST(request: Request) {
         },
         body: JSON.stringify(subscriptionRequest),
       });
-      const subscriptionPayload = await subscriptionResponse
-        .json()
-        .catch(() => ({}));
-      if (
-        !subscriptionResponse.ok ||
-        subscriptionPayload?.messages?.resultCode !== "Ok"
-      ) {
+      const subscriptionPayload = await subscriptionResponse.json().catch(() => ({}));
+      if (!subscriptionResponse.ok || subscriptionPayload?.messages?.resultCode !== "Ok") {
         return jsonError(extractAuthorizeNetError(subscriptionPayload));
       }
     }

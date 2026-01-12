@@ -45,7 +45,7 @@ const config: TestRunnerConfig = {
       const existing = await readFile(snapshotPath);
       if (!existing.equals(buffer)) {
         throw new Error(
-          `Storybook snapshot mismatch for ${storyId}. Run "npm run test:storybook:update" to regenerate.`
+          `Storybook snapshot mismatch for ${storyId}. Run "npm run test:storybook:update" to regenerate.`,
         );
       }
     } catch (error) {

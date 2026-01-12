@@ -7,14 +7,9 @@ import { getTier } from "../tiers";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
-const getParam = (value: SearchParams[string]) =>
-  Array.isArray(value) ? value[0] : value;
+const getParam = (value: SearchParams[string]) => (Array.isArray(value) ? value[0] : value);
 
-export default function PaymentPage({
-  searchParams,
-}: {
-  searchParams: SearchParams;
-}) {
+export default function PaymentPage({ searchParams }: { searchParams: SearchParams }) {
   const tierParam = getParam(searchParams.tier);
   const guildId = getParam(searchParams.guildId) ?? getParam(searchParams.guild);
   const stripeError = getParam(searchParams.stripeError);
@@ -22,9 +17,7 @@ export default function PaymentPage({
   const tier = getTier(tierParam);
   const stripeConfigResult = resolveStripeCheckoutConfig(tier.id, modeOverride);
   const stripeReady = Boolean(guildId && stripeConfigResult.ok);
-  const stripeMode = stripeConfigResult.ok
-    ? stripeConfigResult.config.mode
-    : null;
+  const stripeMode = stripeConfigResult.ok ? stripeConfigResult.config.mode : null;
   const stripeDescription = stripeConfigResult.ok
     ? stripeMode === "payment"
       ? "One-time checkout."
@@ -36,16 +29,10 @@ export default function PaymentPage({
       : "Pay with Stripe"
     : "Stripe not configured";
   const authorizeNetConfigResult = resolveAuthorizeNetCheckoutConfig(tier.id);
-  const authorizeNetConfig = authorizeNetConfigResult.ok
-    ? authorizeNetConfigResult.config
-    : null;
-  const authorizeNetApiLoginId =
-    process.env.NEXT_PUBLIC_AUTHORIZE_NET_API_LOGIN_ID?.trim() ?? null;
-  const authorizeNetClientKey =
-    process.env.NEXT_PUBLIC_AUTHORIZE_NET_CLIENT_KEY?.trim() ?? null;
-  const authorizeNetError = authorizeNetConfigResult.ok
-    ? null
-    : authorizeNetConfigResult.error;
+  const authorizeNetConfig = authorizeNetConfigResult.ok ? authorizeNetConfigResult.config : null;
+  const authorizeNetApiLoginId = process.env.NEXT_PUBLIC_AUTHORIZE_NET_API_LOGIN_ID?.trim() ?? null;
+  const authorizeNetClientKey = process.env.NEXT_PUBLIC_AUTHORIZE_NET_CLIENT_KEY?.trim() ?? null;
+  const authorizeNetError = authorizeNetConfigResult.ok ? null : authorizeNetConfigResult.error;
   const authorizeNetDescription = authorizeNetConfig
     ? authorizeNetConfig.mode === "subscription"
       ? `Subscription billed every ${authorizeNetConfig.intervalLabel}.`
@@ -65,9 +52,7 @@ export default function PaymentPage({
       ? "Subscribe with NMI"
       : "Pay with NMI"
     : "NMI not configured";
-  const backUrl = `/subscribe/connect?tier=${tier.id}${
-    guildId ? `&guildId=${guildId}` : ""
-  }`;
+  const backUrl = `/subscribe/connect?tier=${tier.id}${guildId ? `&guildId=${guildId}` : ""}`;
   return (
     <main className="card">
       <p className="subtle">Step 3 of 4</p>
@@ -78,9 +63,7 @@ export default function PaymentPage({
           Missing guildId. Add ?guildId=&lt;serverId&gt; to the URL to continue.
         </div>
       )}
-      <p>
-        Choose a payment method. Stripe checkout will redirect when configured.
-      </p>
+      <p>Choose a payment method. Stripe checkout will redirect when configured.</p>
       <div className="tier-summary">
         <div className="tier-header">
           <h3>{tier.name}</h3>
@@ -114,9 +97,7 @@ export default function PaymentPage({
             amount={authorizeNetConfig?.amount ?? null}
             mode={authorizeNetConfig?.mode ?? null}
             intervalLabel={
-              authorizeNetConfig?.mode === "subscription"
-                ? authorizeNetConfig.intervalLabel
-                : null
+              authorizeNetConfig?.mode === "subscription" ? authorizeNetConfig.intervalLabel : null
             }
             apiLoginId={authorizeNetApiLoginId}
             clientKey={authorizeNetClientKey}

@@ -31,15 +31,13 @@ describe("encryption helpers", () => {
   });
 
   it("rejects malformed payloads", () => {
-    expect(() => decryptSecret("not-valid")).toThrow(
-      "Invalid encrypted payload format."
-    );
+    expect(() => decryptSecret("not-valid")).toThrow("Invalid encrypted payload format.");
   });
 
   it("errors when the encryption key is missing", () => {
     delete process.env[KEY_ENV];
     expect(() => encryptSecret("value")).toThrow(
-      "PERKCORD_OAUTH_ENCRYPTION_KEY is not configured."
+      "PERKCORD_OAUTH_ENCRYPTION_KEY is not configured.",
     );
   });
 });

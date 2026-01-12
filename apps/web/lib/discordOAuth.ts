@@ -1,16 +1,11 @@
 import { randomBytes } from "crypto";
 
 export const DISCORD_OAUTH_STATE_COOKIE = "perkcord_discord_oauth_state";
-export const DISCORD_MEMBER_OAUTH_STATE_COOKIE =
-  "perkcord_member_oauth_state";
-export const DISCORD_MEMBER_OAUTH_CONTEXT_COOKIE =
-  "perkcord_member_oauth_context";
+export const DISCORD_MEMBER_OAUTH_STATE_COOKIE = "perkcord_member_oauth_state";
+export const DISCORD_MEMBER_OAUTH_CONTEXT_COOKIE = "perkcord_member_oauth_context";
 
 const DEFAULT_SCOPES = ["identify", "guilds"];
-export const DISCORD_MEMBER_OAUTH_SCOPES = [
-  "identify",
-  "role_connections.write",
-];
+export const DISCORD_MEMBER_OAUTH_SCOPES = ["identify", "role_connections.write"];
 
 type DiscordOAuthConfig = {
   clientId: string;
@@ -36,8 +31,7 @@ export type DiscordUser = {
 const getOAuthConfig = (redirectUriOverride?: string): DiscordOAuthConfig => {
   const clientId = process.env.DISCORD_CLIENT_ID?.trim();
   const clientSecret = process.env.DISCORD_CLIENT_SECRET?.trim();
-  const redirectUri =
-    redirectUriOverride?.trim() ?? process.env.DISCORD_REDIRECT_URI?.trim();
+  const redirectUri = redirectUriOverride?.trim() ?? process.env.DISCORD_REDIRECT_URI?.trim();
 
   if (!clientId || !clientSecret || !redirectUri) {
     throw new Error("Discord OAuth environment variables are missing.");
@@ -50,7 +44,7 @@ export const createDiscordState = () => randomBytes(16).toString("hex");
 
 export const buildDiscordAuthorizeUrl = (
   state: string,
-  options?: { scope?: string[]; redirectUri?: string }
+  options?: { scope?: string[]; redirectUri?: string },
 ) => {
   const { clientId, redirectUri } = getOAuthConfig(options?.redirectUri);
   const scopes = options?.scope?.length ? options.scope : DEFAULT_SCOPES;
@@ -66,11 +60,9 @@ export const buildDiscordAuthorizeUrl = (
 
 export const exchangeDiscordCode = async (
   code: string,
-  redirectUriOverride?: string
+  redirectUriOverride?: string,
 ): Promise<DiscordTokenResponse> => {
-  const { clientId, clientSecret, redirectUri } = getOAuthConfig(
-    redirectUriOverride
-  );
+  const { clientId, clientSecret, redirectUri } = getOAuthConfig(redirectUriOverride);
 
   const body = new URLSearchParams({
     client_id: clientId,
@@ -95,9 +87,7 @@ export const exchangeDiscordCode = async (
   return (await response.json()) as DiscordTokenResponse;
 };
 
-export const fetchDiscordUser = async (
-  accessToken: string
-): Promise<DiscordUser> => {
+export const fetchDiscordUser = async (accessToken: string): Promise<DiscordUser> => {
   const response = await fetch("https://discord.com/api/users/@me", {
     headers: {
       Authorization: `Bearer ${accessToken}`,

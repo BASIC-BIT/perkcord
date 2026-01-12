@@ -13,17 +13,13 @@ type CookieStore = {
   get: (name: string) => { value: string } | undefined;
 };
 
-const encodeBase64Url = (value: string | Buffer) =>
-  Buffer.from(value).toString("base64url");
+const encodeBase64Url = (value: string | Buffer) => Buffer.from(value).toString("base64url");
 
-const decodeBase64Url = (value: string) =>
-  Buffer.from(value, "base64url").toString("utf8");
+const decodeBase64Url = (value: string) => Buffer.from(value, "base64url").toString("utf8");
 
 export const encodeSession = (session: AdminSession, secret: string) => {
   const payload = encodeBase64Url(JSON.stringify(session));
-  const signature = createHmac("sha256", secret)
-    .update(payload)
-    .digest();
+  const signature = createHmac("sha256", secret).update(payload).digest();
   const signatureEncoded = encodeBase64Url(signature);
   return `${payload}.${signatureEncoded}`;
 };
@@ -62,10 +58,7 @@ export const decodeSession = (token: string, secret: string) => {
   }
 };
 
-export const getSessionFromCookies = (
-  cookieStore: CookieStore,
-  secret: string
-) => {
+export const getSessionFromCookies = (cookieStore: CookieStore, secret: string) => {
   const raw = cookieStore.get(ADMIN_SESSION_COOKIE)?.value;
   if (!raw) {
     return null;

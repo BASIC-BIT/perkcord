@@ -176,8 +176,7 @@ type GuildDiagnosticsResponse = {
 
 type FetchResult<T> = { data?: T; error?: string };
 
-const getParam = (value: SearchParams[string]) =>
-  Array.isArray(value) ? value[0] : value;
+const getParam = (value: SearchParams[string]) => (Array.isArray(value) ? value[0] : value);
 const getNumberParam = (value: SearchParams[string]) => {
   const raw = getParam(value);
   if (!raw) {
@@ -195,7 +194,7 @@ const normalizeBaseUrl = (value: string) => {
 const buildConvexUrl = (
   baseUrl: string,
   path: string,
-  params: Record<string, string | number | undefined>
+  params: Record<string, string | number | undefined>,
 ) => {
   const normalized = path.startsWith("/") ? path : `/${path}`;
   const url = new URL(`${normalizeBaseUrl(baseUrl)}${normalized}`);
@@ -300,7 +299,7 @@ const fetchConvexJson = async <T,>(
   baseUrl: string,
   apiKey: string,
   path: string,
-  params: Record<string, string | number | undefined>
+  params: Record<string, string | number | undefined>,
 ): Promise<FetchResult<T>> => {
   const endpoint = buildConvexUrl(baseUrl, path, params);
   try {
@@ -324,17 +323,12 @@ const fetchConvexJson = async <T,>(
     }
     return { data: payload };
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Convex request failed.";
+    const message = error instanceof Error ? error.message : "Convex request failed.";
     return { error: message };
   }
 };
 
-export default async function AdminPage({
-  searchParams,
-}: {
-  searchParams?: SearchParams;
-}) {
+export default async function AdminPage({ searchParams }: { searchParams?: SearchParams }) {
   const secret = process.env.PERKCORD_SESSION_SECRET;
   const authEnabled = Boolean(secret);
   const cookieStore = cookies();
@@ -342,12 +336,8 @@ export default async function AdminPage({
   const forceSyncStatus = getParam(searchParams?.forceSync);
   const forceSyncRequestId = getParam(searchParams?.requestId);
   const forceSyncError = getParam(searchParams?.message);
-  const roleConnectionsStatus = getParam(
-    searchParams?.roleConnectionsStatus
-  );
-  const roleConnectionsMessage = getParam(
-    searchParams?.roleConnectionsMessage
-  );
+  const roleConnectionsStatus = getParam(searchParams?.roleConnectionsStatus);
+  const roleConnectionsMessage = getParam(searchParams?.roleConnectionsMessage);
   const roleConnectionsCount = getParam(searchParams?.roleConnectionsCount);
   const grantAction = getParam(searchParams?.grantAction);
   const grantStatus = getParam(searchParams?.grantStatus);
@@ -398,7 +388,7 @@ export default async function AdminPage({
       "/api/guilds",
       {
         limit: 50,
-      }
+      },
     );
     if (guildResult.error) {
       guildListError = guildResult.error;
@@ -418,7 +408,7 @@ export default async function AdminPage({
           guildId,
           search: memberSearch,
           limit: 25,
-        }
+        },
       );
       if (result.error) {
         memberSearchError = result.error;
@@ -439,7 +429,7 @@ export default async function AdminPage({
           guildId,
           discordUserId: memberId,
           auditLimit: 25,
-        }
+        },
       );
       if (result.error) {
         memberSnapshotError = result.error;
@@ -455,7 +445,7 @@ export default async function AdminPage({
           guildId,
           discordUserId: memberId,
           limit: 10,
-        }
+        },
       );
       if (roleSyncResult.error) {
         roleSyncError = roleSyncResult.error;
@@ -471,7 +461,7 @@ export default async function AdminPage({
         "/api/tiers",
         {
           guildId,
-        }
+        },
       );
       if (tiersResult.error) {
         tierListError = tiersResult.error;
@@ -485,7 +475,7 @@ export default async function AdminPage({
         "/api/reporting/active-members",
         {
           guildId,
-        }
+        },
       );
       if (countsResult.error) {
         activeMemberCountsError = countsResult.error;
@@ -493,64 +483,60 @@ export default async function AdminPage({
         activeMemberCounts = countsResult.data ?? null;
       }
 
-      const revenueResult =
-        await fetchConvexJson<RevenueIndicatorsResponse>(
-          convexUrl,
-          convexApiKey,
-          "/api/reporting/revenue",
-          {
-            guildId,
-            scanLimit,
-            windowDays: revenueWindowDays,
-          }
-        );
+      const revenueResult = await fetchConvexJson<RevenueIndicatorsResponse>(
+        convexUrl,
+        convexApiKey,
+        "/api/reporting/revenue",
+        {
+          guildId,
+          scanLimit,
+          windowDays: revenueWindowDays,
+        },
+      );
       if (revenueResult.error) {
         revenueIndicatorsError = revenueResult.error;
       } else {
         revenueIndicators = revenueResult.data ?? null;
       }
 
-      const guildDiagnosticsResult =
-        await fetchConvexJson<GuildDiagnosticsResponse>(
-          convexUrl,
-          convexApiKey,
-          "/api/diagnostics/guild",
-          {
-            guildId,
-          }
-        );
+      const guildDiagnosticsResult = await fetchConvexJson<GuildDiagnosticsResponse>(
+        convexUrl,
+        convexApiKey,
+        "/api/diagnostics/guild",
+        {
+          guildId,
+        },
+      );
       if (guildDiagnosticsResult.error) {
         guildDiagnosticsError = guildDiagnosticsResult.error;
       } else {
         guildDiagnostics = guildDiagnosticsResult.data?.diagnostics ?? null;
       }
 
-      const diagnosticsResult =
-        await fetchConvexJson<ProviderDiagnosticsResponse>(
-          convexUrl,
-          convexApiKey,
-          "/api/diagnostics/provider-events",
-          {
-            guildId,
-            scanLimit,
-          }
-        );
+      const diagnosticsResult = await fetchConvexJson<ProviderDiagnosticsResponse>(
+        convexUrl,
+        convexApiKey,
+        "/api/diagnostics/provider-events",
+        {
+          guildId,
+          scanLimit,
+        },
+      );
       if (diagnosticsResult.error) {
         providerDiagnosticsError = diagnosticsResult.error;
       } else {
         providerDiagnostics = diagnosticsResult.data ?? null;
       }
 
-      const failedResult =
-        await fetchConvexJson<FailedOutboundWebhookResponse>(
-          convexUrl,
-          convexApiKey,
-          "/api/webhooks/failed",
-          {
-            guildId,
-            limit: failedLimit ?? 25,
-          }
-        );
+      const failedResult = await fetchConvexJson<FailedOutboundWebhookResponse>(
+        convexUrl,
+        convexApiKey,
+        "/api/webhooks/failed",
+        {
+          guildId,
+          limit: failedLimit ?? 25,
+        },
+      );
       if (failedResult.error) {
         failedWebhookError = failedResult.error;
       } else {
@@ -564,7 +550,7 @@ export default async function AdminPage({
         {
           guildId,
           limit: auditLimit ?? 25,
-        }
+        },
       );
       if (auditResult.error) {
         auditEventsError = auditResult.error;
@@ -602,36 +588,24 @@ export default async function AdminPage({
   }
 
   const grantActionLabel =
-    grantAction === "revoke"
-      ? "revoke"
-      : grantAction === "create"
-        ? "create"
-        : "action";
+    grantAction === "revoke" ? "revoke" : grantAction === "create" ? "create" : "action";
   const grantBanner =
     grantStatus === "success"
       ? grantAction === "revoke"
         ? `Grant revoked${grantId ? ` (${grantId})` : ""}.`
         : `Manual grant created${grantId ? ` (${grantId})` : ""}.`
       : grantStatus === "error"
-        ? `Manual grant ${grantActionLabel} failed${
-            grantMessage ? `: ${grantMessage}` : "."
-          }`
+        ? `Manual grant ${grantActionLabel} failed${grantMessage ? `: ${grantMessage}` : "."}`
         : null;
   const tierActionLabel =
-    tierAction === "update"
-      ? "update"
-      : tierAction === "create"
-        ? "create"
-        : "action";
+    tierAction === "update" ? "update" : tierAction === "create" ? "create" : "action";
   const tierBanner =
     tierStatus === "success"
       ? tierAction === "update"
         ? `Tier updated${tierOutcomeId ? ` (${tierOutcomeId})` : ""}.`
         : `Tier created${tierOutcomeId ? ` (${tierOutcomeId})` : ""}.`
       : tierStatus === "error"
-        ? `Tier ${tierActionLabel} failed${
-            tierMessage ? `: ${tierMessage}` : "."
-          }`
+        ? `Tier ${tierActionLabel} failed${tierMessage ? `: ${tierMessage}` : "."}`
         : null;
   const roleConnectionsBanner =
     roleConnectionsStatus === "success"
@@ -672,47 +646,29 @@ export default async function AdminPage({
             </div>
           )}
           {grantStatus && grantBanner && (
-            <div
-              className={`banner ${
-                grantStatus === "error" ? "error" : "success"
-              }`}
-            >
+            <div className={`banner ${grantStatus === "error" ? "error" : "success"}`}>
               {grantBanner}
             </div>
           )}
           {tierStatus && tierBanner && (
-            <div
-              className={`banner ${
-                tierStatus === "error" ? "error" : "success"
-              }`}
-            >
+            <div className={`banner ${tierStatus === "error" ? "error" : "success"}`}>
               {tierBanner}
             </div>
           )}
           {roleConnectionsStatus && roleConnectionsBanner && (
-            <div
-              className={`banner ${
-                roleConnectionsStatus === "error" ? "error" : "success"
-              }`}
-            >
+            <div className={`banner ${roleConnectionsStatus === "error" ? "error" : "success"}`}>
               {roleConnectionsBanner}
             </div>
           )}
           <section className="panel">
             <h2>Guild selection</h2>
             <p>Select the guild you want to manage in this session.</p>
-            {guildListError && (
-              <div className="banner error">{guildListError}</div>
-            )}
+            {guildListError && <div className="banner error">{guildListError}</div>}
             {guildList && guildList.length > 0 ? (
               <form className="form" action="/admin" method="get">
                 <label className="field">
                   <span>Guild</span>
-                  <select
-                    className="input"
-                    name="guildId"
-                    defaultValue={guildId ?? ""}
-                  >
+                  <select className="input" name="guildId" defaultValue={guildId ?? ""}>
                     <option value="">Select a guild</option>
                     {guildList.map((guild) => (
                       <option key={guild._id} value={guild._id}>
@@ -728,17 +684,14 @@ export default async function AdminPage({
                 </div>
               </form>
             ) : !guildListError ? (
-              <p>
-                No guilds found yet. Invite the bot to a server to begin
-                onboarding.
-              </p>
+              <p>No guilds found yet. Invite the bot to a server to begin onboarding.</p>
             ) : null}
           </section>
           <section className="panel">
             <h2>Force role sync</h2>
             <p>
-              Request a bot resync for a single member or an entire guild. This
-              is admin-only and queues a role sync job in Convex.
+              Request a bot resync for a single member or an entire guild. This is admin-only and
+              queues a role sync job in Convex.
             </p>
             <form className="form" action="/api/admin/force-sync" method="post">
               <label className="field">
@@ -760,11 +713,7 @@ export default async function AdminPage({
               </label>
               <label className="field">
                 <span>Discord User ID (required for user scope)</span>
-                <input
-                  className="input"
-                  name="discordUserId"
-                  placeholder="112233445566778899"
-                />
+                <input className="input" name="discordUserId" placeholder="112233445566778899" />
               </label>
               <label className="field">
                 <span>Reason (optional)</span>
@@ -785,21 +734,16 @@ export default async function AdminPage({
           <section className="panel">
             <h2>Linked Roles setup wizard</h2>
             <p>
-              Configure optional Linked Roles metadata. Bot roles remain the
-              primary access control.
+              Configure optional Linked Roles metadata. Bot roles remain the primary access control.
             </p>
             <ol className="step-list">
               <li className="step-item">
                 <div className="step-title">Register metadata schema</div>
                 <p className="step-hint">
-                  This registers the Role Connections metadata fields for this
-                  Discord application (one-time per app).
+                  This registers the Role Connections metadata fields for this Discord application
+                  (one-time per app).
                 </p>
-                <form
-                  className="form"
-                  action="/api/admin/role-connections/register"
-                  method="post"
-                >
+                <form className="form" action="/api/admin/role-connections/register" method="post">
                   <label className="field">
                     <span>Guild ID</span>
                     <input
@@ -818,12 +762,10 @@ export default async function AdminPage({
                 </form>
               </li>
               <li className="step-item">
-                <div className="step-title">
-                  Create a Linked Role in Discord
-                </div>
+                <div className="step-title">Create a Linked Role in Discord</div>
                 <p className="step-hint">
-                  In the Discord Developer Portal, open your application and
-                  add a Linked Role that uses these fields.
+                  In the Discord Developer Portal, open your application and add a Linked Role that
+                  uses these fields.
                 </p>
                 <div className="meta-grid">
                   <div className="meta-card">
@@ -846,16 +788,15 @@ export default async function AdminPage({
                   </div>
                 </div>
                 <p className="step-hint">
-                  Suggested conditions: is_active equals true, tier greater than
-                  or equal to 1, member_since_days greater than or equal to 1.
+                  Suggested conditions: is_active equals true, tier greater than or equal to 1,
+                  member_since_days greater than or equal to 1.
                 </p>
               </li>
               <li className="step-item">
                 <div className="step-title">Verify member updates</div>
                 <p className="step-hint">
-                  Entitlement changes will sync metadata automatically. If a
-                  member connected before we requested{" "}
-                  <code>role_connections.write</code>, ask them to reconnect.
+                  Entitlement changes will sync metadata automatically. If a member connected before
+                  we requested <code>role_connections.write</code>, ask them to reconnect.
                 </p>
               </li>
             </ol>
@@ -863,20 +804,14 @@ export default async function AdminPage({
           <section className="panel">
             <h2>Tier management</h2>
             <p>
-              Create or update tiers, mapping roles and provider product IDs.   
-              Use comma-separated IDs for lists.
+              Create or update tiers, mapping roles and provider product IDs. Use comma-separated
+              IDs for lists.
             </p>
-            {tierListError && (
-              <div className="banner error">{tierListError}</div>
-            )}
+            {tierListError && <div className="banner error">{tierListError}</div>}
             <div className="snapshot-grid">
               <div className="snapshot-card">
                 <h3>Create tier</h3>
-                <form
-                  className="form"
-                  action="/api/admin/tiers/create"
-                  method="post"
-                >
+                <form className="form" action="/api/admin/tiers/create" method="post">
                   <label className="field">
                     <span>Guild ID</span>
                     <input
@@ -889,12 +824,7 @@ export default async function AdminPage({
                   </label>
                   <label className="field">
                     <span>Name</span>
-                    <input
-                      className="input"
-                      name="name"
-                      placeholder="Pro"
-                      required
-                    />
+                    <input className="input" name="name" placeholder="Pro" required />
                   </label>
                   <label className="field">
                     <span>Description (optional)</span>
@@ -907,20 +837,11 @@ export default async function AdminPage({
                   </label>
                   <label className="field">
                     <span>Role IDs (comma-separated)</span>
-                    <input
-                      className="input"
-                      name="roleIds"
-                      placeholder="1234, 5678"
-                      required
-                    />
+                    <input className="input" name="roleIds" placeholder="1234, 5678" required />
                   </label>
                   <label className="field">
                     <span>Entitlement kind</span>
-                    <select
-                      className="input"
-                      name="policyKind"
-                      defaultValue="subscription"
-                    >
+                    <select className="input" name="policyKind" defaultValue="subscription">
                       <option value="subscription">subscription</option>
                       <option value="one_time">one_time</option>
                     </select>
@@ -987,19 +908,11 @@ export default async function AdminPage({
                   </label>
                   <label className="field">
                     <span>NMI plan IDs (optional)</span>
-                    <input
-                      className="input"
-                      name="nmiPlanIds"
-                      placeholder="plan_abc"
-                    />
+                    <input className="input" name="nmiPlanIds" placeholder="plan_abc" />
                   </label>
                   <label className="field">
                     <span>NMI one-time keys (optional)</span>
-                    <input
-                      className="input"
-                      name="nmiOneTimeKeys"
-                      placeholder="NMI_ONETIME"
-                    />
+                    <input className="input" name="nmiOneTimeKeys" placeholder="NMI_ONETIME" />
                   </label>
                   <div className="tier-actions">
                     <button className="button" type="submit">
@@ -1010,11 +923,7 @@ export default async function AdminPage({
               </div>
               <div className="snapshot-card">
                 <h3>Update tier</h3>
-                <form
-                  className="form"
-                  action="/api/admin/tiers/update"
-                  method="post"
-                >
+                <form className="form" action="/api/admin/tiers/update" method="post">
                   <label className="field">
                     <span>Guild ID</span>
                     <input
@@ -1050,11 +959,7 @@ export default async function AdminPage({
                   </label>
                   <label className="field">
                     <span>Role IDs (comma-separated)</span>
-                    <input
-                      className="input"
-                      name="roleIds"
-                      placeholder="1234, 5678"
-                    />
+                    <input className="input" name="roleIds" placeholder="1234, 5678" />
                   </label>
                   <label className="field">
                     <span>Entitlement kind (leave blank to keep)</span>
@@ -1126,19 +1031,11 @@ export default async function AdminPage({
                   </label>
                   <label className="field">
                     <span>NMI plan IDs (optional)</span>
-                    <input
-                      className="input"
-                      name="nmiPlanIds"
-                      placeholder="plan_abc"
-                    />
+                    <input className="input" name="nmiPlanIds" placeholder="plan_abc" />
                   </label>
                   <label className="field">
                     <span>NMI one-time keys (optional)</span>
-                    <input
-                      className="input"
-                      name="nmiOneTimeKeys"
-                      placeholder="NMI_ONETIME"
-                    />
+                    <input className="input" name="nmiOneTimeKeys" placeholder="NMI_ONETIME" />
                   </label>
                   <div className="tier-actions">
                     <button className="button" type="submit">
@@ -1149,11 +1046,7 @@ export default async function AdminPage({
                 {tierList && tierList.length > 0 && (
                   <datalist id="tier-options-admin">
                     {tierList.map((tier) => (
-                      <option
-                        key={tier._id}
-                        value={tier._id}
-                        label={tier.name}
-                      />
+                      <option key={tier._id} value={tier._id} label={tier.name} />
                     ))}
                   </datalist>
                 )}
@@ -1163,17 +1056,13 @@ export default async function AdminPage({
           <section className="panel">
             <h2>Manual grants</h2>
             <p>
-              Create or revoke entitlements with audit trails. Leave valid dates
-              empty for immediate, ongoing access.
+              Create or revoke entitlements with audit trails. Leave valid dates empty for
+              immediate, ongoing access.
             </p>
             <div className="snapshot-grid">
               <div className="snapshot-card">
                 <h3>Create grant</h3>
-                <form
-                  className="form"
-                  action="/api/admin/grants/create"
-                  method="post"
-                >
+                <form className="form" action="/api/admin/grants/create" method="post">
                   <label className="field">
                     <span>Guild ID</span>
                     <input
@@ -1205,36 +1094,22 @@ export default async function AdminPage({
                   </label>
                   <label className="field">
                     <span>Status</span>
-                    <select
-                      className="input"
-                      name="status"
-                      defaultValue="active"
-                    >
+                    <select className="input" name="status" defaultValue="active">
                       <option value="active">active</option>
                       <option value="pending">pending</option>
                       <option value="past_due">past_due</option>
                       <option value="canceled">canceled</option>
                       <option value="expired">expired</option>
-                      <option value="suspended_dispute">
-                        suspended_dispute
-                      </option>
+                      <option value="suspended_dispute">suspended_dispute</option>
                     </select>
                   </label>
                   <label className="field">
                     <span>Valid from (optional)</span>
-                    <input
-                      className="input"
-                      type="datetime-local"
-                      name="validFrom"
-                    />
+                    <input className="input" type="datetime-local" name="validFrom" />
                   </label>
                   <label className="field">
                     <span>Valid through (optional)</span>
-                    <input
-                      className="input"
-                      type="datetime-local"
-                      name="validThrough"
-                    />
+                    <input className="input" type="datetime-local" name="validThrough" />
                   </label>
                   <label className="field">
                     <span>Note (optional)</span>
@@ -1254,22 +1129,14 @@ export default async function AdminPage({
                 {tierList && tierList.length > 0 && (
                   <datalist id="tier-options">
                     {tierList.map((tier) => (
-                      <option
-                        key={tier._id}
-                        value={tier._id}
-                        label={tier.name}
-                      />
+                      <option key={tier._id} value={tier._id} label={tier.name} />
                     ))}
                   </datalist>
                 )}
               </div>
               <div className="snapshot-card">
                 <h3>Revoke grant</h3>
-                <form
-                  className="form"
-                  action="/api/admin/grants/revoke"
-                  method="post"
-                >
+                <form className="form" action="/api/admin/grants/revoke" method="post">
                   <label className="field">
                     <span>Guild ID</span>
                     <input
@@ -1309,10 +1176,7 @@ export default async function AdminPage({
           </section>
           <section className="panel">
             <h2>Health overview</h2>
-            <p>
-              Review recent provider events and active member counts for a
-              guild.
-            </p>
+            <p>Review recent provider events and active member counts for a guild.</p>
             <form className="form" action="/admin" method="get">
               <label className="field">
                 <span>Guild ID</span>
@@ -1345,9 +1209,7 @@ export default async function AdminPage({
                   min={1}
                   max={365}
                   placeholder="30"
-                  defaultValue={
-                    revenueWindowDays ? String(revenueWindowDays) : ""
-                  }
+                  defaultValue={revenueWindowDays ? String(revenueWindowDays) : ""}
                 />
               </label>
               <label className="field">
@@ -1368,30 +1230,18 @@ export default async function AdminPage({
                 </button>
               </div>
             </form>
-            {!guildId && (
-              <p>Enter a guild ID to load health metrics.</p>
-            )}
-            {healthConfigError && (
-              <div className="banner error">{healthConfigError}</div>
-            )}
-            {guildDiagnosticsError && (
-              <div className="banner error">{guildDiagnosticsError}</div>
-            )}
+            {!guildId && <p>Enter a guild ID to load health metrics.</p>}
+            {healthConfigError && <div className="banner error">{healthConfigError}</div>}
+            {guildDiagnosticsError && <div className="banner error">{guildDiagnosticsError}</div>}
             {activeMemberCountsError && (
               <div className="banner error">{activeMemberCountsError}</div>
             )}
-            {revenueIndicatorsError && (
-              <div className="banner error">{revenueIndicatorsError}</div>
-            )}
+            {revenueIndicatorsError && <div className="banner error">{revenueIndicatorsError}</div>}
             {providerDiagnosticsError && (
               <div className="banner error">{providerDiagnosticsError}</div>
             )}
-            {failedWebhookError && (
-              <div className="banner error">{failedWebhookError}</div>
-            )}
-            {auditEventsError && (
-              <div className="banner error">{auditEventsError}</div>
-            )}
+            {failedWebhookError && <div className="banner error">{failedWebhookError}</div>}
+            {auditEventsError && <div className="banner error">{auditEventsError}</div>}
             {guildId && !healthConfigError && (
               <div className="snapshot-grid">
                 <div className="snapshot-card">
@@ -1399,9 +1249,7 @@ export default async function AdminPage({
                   {guildDiagnostics ? (
                     <>
                       <div className="meta">
-                        <span>
-                          Checked: {formatTimestamp(guildDiagnostics.checkedAt)}
-                        </span>
+                        <span>Checked: {formatTimestamp(guildDiagnostics.checkedAt)}</span>
                         <span>Overall: {guildDiagnostics.overallStatus}</span>
                         {guildDiagnostics.botRoleId && (
                           <span>Bot role: {guildDiagnostics.botRoleId}</span>
@@ -1411,19 +1259,11 @@ export default async function AdminPage({
                         <li className="audit-item">
                           <div className="audit-title">Permissions</div>
                           <div className="audit-meta">
-                            <span>
-                              {guildDiagnostics.permissionsOk
-                                ? "OK"
-                                : "Missing"}
-                            </span>
+                            <span>{guildDiagnostics.permissionsOk ? "OK" : "Missing"}</span>
                             {!guildDiagnostics.permissionsOk &&
-                              guildDiagnostics.missingPermissions.length >
-                                0 && (
+                              guildDiagnostics.missingPermissions.length > 0 && (
                                 <span>
-                                  Missing:{" "}
-                                  {guildDiagnostics.missingPermissions.join(
-                                    ", "
-                                  )}
+                                  Missing: {guildDiagnostics.missingPermissions.join(", ")}
                                 </span>
                               )}
                           </div>
@@ -1431,16 +1271,11 @@ export default async function AdminPage({
                         <li className="audit-item">
                           <div className="audit-title">Role hierarchy</div>
                           <div className="audit-meta">
-                            <span>
-                              {guildDiagnostics.roleHierarchyOk
-                                ? "OK"
-                                : "Blocked"}
-                            </span>
+                            <span>{guildDiagnostics.roleHierarchyOk ? "OK" : "Blocked"}</span>
                             {!guildDiagnostics.roleHierarchyOk &&
                               guildDiagnostics.blockedRoleIds.length > 0 && (
                                 <span>
-                                  Blocked roles:{" "}
-                                  {guildDiagnostics.blockedRoleIds.join(", ")}
+                                  Blocked roles: {guildDiagnostics.blockedRoleIds.join(", ")}
                                 </span>
                               )}
                           </div>
@@ -1448,22 +1283,17 @@ export default async function AdminPage({
                         <li className="audit-item">
                           <div className="audit-title">Roles present</div>
                           <div className="audit-meta">
-                            <span>
-                              {guildDiagnostics.rolesExistOk ? "OK" : "Missing"}
-                            </span>
+                            <span>{guildDiagnostics.rolesExistOk ? "OK" : "Missing"}</span>
                             {!guildDiagnostics.rolesExistOk &&
                               guildDiagnostics.missingRoleIds.length > 0 && (
                                 <span>
-                                  Missing roles:{" "}
-                                  {guildDiagnostics.missingRoleIds.join(", ")}
+                                  Missing roles: {guildDiagnostics.missingRoleIds.join(", ")}
                                 </span>
                               )}
                           </div>
                         </li>
                       </ul>
-                      {guildDiagnostics.notes && (
-                        <p>Notes: {guildDiagnostics.notes}</p>
-                      )}
+                      {guildDiagnostics.notes && <p>Notes: {guildDiagnostics.notes}</p>}
                     </>
                   ) : (
                     <p>Onboarding diagnostics are unavailable.</p>
@@ -1480,9 +1310,7 @@ export default async function AdminPage({
                           <li key={tier.tierId} className="audit-item">
                             <div className="audit-title">{tier.tierName}</div>
                             <div className="audit-meta">
-                              <span>
-                                Active members: {tier.activeMemberCount}
-                              </span>
+                              <span>Active members: {tier.activeMemberCount}</span>
                             </div>
                           </li>
                         ))}
@@ -1497,50 +1325,30 @@ export default async function AdminPage({
                   {revenueIndicators ? (
                     <>
                       <div className="meta">
-                        <span>
-                          Window: last {revenueIndicators.windowDays} days
-                        </span>
-                        <span>
-                          From: {formatTimestamp(revenueIndicators.windowStart)}
-                        </span>
-                        <span>
-                          Evaluated:{" "}
-                          {formatTimestamp(revenueIndicators.evaluatedAt)}
-                        </span>
+                        <span>Window: last {revenueIndicators.windowDays} days</span>
+                        <span>From: {formatTimestamp(revenueIndicators.windowStart)}</span>
+                        <span>Evaluated: {formatTimestamp(revenueIndicators.evaluatedAt)}</span>
                         <span>Scan limit: {revenueIndicators.scanLimit}</span>
                       </div>
                       <div className="meta">
-                        <span>
-                          Counts derived from provider events; not accounting.
-                        </span>
+                        <span>Counts derived from provider events; not accounting.</span>
                       </div>
                       <ul className="audit-list">
                         <li className="audit-item">
                           <div className="audit-title">Totals</div>
                           <div className="audit-meta">
                             <span>
-                              Payments succeeded:{" "}
-                              {revenueIndicators.totals.paymentSucceeded}
+                              Payments succeeded: {revenueIndicators.totals.paymentSucceeded}
+                            </span>
+                            <span>Payments failed: {revenueIndicators.totals.paymentFailed}</span>
+                            <span>Refunds: {revenueIndicators.totals.refunds}</span>
+                            <span>
+                              Chargebacks opened: {revenueIndicators.totals.chargebacksOpened}
                             </span>
                             <span>
-                              Payments failed:{" "}
-                              {revenueIndicators.totals.paymentFailed}
+                              Chargebacks closed: {revenueIndicators.totals.chargebacksClosed}
                             </span>
-                            <span>
-                              Refunds: {revenueIndicators.totals.refunds}
-                            </span>
-                            <span>
-                              Chargebacks opened:{" "}
-                              {revenueIndicators.totals.chargebacksOpened}
-                            </span>
-                            <span>
-                              Chargebacks closed:{" "}
-                              {revenueIndicators.totals.chargebacksClosed}
-                            </span>
-                            <span>
-                              Matched events:{" "}
-                              {revenueIndicators.totals.matchedEvents}
-                            </span>
+                            <span>Matched events: {revenueIndicators.totals.matchedEvents}</span>
                           </div>
                         </li>
                       </ul>
@@ -1551,21 +1359,11 @@ export default async function AdminPage({
                               {formatProviderLabel(provider.provider)}
                             </div>
                             <div className="audit-meta">
-                              <span>
-                                Payments succeeded: {provider.paymentSucceeded}
-                              </span>
-                              <span>
-                                Payments failed: {provider.paymentFailed}
-                              </span>
+                              <span>Payments succeeded: {provider.paymentSucceeded}</span>
+                              <span>Payments failed: {provider.paymentFailed}</span>
                               <span>Refunds: {provider.refunds}</span>
-                              <span>
-                                Chargebacks opened:{" "}
-                                {provider.chargebacksOpened}
-                              </span>
-                              <span>
-                                Chargebacks closed:{" "}
-                                {provider.chargebacksClosed}
-                              </span>
+                              <span>Chargebacks opened: {provider.chargebacksOpened}</span>
+                              <span>Chargebacks closed: {provider.chargebacksClosed}</span>
                               <span>Matched events: {provider.matchedEvents}</span>
                               <span>Scanned events: {provider.scannedEvents}</span>
                             </div>
@@ -1582,38 +1380,26 @@ export default async function AdminPage({
                   {providerDiagnostics ? (
                     <>
                       <div className="meta">
-                        <span>
-                          Evaluated:{" "}
-                          {formatTimestamp(providerDiagnostics.evaluatedAt)}
-                        </span>
+                        <span>Evaluated: {formatTimestamp(providerDiagnostics.evaluatedAt)}</span>
                         <span>Scan limit: {providerDiagnostics.scanLimit}</span>
                       </div>
                       <ul className="audit-list">
                         {providerDiagnostics.providers.map((entry) => {
                           const event = entry.event;
-                          const eventTime =
-                            event?.occurredAt ?? event?.receivedAt;
+                          const eventTime = event?.occurredAt ?? event?.receivedAt;
                           return (
                             <li key={entry.provider} className="audit-item">
                               <div className="audit-title">
                                 {formatProviderLabel(entry.provider)}{" "}
-                                {event
-                                  ? `• ${event.normalizedEventType}`
-                                  : "• No events"}
+                                {event ? `• ${event.normalizedEventType}` : "• No events"}
                               </div>
                               <div className="audit-meta">
                                 <span>{formatMatchType(entry.matchType)}</span>
-                                <span>
-                                  Seen: {formatTimestamp(eventTime)}
-                                </span>
+                                <span>Seen: {formatTimestamp(eventTime)}</span>
                                 {event?.processedStatus && (
-                                  <span>
-                                    Processed: {event.processedStatus}
-                                  </span>
+                                  <span>Processed: {event.processedStatus}</span>
                                 )}
-                                {event?.lastError && (
-                                  <span>Error: {event.lastError}</span>
-                                )}
+                                {event?.lastError && <span>Error: {event.lastError}</span>}
                               </div>
                             </li>
                           );
@@ -1633,23 +1419,14 @@ export default async function AdminPage({
                       <ul className="audit-list">
                         {failedWebhookDeliveries.map((delivery) => (
                           <li key={delivery._id} className="audit-item">
-                            <div className="audit-title">
-                              {delivery.eventType}
-                            </div>
+                            <div className="audit-title">{delivery.eventType}</div>
                             <div className="audit-meta">
                               <span>Endpoint: {delivery.endpointUrl}</span>
                               <span>Event: {delivery.eventId}</span>
                               <span>Attempts: {delivery.attempts}</span>
-                              <span>
-                                Last tried:{" "}
-                                {formatTimestamp(delivery.lastAttemptedAt)}
-                              </span>
-                              <span>
-                                Failed: {formatTimestamp(delivery.updatedAt)}
-                              </span>
-                              {delivery.lastError && (
-                                <span>Error: {delivery.lastError}</span>
-                              )}
+                              <span>Last tried: {formatTimestamp(delivery.lastAttemptedAt)}</span>
+                              <span>Failed: {formatTimestamp(delivery.updatedAt)}</span>
+                              {delivery.lastError && <span>Error: {delivery.lastError}</span>}
                             </div>
                           </li>
                         ))}
@@ -1683,8 +1460,7 @@ export default async function AdminPage({
           <section className="panel">
             <h2>Member lookup</h2>
             <p>
-              Search for a member by Discord ID or username and load their
-              entitlement timeline.
+              Search for a member by Discord ID or username and load their entitlement timeline.
             </p>
             <form className="form" action="/admin" method="get">
               <label className="field">
@@ -1712,9 +1488,7 @@ export default async function AdminPage({
                 </button>
               </div>
             </form>
-            {memberSearchError && (
-              <div className="banner error">{memberSearchError}</div>
-            )}
+            {memberSearchError && <div className="banner error">{memberSearchError}</div>}
             {memberSearchResults && (
               <>
                 {memberSearchResults.length === 0 ? (
@@ -1734,13 +1508,9 @@ export default async function AdminPage({
                       return (
                         <li key={member._id} className="result-item">
                           <div className="result-meta">
-                            <strong>
-                              {member.discordUsername ?? "Unknown user"}
-                            </strong>
+                            <strong>{member.discordUsername ?? "Unknown user"}</strong>
                             <span>ID: {member.discordUserId}</span>
-                            <span>
-                              Updated: {formatTimestamp(member.updatedAt)}
-                            </span>
+                            <span>Updated: {formatTimestamp(member.updatedAt)}</span>
                           </div>
                           <Link className="button secondary" href={detailHref}>
                             View snapshot
@@ -1755,10 +1525,7 @@ export default async function AdminPage({
           </section>
           <section className="panel">
             <h2>Member snapshot</h2>
-            <p>
-              Load entitlement grants and audit events for a single Discord user
-              id.
-            </p>
+            <p>Load entitlement grants and audit events for a single Discord user id.</p>
             <form className="form" action="/admin" method="get">
               <label className="field">
                 <span>Guild ID</span>
@@ -1786,12 +1553,8 @@ export default async function AdminPage({
                 </button>
               </div>
             </form>
-            {memberSnapshotError && (
-              <div className="banner error">{memberSnapshotError}</div>
-            )}
-            {roleSyncError && (
-              <div className="banner error">{roleSyncError}</div>
-            )}
+            {memberSnapshotError && <div className="banner error">{memberSnapshotError}</div>}
+            {roleSyncError && <div className="banner error">{roleSyncError}</div>}
             {memberSnapshot && (
               <div className="snapshot-grid">
                 <div className="snapshot-card">
@@ -1799,26 +1562,14 @@ export default async function AdminPage({
                   <div className="snapshot-meta">
                     <span>
                       Username:{" "}
-                      <strong>
-                        {memberSnapshot.memberIdentity?.discordUsername ??
-                          "Unknown"}
-                      </strong>
+                      <strong>{memberSnapshot.memberIdentity?.discordUsername ?? "Unknown"}</strong>
                     </span>
                     <span>
-                      Discord ID:{" "}
-                      {memberSnapshot.memberIdentity?.discordUserId ?? memberId}
+                      Discord ID: {memberSnapshot.memberIdentity?.discordUserId ?? memberId}
                     </span>
+                    <span>Linked: {formatTimestamp(memberSnapshot.memberIdentity?.createdAt)}</span>
                     <span>
-                      Linked:{" "}
-                      {formatTimestamp(
-                        memberSnapshot.memberIdentity?.createdAt
-                      )}
-                    </span>
-                    <span>
-                      Updated:{" "}
-                      {formatTimestamp(
-                        memberSnapshot.memberIdentity?.updatedAt
-                      )}
+                      Updated: {formatTimestamp(memberSnapshot.memberIdentity?.updatedAt)}
                     </span>
                   </div>
                 </div>
@@ -1830,16 +1581,12 @@ export default async function AdminPage({
                     <ul className="audit-list">
                       {memberSnapshot.grants.map((grant) => (
                         <li key={grant._id} className="audit-item">
-                          <div className="audit-title">
-                            {grant.tier?.name ?? "Unknown tier"}
-                          </div>
+                          <div className="audit-title">{grant.tier?.name ?? "Unknown tier"}</div>
                           <div className="audit-meta">
                             <span>Status: {grant.status}</span>
                             <span>Source: {grant.source}</span>
                             <span>Valid from: {formatTimestamp(grant.validFrom)}</span>
-                            <span>
-                              Valid through: {formatTimestamp(grant.validThrough)}
-                            </span>
+                            <span>Valid through: {formatTimestamp(grant.validThrough)}</span>
                           </div>
                         </li>
                       ))}
@@ -1874,16 +1621,10 @@ export default async function AdminPage({
                               {request.status}
                             </div>
                             <div className="audit-meta">
-                              <span>
-                                Requested: {formatTimestamp(request.requestedAt)}
-                              </span>
-                              <span>
-                                Updated: {formatTimestamp(request.updatedAt)}
-                              </span>
+                              <span>Requested: {formatTimestamp(request.requestedAt)}</span>
+                              <span>Updated: {formatTimestamp(request.updatedAt)}</span>
                               {request.completedAt && (
-                                <span>
-                                  Completed: {formatTimestamp(request.completedAt)}
-                                </span>
+                                <span>Completed: {formatTimestamp(request.completedAt)}</span>
                               )}
                               <span>
                                 Requested by: {request.requestedByActorType ?? "system"}
@@ -1891,12 +1632,8 @@ export default async function AdminPage({
                                   ? ` (${request.requestedByActorId})`
                                   : ""}
                               </span>
-                              {request.reason && (
-                                <span>Reason: {request.reason}</span>
-                              )}
-                              {request.lastError && (
-                                <span>Error: {request.lastError}</span>
-                              )}
+                              {request.reason && <span>Reason: {request.reason}</span>}
+                              {request.lastError && <span>Error: {request.lastError}</span>}
                             </div>
                           </li>
                         ))}

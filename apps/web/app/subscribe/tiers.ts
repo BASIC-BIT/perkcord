@@ -30,5 +30,4 @@ export const TIERS: Tier[] = [
   },
 ];
 
-export const getTier = (id?: string) =>
-  TIERS.find((tier) => tier.id === id) ?? TIERS[0];
+export const getTier = (id?: string) => TIERS.find((tier) => tier.id === id) ?? TIERS[0];

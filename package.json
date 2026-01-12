@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "check": "npm --prefix apps/web run format && npm --prefix apps/web run lint && npm --prefix apps/web run typecheck && npm --prefix apps/web run test && npm --prefix apps/web run test:e2e && npm --prefix apps/bot run format && npm --prefix apps/bot run lint && npm --prefix apps/bot run typecheck && npm --prefix convex run format && npm --prefix convex run lint",
+    "check": "npm --prefix apps/web run format:write && npm --prefix apps/web run lint && npm --prefix apps/web run typecheck && npm --prefix apps/web run test && npm --prefix apps/web run test:e2e && npm --prefix apps/bot run format:write && npm --prefix apps/bot run lint && npm --prefix apps/bot run typecheck && npm --prefix convex run format:write && npm --prefix convex run lint",
     "check:ci": "npm run check && bash scripts/check-metrics.sh"
   }
 }

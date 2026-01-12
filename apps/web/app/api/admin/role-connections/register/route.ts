@@ -12,10 +12,7 @@ const readFormValue = (form: FormData, key: string) => {
   return trimmed.length > 0 ? trimmed : null;
 };
 
-const buildRedirect = (
-  request: Request,
-  params: Record<string, string | undefined>
-) => {
+const buildRedirect = (request: Request, params: Record<string, string | undefined>) => {
   const url = new URL("/admin", request.url);
   for (const [key, value] of Object.entries(params)) {
     if (value) {
@@ -59,21 +56,12 @@ export async function POST(request: Request) {
   let convexUrl: string;
   let apiKey: string;
   try {
-    convexUrl = requireEnv(
-      "PERKCORD_CONVEX_HTTP_URL",
-      "Convex REST configuration missing."
-    );
-    apiKey = requireEnv(
-      "PERKCORD_REST_API_KEY",
-      "Convex REST configuration missing."
-    );
+    convexUrl = requireEnv("PERKCORD_CONVEX_HTTP_URL", "Convex REST configuration missing.");
+    apiKey = requireEnv("PERKCORD_REST_API_KEY", "Convex REST configuration missing.");
   } catch (error) {
     return buildRedirect(request, {
       roleConnectionsStatus: "error",
-      roleConnectionsMessage: resolveEnvError(
-        error,
-        "Convex REST configuration missing."
-      ),
+      roleConnectionsMessage: resolveEnvError(error, "Convex REST configuration missing."),
     });
   }
 
@@ -95,9 +83,7 @@ export async function POST(request: Request) {
     });
   }
 
-  const endpoint = `${normalizeBaseUrl(
-    convexUrl
-  )}/api/role-connections/metadata`;
+  const endpoint = `${normalizeBaseUrl(convexUrl)}/api/role-connections/metadata`;
 
   try {
     const response = await fetch(endpoint, {
@@ -115,8 +101,7 @@ export async function POST(request: Request) {
     const payload = await response.json().catch(() => null);
     if (!response.ok) {
       const message =
-        payload?.error ??
-        `Linked Roles registration failed with status ${response.status}.`;
+        payload?.error ?? `Linked Roles registration failed with status ${response.status}.`;
       return buildRedirect(request, {
         roleConnectionsStatus: "error",
         roleConnectionsMessage: clampMessage(String(message)),
@@ -126,14 +111,11 @@ export async function POST(request: Request) {
 
     return buildRedirect(request, {
       roleConnectionsStatus: "success",
-      roleConnectionsCount: payload?.metadataCount
-        ? String(payload.metadataCount)
-        : undefined,
+      roleConnectionsCount: payload?.metadataCount ? String(payload.metadataCount) : undefined,
       guildId,
     });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Linked Roles registration failed.";
+    const message = error instanceof Error ? error.message : "Linked Roles registration failed.";
     return buildRedirect(request, {
       roleConnectionsStatus: "error",
       roleConnectionsMessage: clampMessage(message),

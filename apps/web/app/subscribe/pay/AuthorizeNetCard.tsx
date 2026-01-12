@@ -42,7 +42,7 @@ declare global {
             zip?: string;
           };
         },
-        callback: (response: AcceptDispatchResponse) => void
+        callback: (response: AcceptDispatchResponse) => void,
       ) => void;
     };
   }
@@ -58,12 +58,12 @@ const loadAcceptJs = () => {
   if (!acceptScriptPromise) {
     acceptScriptPromise = new Promise((resolve, reject) => {
       const existing = document.querySelector(
-        "script[data-anet=acceptjs]"
+        "script[data-anet=acceptjs]",
       ) as HTMLScriptElement | null;
       if (existing) {
         existing.addEventListener("load", () => resolve());
         existing.addEventListener("error", () =>
-          reject(new Error("Failed to load Authorize.Net script."))
+          reject(new Error("Failed to load Authorize.Net script.")),
         );
         return;
       }
@@ -72,8 +72,7 @@ const loadAcceptJs = () => {
       script.async = true;
       script.dataset.anet = "acceptjs";
       script.onload = () => resolve();
-      script.onerror = () =>
-        reject(new Error("Failed to load Authorize.Net script."));
+      script.onerror = () => reject(new Error("Failed to load Authorize.Net script."));
       document.body.appendChild(script);
     });
   }
@@ -97,7 +96,7 @@ const tokenizeCard = (
     year: string;
     cardCode: string;
     zip?: string;
-  }
+  },
 ) => {
   return new Promise<AuthorizeNetOpaqueData>((resolve, reject) => {
     if (!window.Accept?.dispatchData) {
@@ -124,7 +123,7 @@ const tokenizeCard = (
           return;
         }
         resolve(opaqueData);
-      }
+      },
     );
   });
 };
@@ -156,12 +155,9 @@ export function AuthorizeNetCard({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const missingKeys = !apiLoginId || !clientKey;
-  const ready = Boolean(
-    guildId && amount && mode && !configError && !missingKeys
-  );
+  const ready = Boolean(guildId && amount && mode && !configError && !missingKeys);
   const isSubscription = mode === "subscription";
-  const billingLabel =
-    isSubscription && intervalLabel ? intervalLabel : "billing period";
+  const billingLabel = isSubscription && intervalLabel ? intervalLabel : "billing period";
   const buttonLabel = isSubmitting
     ? "Processing..."
     : isSubscription
@@ -204,9 +200,10 @@ export function AuthorizeNetCard({
         }),
       });
 
-      const payload = (await response
-        .json()
-        .catch(() => null)) as { error?: string; redirectUrl?: string } | null;
+      const payload = (await response.json().catch(() => null)) as {
+        error?: string;
+        redirectUrl?: string;
+      } | null;
 
       if (!response.ok) {
         throw new Error(payload?.error || "Authorize.Net checkout failed.");
@@ -234,18 +231,14 @@ export function AuthorizeNetCard({
       </p>
       {configError && <div className="banner error">{configError}</div>}
       {missingKeys && (
-        <div className="banner">
-          Authorize.Net Accept.js keys are not configured.
-        </div>
+        <div className="banner">Authorize.Net Accept.js keys are not configured.</div>
       )}
       {!guildId && (
         <div className="banner">
           Missing guildId. Add ?guildId=&lt;serverId&gt; to the URL to continue.
         </div>
       )}
-      {!mode && (
-        <div className="banner">Authorize.Net checkout is not configured.</div>
-      )}
+      {!mode && <div className="banner">Authorize.Net checkout is not configured.</div>}
       {error && <div className="banner error">{error}</div>}
       <form className="form" onSubmit={handleSubmit}>
         <label className="field">

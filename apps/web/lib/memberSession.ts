@@ -15,10 +15,8 @@ type CookieStore = {
   get: (name: string) => { value: string } | undefined;
 };
 
-const encodeBase64Url = (value: string | Buffer) =>
-  Buffer.from(value).toString("base64url");
-const decodeBase64Url = (value: string) =>
-  Buffer.from(value, "base64url").toString("utf8");
+const encodeBase64Url = (value: string | Buffer) => Buffer.from(value).toString("base64url");
+const decodeBase64Url = (value: string) => Buffer.from(value, "base64url").toString("utf8");
 
 export const encodeMemberSession = (session: MemberSession, secret: string) => {
   const payload = encodeBase64Url(JSON.stringify(session));
@@ -74,7 +72,7 @@ export const decodeMemberSession = (token: string, secret: string) => {
 
 export const createMemberSession = (
   discordUserId: string,
-  discordGuildId: string
+  discordGuildId: string,
 ): MemberSession => {
   const issuedAt = Date.now();
   return {
@@ -85,10 +83,7 @@ export const createMemberSession = (
   };
 };
 
-export const getMemberSessionFromCookies = (
-  cookieStore: CookieStore,
-  secret: string
-) => {
+export const getMemberSessionFromCookies = (cookieStore: CookieStore, secret: string) => {
   const raw = cookieStore.get(MEMBER_SESSION_COOKIE)?.value;
   if (!raw) {
     return null;

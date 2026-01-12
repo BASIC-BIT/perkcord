@@ -16,10 +16,7 @@ const readFormValue = (form: FormData, key: string) => {
 
 const readFormFlag = (form: FormData, key: string) => form.get(key) !== null;
 
-const buildRedirect = (
-  request: Request,
-  params: Record<string, string | undefined>
-) => {
+const buildRedirect = (request: Request, params: Record<string, string | undefined>) => {
   const url = new URL("/admin", request.url);
   for (const [key, value] of Object.entries(params)) {
     if (value) {
@@ -52,11 +49,7 @@ const parseCommaList = (value: string | null) => {
   return items.length > 0 ? items : null;
 };
 
-const parseOptionalInteger = (
-  value: string | null,
-  label: string,
-  options?: { min?: number }
-) => {
+const parseOptionalInteger = (value: string | null, label: string, options?: { min?: number }) => {
   if (!value) {
     return undefined;
   }
@@ -104,14 +97,8 @@ export async function POST(request: Request) {
   let convexUrl: string;
   let apiKey: string;
   try {
-    convexUrl = requireEnv(
-      "PERKCORD_CONVEX_HTTP_URL",
-      "Convex REST configuration missing."
-    );
-    apiKey = requireEnv(
-      "PERKCORD_REST_API_KEY",
-      "Convex REST configuration missing."
-    );
+    convexUrl = requireEnv("PERKCORD_CONVEX_HTTP_URL", "Convex REST configuration missing.");
+    apiKey = requireEnv("PERKCORD_REST_API_KEY", "Convex REST configuration missing.");
   } catch (error) {
     return buildRedirect(request, {
       tierAction: "create",
@@ -173,11 +160,7 @@ export async function POST(request: Request) {
     durationDays = parseOptionalInteger(policyDurationRaw, "Duration days", {
       min: 1,
     });
-    gracePeriodDays = parseOptionalInteger(
-      policyGraceRaw,
-      "Grace period days",
-      { min: 0 }
-    );
+    gracePeriodDays = parseOptionalInteger(policyGraceRaw, "Grace period days", { min: 0 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Invalid policy.";
     return buildRedirect(request, {
@@ -232,26 +215,22 @@ export async function POST(request: Request) {
 
   const providerRefs: Record<string, string[]> = {};
   const stripeSubscriptionPriceIds = parseCommaList(
-    readFormValue(form, "stripeSubscriptionPriceIds")
+    readFormValue(form, "stripeSubscriptionPriceIds"),
   );
   if (stripeSubscriptionPriceIds) {
     providerRefs.stripeSubscriptionPriceIds = stripeSubscriptionPriceIds;
   }
-  const stripeOneTimePriceIds = parseCommaList(
-    readFormValue(form, "stripeOneTimePriceIds")
-  );
+  const stripeOneTimePriceIds = parseCommaList(readFormValue(form, "stripeOneTimePriceIds"));
   if (stripeOneTimePriceIds) {
     providerRefs.stripeOneTimePriceIds = stripeOneTimePriceIds;
   }
   const authorizeNetSubscriptionIds = parseCommaList(
-    readFormValue(form, "authorizeNetSubscriptionIds")
+    readFormValue(form, "authorizeNetSubscriptionIds"),
   );
   if (authorizeNetSubscriptionIds) {
     providerRefs.authorizeNetSubscriptionIds = authorizeNetSubscriptionIds;
   }
-  const authorizeNetOneTimeKeys = parseCommaList(
-    readFormValue(form, "authorizeNetOneTimeKeys")
-  );
+  const authorizeNetOneTimeKeys = parseCommaList(readFormValue(form, "authorizeNetOneTimeKeys"));
   if (authorizeNetOneTimeKeys) {
     providerRefs.authorizeNetOneTimeKeys = authorizeNetOneTimeKeys;
   }
@@ -292,8 +271,7 @@ export async function POST(request: Request) {
 
     const payload = await response.json().catch(() => null);
     if (!response.ok) {
-      const message =
-        payload?.error ?? `Tier creation failed with status ${response.status}.`;
+      const message = payload?.error ?? `Tier creation failed with status ${response.status}.`;
       return buildRedirect(request, {
         tierAction: "create",
         tierStatus: "error",
@@ -309,8 +287,7 @@ export async function POST(request: Request) {
       guildId,
     });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Tier creation failed.";
+    const message = error instanceof Error ? error.message : "Tier creation failed.";
     return buildRedirect(request, {
       tierAction: "create",
       tierStatus: "error",

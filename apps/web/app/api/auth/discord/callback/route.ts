@@ -4,11 +4,7 @@ import {
   exchangeDiscordCode,
   fetchDiscordUser,
 } from "@/lib/discordOAuth";
-import {
-  ADMIN_SESSION_COOKIE,
-  encodeSession,
-  type AdminSession,
-} from "@/lib/session";
+import { ADMIN_SESSION_COOKIE, encodeSession, type AdminSession } from "@/lib/session";
 import { requireEnv, resolveEnvError } from "@/lib/serverEnv";
 
 export async function GET(request: Request) {
@@ -18,27 +14,21 @@ export async function GET(request: Request) {
   const cookieState = request.cookies.get(DISCORD_OAUTH_STATE_COOKIE)?.value;
 
   if (!code || !state || !cookieState || state !== cookieState) {
-    return NextResponse.json(
-      { error: "Discord OAuth validation failed." },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Discord OAuth validation failed." }, { status: 400 });
   }
 
   let sessionSecret: string;
   try {
     sessionSecret = requireEnv(
       "PERKCORD_SESSION_SECRET",
-      "PERKCORD_SESSION_SECRET is not configured."
+      "PERKCORD_SESSION_SECRET is not configured.",
     );
   } catch (error) {
     return NextResponse.json(
       {
-        error: resolveEnvError(
-          error,
-          "PERKCORD_SESSION_SECRET is not configured."
-        ),
+        error: resolveEnvError(error, "PERKCORD_SESSION_SECRET is not configured."),
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 
@@ -71,9 +61,6 @@ export async function GET(request: Request) {
     });
     return response;
   } catch {
-    return NextResponse.json(
-      { error: "Failed to complete Discord OAuth." },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to complete Discord OAuth." }, { status: 500 });
   }
 }

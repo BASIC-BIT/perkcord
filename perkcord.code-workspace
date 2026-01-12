@@ -5,6 +5,9 @@
 		},
 		{
 			"path": "../treebot"
+		},
+		{
+			"path": "../basic-prompts"
 		}
 	],
 	"settings": {}

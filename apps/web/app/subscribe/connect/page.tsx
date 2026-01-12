@@ -3,28 +3,21 @@ import { getTier } from "../tiers";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
-const getParam = (value: SearchParams[string]) =>
-  Array.isArray(value) ? value[0] : value;
+const getParam = (value: SearchParams[string]) => (Array.isArray(value) ? value[0] : value);
 
-export default function ConnectDiscordPage({
-  searchParams,
-}: {
-  searchParams: SearchParams;
-}) {
+export default function ConnectDiscordPage({ searchParams }: { searchParams: SearchParams }) {
   const tierParam = getParam(searchParams.tier);
   const guildId = getParam(searchParams.guildId) ?? getParam(searchParams.guild);
   const tier = getTier(tierParam);
-  const oauthUrl = guildId
-    ? `/api/subscribe/discord?guildId=${guildId}&tier=${tier.id}`
-    : null;
+  const oauthUrl = guildId ? `/api/subscribe/discord?guildId=${guildId}&tier=${tier.id}` : null;
 
   return (
     <main className="card">
       <p className="subtle">Step 2 of 4</p>
       <h1>Connect Discord</h1>
       <p>
-        We link your Discord account to your purchase so the bot can grant
-        access. Member OAuth will request the role_connections.write scope.
+        We link your Discord account to your purchase so the bot can grant access. Member OAuth will
+        request the role_connections.write scope.
       </p>
       {!guildId && (
         <div className="banner">

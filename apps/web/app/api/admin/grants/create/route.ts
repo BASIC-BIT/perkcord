@@ -21,10 +21,7 @@ const readFormValue = (form: FormData, key: string) => {
   return trimmed.length > 0 ? trimmed : null;
 };
 
-const buildRedirect = (
-  request: Request,
-  params: Record<string, string | undefined>
-) => {
+const buildRedirect = (request: Request, params: Record<string, string | undefined>) => {
   const url = new URL("/admin", request.url);
   for (const [key, value] of Object.entries(params)) {
     if (value) {
@@ -81,14 +78,8 @@ export async function POST(request: Request) {
   let convexUrl: string;
   let apiKey: string;
   try {
-    convexUrl = requireEnv(
-      "PERKCORD_CONVEX_HTTP_URL",
-      "Convex REST configuration missing."
-    );
-    apiKey = requireEnv(
-      "PERKCORD_REST_API_KEY",
-      "Convex REST configuration missing."
-    );
+    convexUrl = requireEnv("PERKCORD_CONVEX_HTTP_URL", "Convex REST configuration missing.");
+    apiKey = requireEnv("PERKCORD_REST_API_KEY", "Convex REST configuration missing.");
   } catch (error) {
     return buildRedirect(request, {
       grantAction: "create",
@@ -165,11 +156,7 @@ export async function POST(request: Request) {
     });
   }
 
-  if (
-    validFrom !== undefined &&
-    validThrough !== undefined &&
-    validThrough < validFrom
-  ) {
+  if (validFrom !== undefined && validThrough !== undefined && validThrough < validFrom) {
     return buildRedirect(request, {
       grantAction: "create",
       grantStatus: "error",
@@ -202,8 +189,7 @@ export async function POST(request: Request) {
 
     const payload = await response.json().catch(() => null);
     if (!response.ok) {
-      const message =
-        payload?.error ?? `Manual grant failed with status ${response.status}.`;
+      const message = payload?.error ?? `Manual grant failed with status ${response.status}.`;
       return buildRedirect(request, {
         grantAction: "create",
         grantStatus: "error",
@@ -221,8 +207,7 @@ export async function POST(request: Request) {
       memberId: discordUserId,
     });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Manual grant failed.";
+    const message = error instanceof Error ? error.message : "Manual grant failed.";
     return buildRedirect(request, {
       grantAction: "create",
       grantStatus: "error",

@@ -1,10 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { resolveStripeCheckoutConfig } from "./stripeCheckout";
 
-const STRIPE_KEYS = [
-  "STRIPE_STARTER_SUBSCRIPTION_PRICE_ID",
-  "STRIPE_STARTER_ONE_TIME_PRICE_ID",
-];
+const STRIPE_KEYS = ["STRIPE_STARTER_SUBSCRIPTION_PRICE_ID", "STRIPE_STARTER_ONE_TIME_PRICE_ID"];
 
 const originalValues: Record<string, string | undefined> = {};
 

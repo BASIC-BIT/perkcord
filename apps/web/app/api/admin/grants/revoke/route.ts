@@ -12,10 +12,7 @@ const readFormValue = (form: FormData, key: string) => {
   return trimmed.length > 0 ? trimmed : null;
 };
 
-const buildRedirect = (
-  request: Request,
-  params: Record<string, string | undefined>
-) => {
+const buildRedirect = (request: Request, params: Record<string, string | undefined>) => {
   const url = new URL("/admin", request.url);
   for (const [key, value] of Object.entries(params)) {
     if (value) {
@@ -61,14 +58,8 @@ export async function POST(request: Request) {
   let convexUrl: string;
   let apiKey: string;
   try {
-    convexUrl = requireEnv(
-      "PERKCORD_CONVEX_HTTP_URL",
-      "Convex REST configuration missing."
-    );
-    apiKey = requireEnv(
-      "PERKCORD_REST_API_KEY",
-      "Convex REST configuration missing."
-    );
+    convexUrl = requireEnv("PERKCORD_CONVEX_HTTP_URL", "Convex REST configuration missing.");
+    apiKey = requireEnv("PERKCORD_REST_API_KEY", "Convex REST configuration missing.");
   } catch (error) {
     return buildRedirect(request, {
       grantAction: "revoke",
@@ -127,8 +118,7 @@ export async function POST(request: Request) {
 
     const payload = await response.json().catch(() => null);
     if (!response.ok) {
-      const message =
-        payload?.error ?? `Grant revoke failed with status ${response.status}.`;
+      const message = payload?.error ?? `Grant revoke failed with status ${response.status}.`;
       return buildRedirect(request, {
         grantAction: "revoke",
         grantStatus: "error",
@@ -144,8 +134,7 @@ export async function POST(request: Request) {
       guildId,
     });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Grant revoke failed.";
+    const message = error instanceof Error ? error.message : "Grant revoke failed.";
     return buildRedirect(request, {
       grantAction: "revoke",
       grantStatus: "error",

@@ -18,9 +18,7 @@ const getEncryptionKey = () => {
   }
   const key = decodeBase64Url(raw);
   if (key.length !== 32) {
-    throw new Error(
-      `${ENCRYPTION_KEY_ENV} must be a base64-encoded 32-byte key.`
-    );
+    throw new Error(`${ENCRYPTION_KEY_ENV} must be a base64-encoded 32-byte key.`);
   }
   return key;
 };
@@ -32,10 +30,7 @@ export const encryptSecret = (value: string) => {
   const key = getEncryptionKey();
   const iv = randomBytes(IV_LENGTH);
   const cipher = createCipheriv("aes-256-gcm", key, iv);
-  const ciphertext = Buffer.concat([
-    cipher.update(value, "utf8"),
-    cipher.final(),
-  ]);
+  const ciphertext = Buffer.concat([cipher.update(value, "utf8"), cipher.final()]);
   const tag = cipher.getAuthTag();
   return `${encodeBase64Url(iv)}.${encodeBase64Url(ciphertext)}.${encodeBase64Url(tag)}`;
 };
@@ -51,9 +46,6 @@ export const decryptSecret = (payload: string) => {
   const tag = decodeBase64Url(tagEncoded);
   const decipher = createDecipheriv("aes-256-gcm", key, iv);
   decipher.setAuthTag(tag);
-  const plaintext = Buffer.concat([
-    decipher.update(data),
-    decipher.final(),
-  ]).toString("utf8");
+  const plaintext = Buffer.concat([decipher.update(data), decipher.final()]).toString("utf8");
   return plaintext;
 };

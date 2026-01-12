@@ -15,9 +15,7 @@ export type AuthorizeNetOneTimeConfig = {
   oneTimeKey: string;
 };
 
-export type AuthorizeNetCheckoutConfig =
-  | AuthorizeNetSubscriptionConfig
-  | AuthorizeNetOneTimeConfig;
+export type AuthorizeNetCheckoutConfig = AuthorizeNetSubscriptionConfig | AuthorizeNetOneTimeConfig;
 
 type AuthorizeNetTierEnvConfig = {
   oneTimeKeyEnv?: string;
@@ -34,30 +32,24 @@ const AUTHORIZE_NET_TIER_ENV: Record<string, AuthorizeNetTierEnvConfig> = {
     oneTimeAmountEnv: "AUTHORIZE_NET_STARTER_ONE_TIME_AMOUNT",
     subscriptionKeyEnv: "AUTHORIZE_NET_STARTER_SUBSCRIPTION_KEY",
     subscriptionAmountEnv: "AUTHORIZE_NET_STARTER_SUBSCRIPTION_AMOUNT",
-    subscriptionIntervalLengthEnv:
-      "AUTHORIZE_NET_STARTER_SUBSCRIPTION_INTERVAL_LENGTH",
-    subscriptionIntervalUnitEnv:
-      "AUTHORIZE_NET_STARTER_SUBSCRIPTION_INTERVAL_UNIT",
+    subscriptionIntervalLengthEnv: "AUTHORIZE_NET_STARTER_SUBSCRIPTION_INTERVAL_LENGTH",
+    subscriptionIntervalUnitEnv: "AUTHORIZE_NET_STARTER_SUBSCRIPTION_INTERVAL_UNIT",
   },
   plus: {
     oneTimeKeyEnv: "AUTHORIZE_NET_PLUS_ONE_TIME_KEY",
     oneTimeAmountEnv: "AUTHORIZE_NET_PLUS_ONE_TIME_AMOUNT",
     subscriptionKeyEnv: "AUTHORIZE_NET_PLUS_SUBSCRIPTION_KEY",
     subscriptionAmountEnv: "AUTHORIZE_NET_PLUS_SUBSCRIPTION_AMOUNT",
-    subscriptionIntervalLengthEnv:
-      "AUTHORIZE_NET_PLUS_SUBSCRIPTION_INTERVAL_LENGTH",
-    subscriptionIntervalUnitEnv:
-      "AUTHORIZE_NET_PLUS_SUBSCRIPTION_INTERVAL_UNIT",
+    subscriptionIntervalLengthEnv: "AUTHORIZE_NET_PLUS_SUBSCRIPTION_INTERVAL_LENGTH",
+    subscriptionIntervalUnitEnv: "AUTHORIZE_NET_PLUS_SUBSCRIPTION_INTERVAL_UNIT",
   },
   legend: {
     oneTimeKeyEnv: "AUTHORIZE_NET_LEGEND_ONE_TIME_KEY",
     oneTimeAmountEnv: "AUTHORIZE_NET_LEGEND_ONE_TIME_AMOUNT",
     subscriptionKeyEnv: "AUTHORIZE_NET_LEGEND_SUBSCRIPTION_KEY",
     subscriptionAmountEnv: "AUTHORIZE_NET_LEGEND_SUBSCRIPTION_AMOUNT",
-    subscriptionIntervalLengthEnv:
-      "AUTHORIZE_NET_LEGEND_SUBSCRIPTION_INTERVAL_LENGTH",
-    subscriptionIntervalUnitEnv:
-      "AUTHORIZE_NET_LEGEND_SUBSCRIPTION_INTERVAL_UNIT",
+    subscriptionIntervalLengthEnv: "AUTHORIZE_NET_LEGEND_SUBSCRIPTION_INTERVAL_LENGTH",
+    subscriptionIntervalUnitEnv: "AUTHORIZE_NET_LEGEND_SUBSCRIPTION_INTERVAL_UNIT",
   },
 };
 
@@ -131,7 +123,7 @@ export type AuthorizeNetCheckoutConfigResult =
   | { ok: false; error: string };
 
 export const resolveAuthorizeNetCheckoutConfig = (
-  tierId: string
+  tierId: string,
 ): AuthorizeNetCheckoutConfigResult => {
   const envConfig = AUTHORIZE_NET_TIER_ENV[tierId];
   if (!envConfig) {
@@ -139,23 +131,16 @@ export const resolveAuthorizeNetCheckoutConfig = (
   }
 
   const subscriptionKey = readEnvValue(envConfig.subscriptionKeyEnv);
-  const subscriptionAmount = normalizeAmount(
-    readEnvValue(envConfig.subscriptionAmountEnv)
-  );
+  const subscriptionAmount = normalizeAmount(readEnvValue(envConfig.subscriptionAmountEnv));
   const subscriptionUnit = normalizeIntervalUnit(
-    readEnvValue(envConfig.subscriptionIntervalUnitEnv)
+    readEnvValue(envConfig.subscriptionIntervalUnitEnv),
   );
   const subscriptionLength = normalizeIntervalLength(
     readEnvValue(envConfig.subscriptionIntervalLengthEnv),
-    subscriptionUnit
+    subscriptionUnit,
   );
 
-  if (
-    subscriptionKey &&
-    subscriptionAmount &&
-    subscriptionUnit &&
-    subscriptionLength
-  ) {
+  if (subscriptionKey && subscriptionAmount && subscriptionUnit && subscriptionLength) {
     return {
       ok: true,
       config: {
@@ -164,10 +149,7 @@ export const resolveAuthorizeNetCheckoutConfig = (
         subscriptionKey,
         intervalLength: subscriptionLength,
         intervalUnit: subscriptionUnit,
-        intervalLabel: formatIntervalLabel(
-          subscriptionLength,
-          subscriptionUnit
-        ),
+        intervalLabel: formatIntervalLabel(subscriptionLength, subscriptionUnit),
       },
     };
   }

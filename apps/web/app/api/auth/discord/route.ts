@@ -21,9 +21,6 @@ export async function GET() {
     });
     return response;
   } catch {
-    return NextResponse.json(
-      { error: "Discord OAuth is not configured." },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Discord OAuth is not configured." }, { status: 500 });
   }
 }

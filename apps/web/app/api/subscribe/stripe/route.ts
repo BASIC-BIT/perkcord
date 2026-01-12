@@ -30,7 +30,7 @@ const buildPayRedirect = (
     guildId?: string | null;
     mode?: string | null;
     error?: string | null;
-  }
+  },
 ) => {
   const url = new URL("/subscribe/pay", request.url);
   if (params.tierId) {
@@ -51,10 +51,7 @@ const buildPayRedirect = (
 export async function POST(request: Request) {
   let stripeSecret: string;
   try {
-    stripeSecret = requireEnv(
-      "STRIPE_SECRET_KEY",
-      "Stripe checkout is not configured yet."
-    );
+    stripeSecret = requireEnv("STRIPE_SECRET_KEY", "Stripe checkout is not configured yet.");
   } catch (error) {
     return buildPayRedirect(request, {
       error: resolveEnvError(error, "Stripe checkout is not configured yet."),
@@ -96,24 +93,18 @@ export async function POST(request: Request) {
   try {
     sessionSecret = requireEnv(
       "PERKCORD_SESSION_SECRET",
-      "PERKCORD_SESSION_SECRET is not configured."
+      "PERKCORD_SESSION_SECRET is not configured.",
     );
   } catch (error) {
     return buildPayRedirect(request, {
       tierId,
       guildId,
       mode,
-      error: resolveEnvError(
-        error,
-        "PERKCORD_SESSION_SECRET is not configured."
-      ),
+      error: resolveEnvError(error, "PERKCORD_SESSION_SECRET is not configured."),
     });
   }
 
-  const memberSession = getMemberSessionFromCookies(
-    request.cookies,
-    sessionSecret
-  );
+  const memberSession = getMemberSessionFromCookies(request.cookies, sessionSecret);
   if (!memberSession) {
     return buildPayRedirect(request, {
       tierId,
@@ -171,14 +162,11 @@ export async function POST(request: Request) {
       });
     }
 
-    const existingLink = (await convex.query(
-      "providerCustomers:getProviderCustomerLinkForUser",
-      {
-        guildId: guild._id,
-        provider: "stripe",
-        discordUserId: memberSession.discordUserId,
-      }
-    )) as { providerCustomerId?: string } | null;
+    const existingLink = (await convex.query("providerCustomers:getProviderCustomerLinkForUser", {
+      guildId: guild._id,
+      provider: "stripe",
+      discordUserId: memberSession.discordUserId,
+    })) as { providerCustomerId?: string } | null;
 
     let customerId = existingLink?.providerCustomerId ?? null;
     if (!customerId) {

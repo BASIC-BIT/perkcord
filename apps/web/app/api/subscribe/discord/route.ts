@@ -21,30 +21,23 @@ export async function GET(request: Request) {
   const secure = process.env.NODE_ENV === "production";
   const { searchParams } = new URL(request.url);
 
-  const guildId =
-    readParam(searchParams, "guildId") ?? readParam(searchParams, "guild");
+  const guildId = readParam(searchParams, "guildId") ?? readParam(searchParams, "guild");
   if (!guildId) {
-    return NextResponse.json(
-      { error: "guildId is required to connect Discord." },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "guildId is required to connect Discord." }, { status: 400 });
   }
 
   let redirectUri: string;
   try {
     redirectUri = requireEnv(
       "DISCORD_MEMBER_REDIRECT_URI",
-      "DISCORD_MEMBER_REDIRECT_URI is not configured."
+      "DISCORD_MEMBER_REDIRECT_URI is not configured.",
     );
   } catch (error) {
     return NextResponse.json(
       {
-        error: resolveEnvError(
-          error,
-          "DISCORD_MEMBER_REDIRECT_URI is not configured."
-        ),
+        error: resolveEnvError(error, "DISCORD_MEMBER_REDIRECT_URI is not configured."),
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 
@@ -66,9 +59,7 @@ export async function GET(request: Request) {
     tier,
     returnTo: safeReturnTo,
   };
-  const contextValue = Buffer.from(JSON.stringify(context)).toString(
-    "base64url"
-  );
+  const contextValue = Buffer.from(JSON.stringify(context)).toString("base64url");
 
   const redirectUrl = buildDiscordAuthorizeUrl(state, {
     scope: DISCORD_MEMBER_OAUTH_SCOPES,

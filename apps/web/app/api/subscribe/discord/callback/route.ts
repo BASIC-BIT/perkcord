@@ -47,44 +47,31 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
   const state = searchParams.get("state");
-  const cookieState = request.cookies.get(DISCORD_MEMBER_OAUTH_STATE_COOKIE)
-    ?.value;
+  const cookieState = request.cookies.get(DISCORD_MEMBER_OAUTH_STATE_COOKIE)?.value;
 
   if (!code || !state || !cookieState || state !== cookieState) {
-    return NextResponse.json(
-      { error: "Discord OAuth validation failed." },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Discord OAuth validation failed." }, { status: 400 });
   }
 
-  const contextRaw = request.cookies.get(
-    DISCORD_MEMBER_OAUTH_CONTEXT_COOKIE
-  )?.value;
+  const contextRaw = request.cookies.get(DISCORD_MEMBER_OAUTH_CONTEXT_COOKIE)?.value;
   const context = contextRaw ? decodeContext(contextRaw) : null;
-  const discordGuildId =
-    typeof context?.guildId === "string" ? context.guildId.trim() : "";
+  const discordGuildId = typeof context?.guildId === "string" ? context.guildId.trim() : "";
   if (!discordGuildId) {
-    return NextResponse.json(
-      { error: "Missing guild context for member OAuth." },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Missing guild context for member OAuth." }, { status: 400 });
   }
 
   let redirectUri: string;
   try {
     redirectUri = requireEnv(
       "DISCORD_MEMBER_REDIRECT_URI",
-      "DISCORD_MEMBER_REDIRECT_URI is not configured."
+      "DISCORD_MEMBER_REDIRECT_URI is not configured.",
     );
   } catch (error) {
     return NextResponse.json(
       {
-        error: resolveEnvError(
-          error,
-          "DISCORD_MEMBER_REDIRECT_URI is not configured."
-        ),
+        error: resolveEnvError(error, "DISCORD_MEMBER_REDIRECT_URI is not configured."),
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 
@@ -94,7 +81,7 @@ export async function GET(request: Request) {
   } catch (error) {
     return NextResponse.json(
       { error: resolveEnvError(error, "CONVEX_URL is not configured.") },
-      { status: 500 }
+      { status: 500 },
     );
   }
 
@@ -102,17 +89,14 @@ export async function GET(request: Request) {
   try {
     sessionSecret = requireEnv(
       "PERKCORD_SESSION_SECRET",
-      "PERKCORD_SESSION_SECRET is not configured."
+      "PERKCORD_SESSION_SECRET is not configured.",
     );
   } catch (error) {
     return NextResponse.json(
       {
-        error: resolveEnvError(
-          error,
-          "PERKCORD_SESSION_SECRET is not configured."
-        ),
+        error: resolveEnvError(error, "PERKCORD_SESSION_SECRET is not configured."),
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 
@@ -132,10 +116,7 @@ export async function GET(request: Request) {
     })) as { _id: string } | null;
 
     if (!guild?._id) {
-      return NextResponse.json(
-        { error: "Guild not found for member OAuth." },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Guild not found for member OAuth." }, { status: 404 });
     }
 
     const expiresAt = Date.now() + token.expires_in * 1000;
@@ -158,8 +139,7 @@ export async function GET(request: Request) {
     }
     fallbackReturn.searchParams.set("guildId", discordGuildId);
     const returnTo =
-      sanitizeReturnTo(context?.returnTo) ??
-      `${fallbackReturn.pathname}${fallbackReturn.search}`;
+      sanitizeReturnTo(context?.returnTo) ?? `${fallbackReturn.pathname}${fallbackReturn.search}`;
 
     const response = NextResponse.redirect(new URL(returnTo, request.url));
     const memberSession = createMemberSession(user.id, discordGuildId);
@@ -177,22 +157,18 @@ export async function GET(request: Request) {
       path: "/",
       maxAge: 0,
     });
-    response.cookies.set(
-      MEMBER_SESSION_COOKIE,
-      encodeMemberSession(memberSession, sessionSecret),
-      {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        path: "/",
-        maxAge: MEMBER_SESSION_MAX_AGE_SECONDS,
-      }
-    );
+    response.cookies.set(MEMBER_SESSION_COOKIE, encodeMemberSession(memberSession, sessionSecret), {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: MEMBER_SESSION_MAX_AGE_SECONDS,
+    });
     return response;
   } catch {
     return NextResponse.json(
       { error: "Failed to complete member Discord OAuth." },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

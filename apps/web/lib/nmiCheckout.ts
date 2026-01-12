@@ -42,11 +42,7 @@ const normalizeMode = (value?: string) => {
     return null;
   }
   const normalized = value.trim().toLowerCase();
-  if (
-    normalized === "subscription" ||
-    normalized === "recurring" ||
-    normalized === "recurrence"
-  ) {
+  if (normalized === "subscription" || normalized === "recurring" || normalized === "recurrence") {
     return "subscription" as const;
   }
   if (
@@ -83,9 +79,7 @@ export type NmiCheckoutConfigResult =
   | { ok: true; config: NmiCheckoutConfig }
   | { ok: false; error: string };
 
-export const resolveNmiCheckoutConfig = (
-  tierId: string
-): NmiCheckoutConfigResult => {
+export const resolveNmiCheckoutConfig = (tierId: string): NmiCheckoutConfigResult => {
   const envConfig = NMI_TIER_ENV[tierId];
   if (!envConfig) {
     return { ok: false, error: "Unknown tier for NMI checkout." };

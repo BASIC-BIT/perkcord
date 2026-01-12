@@ -3,14 +3,9 @@ import { getTier } from "../tiers";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
-const getParam = (value: SearchParams[string]) =>
-  Array.isArray(value) ? value[0] : value;
+const getParam = (value: SearchParams[string]) => (Array.isArray(value) ? value[0] : value);
 
-export default function CelebratePage({
-  searchParams,
-}: {
-  searchParams: SearchParams;
-}) {
+export default function CelebratePage({ searchParams }: { searchParams: SearchParams }) {
   const tierParam = getParam(searchParams.tier);
   const guildId = getParam(searchParams.guildId) ?? getParam(searchParams.guild);
   const tier = getTier(tierParam);
@@ -20,13 +15,11 @@ export default function CelebratePage({
       <p className="subtle">Step 4 of 4</p>
       <h1>You are all set</h1>
       <p>
-        Your entitlement is active. The bot will sync roles shortly. If you do
-        not see access within a minute, contact an admin for a force sync.
+        Your entitlement is active. The bot will sync roles shortly. If you do not see access within
+        a minute, contact an admin for a force sync.
       </p>
       {!guildId && (
-        <div className="banner">
-          Add ?guildId=&lt;serverId&gt; to generate a real deep link.
-        </div>
+        <div className="banner">Add ?guildId=&lt;serverId&gt; to generate a real deep link.</div>
       )}
       <div className="tier-summary">
         <div className="tier-header">
