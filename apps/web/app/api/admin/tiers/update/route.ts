@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { getSessionFromCookies } from "@/lib/session";
 import { requireEnv, resolveEnvError } from "@/lib/serverEnv";
 
-type PolicyKind = "subscription" | "one_time";
+type PurchaseType = "subscription" | "one_time" | "lifetime";
 
 const readFormValue = (form: FormData, key: string) => {
   const value = form.get(key);
@@ -38,12 +38,12 @@ const clampMessage = (value: string, max = 160) => {
   return `${value.slice(0, max - 3)}...`;
 };
 
-const parseCommaList = (value: string | null) => {
+const parseList = (value: string | null) => {
   if (!value) {
     return null;
   }
   const items = value
-    .split(",")
+    .split(/[\n,]/)
     .map((item) => item.trim())
     .filter((item) => item.length > 0);
   return items.length > 0 ? items : null;
@@ -63,14 +63,14 @@ const parseOptionalInteger = (value: string | null, label: string, options?: { m
   return parsed;
 };
 
-const parsePolicyKind = (value: string | null): PolicyKind | null => {
+const parsePurchaseType = (value: string | null): PurchaseType | null => {
   if (!value) {
     return null;
   }
-  if (value === "subscription" || value === "one_time") {
+  if (value === "subscription" || value === "one_time" || value === "lifetime") {
     return value;
   }
-  throw new Error("Policy kind must be subscription or one_time.");
+  throw new Error("Purchase type must be subscription, one_time, or lifetime.");
 };
 
 export async function POST(request: Request) {
@@ -120,14 +120,24 @@ export async function POST(request: Request) {
 
   const guildId = readFormValue(form, "guildId");
   const tierId = readFormValue(form, "tierId");
+  const slug = readFormValue(form, "slug");
   const name = readFormValue(form, "name");
   const description = readFormValue(form, "description");
+  const displayPrice = readFormValue(form, "displayPrice");
+  const perksRaw = readFormValue(form, "perks");
+  const sortOrderRaw = readFormValue(form, "sortOrder");
   const roleIdsRaw = readFormValue(form, "roleIds");
-  const policyKindRaw = readFormValue(form, "policyKind");
+  const purchaseTypeRaw = readFormValue(form, "purchaseType");
   const policyDurationRaw = readFormValue(form, "policyDurationDays");
   const policyGraceRaw = readFormValue(form, "policyGracePeriodDays");
-  const policyLifetime = readFormFlag(form, "policyLifetime");
   const cancelAtPeriodEnd = readFormFlag(form, "policyCancelAtPeriodEnd");
+  const stripePriceIdsRaw = readFormValue(form, "stripePriceIds");
+  const authorizeNetKeyRaw = readFormValue(form, "authorizeNetKey");
+  const authorizeNetAmountRaw = readFormValue(form, "authorizeNetAmount");
+  const authorizeNetIntervalLengthRaw = readFormValue(form, "authorizeNetIntervalLength");
+  const authorizeNetIntervalUnitRaw = readFormValue(form, "authorizeNetIntervalUnit");
+  const nmiKeyRaw = readFormValue(form, "nmiKey");
+  const nmiHostedUrlRaw = readFormValue(form, "nmiHostedUrl");
 
   if (!guildId) {
     return buildRedirect(request, {
@@ -145,15 +155,23 @@ export async function POST(request: Request) {
     });
   }
 
-  let policyKind: PolicyKind | null = null;
+  let purchaseType: PurchaseType | null = null;
   let durationDays: number | undefined;
   let gracePeriodDays: number | undefined;
+  let sortOrder: number | undefined;
+  let authorizeNetIntervalLength: number | undefined;
   try {
-    policyKind = parsePolicyKind(policyKindRaw);
+    purchaseType = parsePurchaseType(purchaseTypeRaw);
     durationDays = parseOptionalInteger(policyDurationRaw, "Duration days", {
       min: 1,
     });
     gracePeriodDays = parseOptionalInteger(policyGraceRaw, "Grace period days", { min: 0 });
+    sortOrder = parseOptionalInteger(sortOrderRaw, "Sort order", { min: 0 });
+    authorizeNetIntervalLength = parseOptionalInteger(
+      authorizeNetIntervalLengthRaw,
+      "Authorize.Net interval length",
+      { min: 1 },
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Invalid policy.";
     return buildRedirect(request, {
@@ -165,34 +183,62 @@ export async function POST(request: Request) {
     });
   }
 
-  if (policyKind) {
-    if (policyKind === "subscription") {
-      if (durationDays !== undefined || policyLifetime) {
-        return buildRedirect(request, {
-          tierAction: "update",
-          tierStatus: "error",
-          tierMessage: "Subscriptions cannot set duration days or lifetime.",
-          guildId,
-          tierId,
-        });
-      }
-    }
+  const hasPolicyInputs =
+    policyDurationRaw || policyGraceRaw || cancelAtPeriodEnd || purchaseTypeRaw;
+  const hasProviderInputs = stripePriceIdsRaw || authorizeNetKeyRaw || nmiKeyRaw;
+  const hasCheckoutInputs =
+    authorizeNetAmountRaw ||
+    authorizeNetIntervalLengthRaw ||
+    authorizeNetIntervalUnitRaw ||
+    nmiHostedUrlRaw;
 
-    if (policyKind === "one_time") {
-      const hasDuration = durationDays !== undefined;
-      if ((hasDuration ? 1 : 0) + (policyLifetime ? 1 : 0) !== 1) {
-        return buildRedirect(request, {
-          tierAction: "update",
-          tierStatus: "error",
-          tierMessage: "One-time tiers require duration days or lifetime (not both).",
-          guildId,
-          tierId,
-        });
-      }
+  if (!purchaseType && (hasPolicyInputs || hasProviderInputs || hasCheckoutInputs)) {
+    return buildRedirect(request, {
+      tierAction: "update",
+      tierStatus: "error",
+      tierMessage: "Purchase type is required to update policy or checkout settings.",
+      guildId,
+      tierId,
+    });
+  }
+
+  if (purchaseType === "subscription") {
+    if (durationDays !== undefined) {
+      return buildRedirect(request, {
+        tierAction: "update",
+        tierStatus: "error",
+        tierMessage: "Subscriptions cannot set duration days.",
+        guildId,
+        tierId,
+      });
     }
   }
 
-  const roleIds = roleIdsRaw ? parseCommaList(roleIdsRaw) : null;
+  if (purchaseType === "one_time") {
+    if (durationDays === undefined) {
+      return buildRedirect(request, {
+        tierAction: "update",
+        tierStatus: "error",
+        tierMessage: "One-time tiers require duration days.",
+        guildId,
+        tierId,
+      });
+    }
+  }
+
+  if (purchaseType === "lifetime") {
+    if (durationDays !== undefined) {
+      return buildRedirect(request, {
+        tierAction: "update",
+        tierStatus: "error",
+        tierMessage: "Lifetime tiers cannot set duration days.",
+        guildId,
+        tierId,
+      });
+    }
+  }
+
+  const roleIds = roleIdsRaw ? parseList(roleIdsRaw) : null;
   if (roleIdsRaw && !roleIds) {
     return buildRedirect(request, {
       tierAction: "update",
@@ -203,34 +249,61 @@ export async function POST(request: Request) {
     });
   }
 
+  const perks = perksRaw ? parseList(perksRaw) : null;
+  if (perksRaw && !perks) {
+    return buildRedirect(request, {
+      tierAction: "update",
+      tierStatus: "error",
+      tierMessage: "Perks must include at least one value.",
+      guildId,
+      tierId,
+    });
+  }
+
   const providerRefs: Record<string, string[]> = {};
-  const stripeSubscriptionPriceIds = parseCommaList(
-    readFormValue(form, "stripeSubscriptionPriceIds"),
-  );
-  if (stripeSubscriptionPriceIds) {
-    providerRefs.stripeSubscriptionPriceIds = stripeSubscriptionPriceIds;
+  const stripePriceIds = parseList(stripePriceIdsRaw);
+  const authorizeNetKeys = parseList(authorizeNetKeyRaw);
+  const nmiKeys = parseList(nmiKeyRaw);
+
+  if (purchaseType) {
+    if (purchaseType === "subscription") {
+      if (stripePriceIds) {
+        providerRefs.stripeSubscriptionPriceIds = stripePriceIds;
+      }
+      if (authorizeNetKeys) {
+        providerRefs.authorizeNetSubscriptionIds = authorizeNetKeys;
+      }
+      if (nmiKeys) {
+        providerRefs.nmiPlanIds = nmiKeys;
+      }
+    } else {
+      if (stripePriceIds) {
+        providerRefs.stripeOneTimePriceIds = stripePriceIds;
+      }
+      if (authorizeNetKeys) {
+        providerRefs.authorizeNetOneTimeKeys = authorizeNetKeys;
+      }
+      if (nmiKeys) {
+        providerRefs.nmiOneTimeKeys = nmiKeys;
+      }
+    }
   }
-  const stripeOneTimePriceIds = parseCommaList(readFormValue(form, "stripeOneTimePriceIds"));
-  if (stripeOneTimePriceIds) {
-    providerRefs.stripeOneTimePriceIds = stripeOneTimePriceIds;
+
+  const checkoutConfig: Record<string, unknown> = {};
+  if (authorizeNetAmountRaw) {
+    const authorizeNet: Record<string, unknown> = {
+      amount: authorizeNetAmountRaw,
+    };
+    if (purchaseType === "subscription") {
+      authorizeNet.intervalLength = authorizeNetIntervalLength ?? undefined;
+      authorizeNet.intervalUnit = authorizeNetIntervalUnitRaw ?? undefined;
+    }
+    checkoutConfig.authorizeNet = authorizeNet;
   }
-  const authorizeNetSubscriptionIds = parseCommaList(
-    readFormValue(form, "authorizeNetSubscriptionIds"),
-  );
-  if (authorizeNetSubscriptionIds) {
-    providerRefs.authorizeNetSubscriptionIds = authorizeNetSubscriptionIds;
-  }
-  const authorizeNetOneTimeKeys = parseCommaList(readFormValue(form, "authorizeNetOneTimeKeys"));
-  if (authorizeNetOneTimeKeys) {
-    providerRefs.authorizeNetOneTimeKeys = authorizeNetOneTimeKeys;
-  }
-  const nmiPlanIds = parseCommaList(readFormValue(form, "nmiPlanIds"));
-  if (nmiPlanIds) {
-    providerRefs.nmiPlanIds = nmiPlanIds;
-  }
-  const nmiOneTimeKeys = parseCommaList(readFormValue(form, "nmiOneTimeKeys"));
-  if (nmiOneTimeKeys) {
-    providerRefs.nmiOneTimeKeys = nmiOneTimeKeys;
+  if (nmiHostedUrlRaw) {
+    checkoutConfig.nmi = {
+      hostedUrl: nmiHostedUrlRaw,
+    };
   }
 
   const endpoint = `${normalizeBaseUrl(convexUrl)}/api/tiers/update`;
@@ -246,18 +319,25 @@ export async function POST(request: Request) {
         guildId,
         tierId,
         actorId: session.userId,
+        slug: slug ?? undefined,
         name: name ?? undefined,
         description: description ?? undefined,
+        displayPrice: displayPrice ?? undefined,
+        perks: perks ?? undefined,
+        sortOrder: sortOrder ?? undefined,
         roleIds: roleIds ?? undefined,
-        entitlementPolicy: policyKind
+        entitlementPolicy: purchaseType
           ? {
-              kind: policyKind,
-              durationDays: durationDays ?? undefined,
-              isLifetime: policyLifetime ? true : undefined,
-              gracePeriodDays: gracePeriodDays ?? undefined,
-              cancelAtPeriodEnd: cancelAtPeriodEnd ? true : undefined,
+              kind: purchaseType === "subscription" ? "subscription" : "one_time",
+              durationDays: purchaseType === "one_time" ? (durationDays ?? undefined) : undefined,
+              isLifetime: purchaseType === "lifetime" ? true : undefined,
+              gracePeriodDays:
+                purchaseType === "subscription" ? (gracePeriodDays ?? undefined) : undefined,
+              cancelAtPeriodEnd:
+                purchaseType === "subscription" && cancelAtPeriodEnd ? true : undefined,
             }
           : undefined,
+        checkoutConfig: Object.keys(checkoutConfig).length > 0 ? checkoutConfig : undefined,
         providerRefs: Object.keys(providerRefs).length > 0 ? providerRefs : undefined,
       }),
     });

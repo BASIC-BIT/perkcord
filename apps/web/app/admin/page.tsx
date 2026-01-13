@@ -804,8 +804,8 @@ export default async function AdminPage({ searchParams }: { searchParams?: Searc
           <section className="panel">
             <h2>Tier management</h2>
             <p>
-              Create or update tiers, mapping roles and provider product IDs. Use comma-separated
-              IDs for lists.
+              Create or update tiers, mapping roles and checkout settings. Use comma-separated IDs
+              for provider lists and one-per-line perks.
             </p>
             {tierListError && <div className="banner error">{tierListError}</div>}
             <div className="snapshot-grid">
@@ -823,8 +823,21 @@ export default async function AdminPage({ searchParams }: { searchParams?: Searc
                     />
                   </label>
                   <label className="field">
+                    <span>Slug</span>
+                    <input className="input" name="slug" placeholder="starter" required />
+                  </label>
+                  <label className="field">
                     <span>Name</span>
                     <input className="input" name="name" placeholder="Pro" required />
+                  </label>
+                  <label className="field">
+                    <span>Display price</span>
+                    <input
+                      className="input"
+                      name="displayPrice"
+                      placeholder="$5 / month"
+                      required
+                    />
                   </label>
                   <label className="field">
                     <span>Description (optional)</span>
@@ -836,18 +849,39 @@ export default async function AdminPage({ searchParams }: { searchParams?: Searc
                     />
                   </label>
                   <label className="field">
+                    <span>Perks (one per line)</span>
+                    <textarea
+                      className="input"
+                      name="perks"
+                      rows={3}
+                      placeholder="Member role&#10;Community chat&#10;Weekly updates"
+                      required
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Sort order (optional)</span>
+                    <input
+                      className="input"
+                      type="number"
+                      name="sortOrder"
+                      min={0}
+                      placeholder="10"
+                    />
+                  </label>
+                  <label className="field">
                     <span>Role IDs (comma-separated)</span>
                     <input className="input" name="roleIds" placeholder="1234, 5678" required />
                   </label>
                   <label className="field">
-                    <span>Entitlement kind</span>
-                    <select className="input" name="policyKind" defaultValue="subscription">
+                    <span>Purchase type</span>
+                    <select className="input" name="purchaseType" defaultValue="subscription">
                       <option value="subscription">subscription</option>
-                      <option value="one_time">one_time</option>
+                      <option value="one_time">one_time (fixed duration)</option>
+                      <option value="lifetime">lifetime</option>
                     </select>
                   </label>
                   <label className="field">
-                    <span>Duration days (one-time)</span>
+                    <span>Duration days (one_time)</span>
                     <input
                       className="input"
                       type="number"
@@ -855,10 +889,6 @@ export default async function AdminPage({ searchParams }: { searchParams?: Searc
                       min={1}
                       placeholder="30"
                     />
-                  </label>
-                  <label className="field">
-                    <span>Lifetime (one-time)</span>
-                    <input type="checkbox" name="policyLifetime" />
                   </label>
                   <label className="field">
                     <span>Grace period days (subscription)</span>
@@ -875,44 +905,42 @@ export default async function AdminPage({ searchParams }: { searchParams?: Searc
                     <input type="checkbox" name="policyCancelAtPeriodEnd" />
                   </label>
                   <label className="field">
-                    <span>Stripe subscription price IDs</span>
+                    <span>Stripe price IDs (comma-separated)</span>
+                    <input className="input" name="stripePriceIds" placeholder="price_123" />
+                  </label>
+                  <label className="field">
+                    <span>Authorize.Net key (subscription ID or one-time key)</span>
+                    <input className="input" name="authorizeNetKey" placeholder="SUBSCRIPTION_ID" />
+                  </label>
+                  <label className="field">
+                    <span>Authorize.Net amount</span>
+                    <input className="input" name="authorizeNetAmount" placeholder="20.00" />
+                  </label>
+                  <label className="field">
+                    <span>Authorize.Net interval length (subscription)</span>
                     <input
                       className="input"
-                      name="stripeSubscriptionPriceIds"
-                      placeholder="price_123, price_456"
+                      name="authorizeNetIntervalLength"
+                      type="number"
+                      min={1}
+                      placeholder="1"
                     />
                   </label>
                   <label className="field">
-                    <span>Stripe one-time price IDs</span>
-                    <input
-                      className="input"
-                      name="stripeOneTimePriceIds"
-                      placeholder="price_123, price_456"
-                    />
+                    <span>Authorize.Net interval unit (subscription)</span>
+                    <select className="input" name="authorizeNetIntervalUnit" defaultValue="">
+                      <option value="">Select unit</option>
+                      <option value="days">days</option>
+                      <option value="months">months</option>
+                    </select>
                   </label>
                   <label className="field">
-                    <span>Authorize.Net subscription IDs</span>
-                    <input
-                      className="input"
-                      name="authorizeNetSubscriptionIds"
-                      placeholder="123456"
-                    />
+                    <span>NMI key (plan ID or one-time key)</span>
+                    <input className="input" name="nmiKey" placeholder="plan_abc" />
                   </label>
                   <label className="field">
-                    <span>Authorize.Net one-time keys</span>
-                    <input
-                      className="input"
-                      name="authorizeNetOneTimeKeys"
-                      placeholder="ONE_TIME_KEY"
-                    />
-                  </label>
-                  <label className="field">
-                    <span>NMI plan IDs (optional)</span>
-                    <input className="input" name="nmiPlanIds" placeholder="plan_abc" />
-                  </label>
-                  <label className="field">
-                    <span>NMI one-time keys (optional)</span>
-                    <input className="input" name="nmiOneTimeKeys" placeholder="NMI_ONETIME" />
+                    <span>NMI hosted URL (optional)</span>
+                    <input className="input" name="nmiHostedUrl" placeholder="https://..." />
                   </label>
                   <div className="tier-actions">
                     <button className="button" type="submit">
@@ -945,8 +973,16 @@ export default async function AdminPage({ searchParams }: { searchParams?: Searc
                     />
                   </label>
                   <label className="field">
+                    <span>Slug (optional)</span>
+                    <input className="input" name="slug" placeholder="starter" />
+                  </label>
+                  <label className="field">
                     <span>Name (optional)</span>
                     <input className="input" name="name" placeholder="Pro" />
+                  </label>
+                  <label className="field">
+                    <span>Display price (optional)</span>
+                    <input className="input" name="displayPrice" placeholder="$5 / month" />
                   </label>
                   <label className="field">
                     <span>Description (optional)</span>
@@ -958,19 +994,39 @@ export default async function AdminPage({ searchParams }: { searchParams?: Searc
                     />
                   </label>
                   <label className="field">
+                    <span>Perks (one per line, optional)</span>
+                    <textarea
+                      className="input"
+                      name="perks"
+                      rows={3}
+                      placeholder="Member role&#10;Community chat&#10;Weekly updates"
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Sort order (optional)</span>
+                    <input
+                      className="input"
+                      type="number"
+                      name="sortOrder"
+                      min={0}
+                      placeholder="10"
+                    />
+                  </label>
+                  <label className="field">
                     <span>Role IDs (comma-separated)</span>
                     <input className="input" name="roleIds" placeholder="1234, 5678" />
                   </label>
                   <label className="field">
-                    <span>Entitlement kind (leave blank to keep)</span>
-                    <select className="input" name="policyKind" defaultValue="">
+                    <span>Purchase type (leave blank to keep)</span>
+                    <select className="input" name="purchaseType" defaultValue="">
                       <option value="">Leave unchanged</option>
                       <option value="subscription">subscription</option>
-                      <option value="one_time">one_time</option>
+                      <option value="one_time">one_time (fixed duration)</option>
+                      <option value="lifetime">lifetime</option>
                     </select>
                   </label>
                   <label className="field">
-                    <span>Duration days (one-time)</span>
+                    <span>Duration days (one_time)</span>
                     <input
                       className="input"
                       type="number"
@@ -978,10 +1034,6 @@ export default async function AdminPage({ searchParams }: { searchParams?: Searc
                       min={1}
                       placeholder="30"
                     />
-                  </label>
-                  <label className="field">
-                    <span>Lifetime (one-time)</span>
-                    <input type="checkbox" name="policyLifetime" />
                   </label>
                   <label className="field">
                     <span>Grace period days (subscription)</span>
@@ -998,44 +1050,42 @@ export default async function AdminPage({ searchParams }: { searchParams?: Searc
                     <input type="checkbox" name="policyCancelAtPeriodEnd" />
                   </label>
                   <label className="field">
-                    <span>Stripe subscription price IDs</span>
+                    <span>Stripe price IDs (comma-separated)</span>
+                    <input className="input" name="stripePriceIds" placeholder="price_123" />
+                  </label>
+                  <label className="field">
+                    <span>Authorize.Net key (subscription ID or one-time key)</span>
+                    <input className="input" name="authorizeNetKey" placeholder="SUBSCRIPTION_ID" />
+                  </label>
+                  <label className="field">
+                    <span>Authorize.Net amount</span>
+                    <input className="input" name="authorizeNetAmount" placeholder="20.00" />
+                  </label>
+                  <label className="field">
+                    <span>Authorize.Net interval length (subscription)</span>
                     <input
                       className="input"
-                      name="stripeSubscriptionPriceIds"
-                      placeholder="price_123, price_456"
+                      name="authorizeNetIntervalLength"
+                      type="number"
+                      min={1}
+                      placeholder="1"
                     />
                   </label>
                   <label className="field">
-                    <span>Stripe one-time price IDs</span>
-                    <input
-                      className="input"
-                      name="stripeOneTimePriceIds"
-                      placeholder="price_123, price_456"
-                    />
+                    <span>Authorize.Net interval unit (subscription)</span>
+                    <select className="input" name="authorizeNetIntervalUnit" defaultValue="">
+                      <option value="">Select unit</option>
+                      <option value="days">days</option>
+                      <option value="months">months</option>
+                    </select>
                   </label>
                   <label className="field">
-                    <span>Authorize.Net subscription IDs</span>
-                    <input
-                      className="input"
-                      name="authorizeNetSubscriptionIds"
-                      placeholder="123456"
-                    />
+                    <span>NMI key (plan ID or one-time key)</span>
+                    <input className="input" name="nmiKey" placeholder="plan_abc" />
                   </label>
                   <label className="field">
-                    <span>Authorize.Net one-time keys</span>
-                    <input
-                      className="input"
-                      name="authorizeNetOneTimeKeys"
-                      placeholder="ONE_TIME_KEY"
-                    />
-                  </label>
-                  <label className="field">
-                    <span>NMI plan IDs (optional)</span>
-                    <input className="input" name="nmiPlanIds" placeholder="plan_abc" />
-                  </label>
-                  <label className="field">
-                    <span>NMI one-time keys (optional)</span>
-                    <input className="input" name="nmiOneTimeKeys" placeholder="NMI_ONETIME" />
+                    <span>NMI hosted URL (optional)</span>
+                    <input className="input" name="nmiHostedUrl" placeholder="https://..." />
                   </label>
                   <div className="tier-actions">
                     <button className="button" type="submit">

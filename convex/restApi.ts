@@ -191,6 +191,17 @@ const getOptionalBodyObject = (body: Record<string, unknown>, key: string) => {
   return value as Record<string, unknown>;
 };
 
+const getOptionalRecordObject = (record: Record<string, unknown>, key: string, scope: string) => {
+  if (!Object.prototype.hasOwnProperty.call(record, key)) {
+    return undefined;
+  }
+  const value = record[key];
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error(`${scope}.${key} must be an object.`);
+  }
+  return value as Record<string, unknown>;
+};
+
 const getRequiredRecordString = (record: Record<string, unknown>, key: string, scope: string) => {
   const value = record[key];
   if (typeof value !== "string" || value.trim().length === 0) {
@@ -337,6 +348,42 @@ const getProviderRefsFromBody = (body: Record<string, unknown>) => {
   return providerRefs;
 };
 
+const getCheckoutConfigFromBody = (body: Record<string, unknown>) => {
+  const record = getOptionalBodyObject(body, "checkoutConfig");
+  if (!record) {
+    return undefined;
+  }
+  const checkoutConfig: Record<string, unknown> = {};
+  const authorizeNetRecord = getOptionalRecordObject(record, "authorizeNet", "checkoutConfig");
+  if (authorizeNetRecord) {
+    const amount = getRequiredRecordString(
+      authorizeNetRecord,
+      "amount",
+      "checkoutConfig.authorizeNet",
+    );
+    const intervalLength = getOptionalRecordInteger(
+      authorizeNetRecord,
+      "intervalLength",
+      "checkoutConfig.authorizeNet",
+    );
+    const intervalUnit = getOptionalBodyString(authorizeNetRecord, "intervalUnit");
+    if (intervalUnit !== undefined && intervalUnit !== "days" && intervalUnit !== "months") {
+      throw new Error("checkoutConfig.authorizeNet.intervalUnit must be days or months.");
+    }
+    checkoutConfig.authorizeNet = {
+      amount,
+      intervalLength,
+      intervalUnit,
+    };
+  }
+  const nmiRecord = getOptionalRecordObject(record, "nmi", "checkoutConfig");
+  if (nmiRecord) {
+    const hostedUrl = getRequiredRecordString(nmiRecord, "hostedUrl", "checkoutConfig.nmi");
+    checkoutConfig.nmi = { hostedUrl };
+  }
+  return Object.keys(checkoutConfig).length > 0 ? checkoutConfig : undefined;
+};
+
 type EntitlementGrantStatus = Doc<"entitlementGrants">["status"];
 type OutboundWebhookEventType = Doc<"outboundWebhookEndpoints">["eventTypes"][number];
 
@@ -435,19 +482,29 @@ export const createTier = httpAction(async (ctx, request) => {
   try {
     const body = await readJsonBody(request);
     const guildId = getRequiredBodyId<"guilds">(body, "guildId");
+    const slug = getRequiredBodyString(body, "slug");
     const name = getRequiredBodyString(body, "name");
     const description = getOptionalBodyString(body, "description");
+    const displayPrice = getRequiredBodyString(body, "displayPrice");
+    const perks = getRequiredBodyStringArray(body, "perks");
+    const sortOrder = getOptionalBodyInteger(body, "sortOrder");
     const roleIds = getRequiredBodyStringArray(body, "roleIds");
     const actorId = getRequiredBodyString(body, "actorId");
     const entitlementPolicy = getEntitlementPolicyFromBody(body, true)!;
+    const checkoutConfig = getCheckoutConfigFromBody(body);
     const providerRefs = getProviderRefsFromBody(body);
 
     const tierId = await ctx.runMutation(api.entitlements.createTier, {
       guildId,
+      slug,
       name,
       description,
+      displayPrice,
+      perks,
+      sortOrder,
       roleIds,
       entitlementPolicy,
+      checkoutConfig,
       providerRefs,
       actorId,
     });
@@ -473,19 +530,29 @@ export const updateTier = httpAction(async (ctx, request) => {
     const guildId = getRequiredBodyId<"guilds">(body, "guildId");
     const tierId = getRequiredBodyId<"tiers">(body, "tierId");
     const actorId = getRequiredBodyString(body, "actorId");
+    const slug = getOptionalBodyString(body, "slug");
     const name = getOptionalBodyString(body, "name");
     const description = getOptionalBodyString(body, "description");
+    const displayPrice = getOptionalBodyString(body, "displayPrice");
+    const perks = getOptionalBodyStringArray(body, "perks", { allowEmpty: true });
+    const sortOrder = getOptionalBodyInteger(body, "sortOrder");
     const roleIds = getOptionalBodyStringArray(body, "roleIds");
     const entitlementPolicy = getEntitlementPolicyFromBody(body, false);
+    const checkoutConfig = getCheckoutConfigFromBody(body);
     const providerRefs = getProviderRefsFromBody(body);
 
     const updatedTierId = await ctx.runMutation(api.entitlements.updateTier, {
       guildId,
       tierId,
+      slug: slug ?? undefined,
       name: name ?? undefined,
       description: description ?? undefined,
+      displayPrice: displayPrice ?? undefined,
+      perks: perks ?? undefined,
+      sortOrder: sortOrder ?? undefined,
       roleIds: roleIds ?? undefined,
       entitlementPolicy: entitlementPolicy ?? undefined,
+      checkoutConfig: checkoutConfig ?? undefined,
       providerRefs: providerRefs ?? undefined,
       actorId,
     });

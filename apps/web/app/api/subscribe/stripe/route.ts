@@ -27,21 +27,17 @@ const clampMessage = (value: string, max = 140) => {
 const buildPayRedirect = (
   request: Request,
   params: {
-    tierId?: string | null;
+    tierSlug?: string | null;
     guildId?: string | null;
-    mode?: string | null;
     error?: string | null;
   },
 ) => {
   const url = new URL("/subscribe/pay", request.url);
-  if (params.tierId) {
-    url.searchParams.set("tier", params.tierId);
+  if (params.tierSlug) {
+    url.searchParams.set("tier", params.tierSlug);
   }
   if (params.guildId) {
     url.searchParams.set("guildId", params.guildId);
-  }
-  if (params.mode) {
-    url.searchParams.set("mode", params.mode);
   }
   if (params.error) {
     url.searchParams.set("stripeError", params.error);
@@ -68,25 +64,14 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  const tierId = readFormValue(form, "tier");
+  const tierSlug = readFormValue(form, "tier");
   const guildId = readFormValue(form, "guildId");
-  const mode = readFormValue(form, "mode");
 
-  if (!tierId || !guildId) {
+  if (!tierSlug || !guildId) {
     return buildPayRedirect(request, {
-      tierId,
+      tierSlug,
       guildId,
       error: "Missing tier or guild context for checkout.",
-    });
-  }
-
-  const configResult = resolveStripeCheckoutConfig(tierId, mode);
-  if (!configResult.ok) {
-    return buildPayRedirect(request, {
-      tierId,
-      guildId,
-      mode,
-      error: configResult.error,
     });
   }
 
@@ -98,9 +83,8 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     return buildPayRedirect(request, {
-      tierId,
+      tierSlug,
       guildId,
-      mode,
       error: resolveEnvError(error, "PERKCORD_SESSION_SECRET is not configured."),
     });
   }
@@ -108,17 +92,15 @@ export async function POST(request: NextRequest) {
   const memberSession = getMemberSessionFromCookies(request.cookies, sessionSecret);
   if (!memberSession) {
     return buildPayRedirect(request, {
-      tierId,
+      tierSlug,
       guildId,
-      mode,
       error: "Connect Discord before starting checkout.",
     });
   }
   if (memberSession.discordGuildId !== guildId) {
     return buildPayRedirect(request, {
-      tierId,
+      tierSlug,
       guildId,
-      mode,
       error: "Discord session does not match this server.",
     });
   }
@@ -128,25 +110,21 @@ export async function POST(request: NextRequest) {
     convexUrl = requireEnv("CONVEX_URL", "CONVEX_URL is not configured.");
   } catch (error) {
     return buildPayRedirect(request, {
-      tierId,
+      tierSlug,
       guildId,
-      mode,
       error: resolveEnvError(error, "CONVEX_URL is not configured."),
     });
   }
 
   const baseUrl = new URL(request.url).origin;
   const successUrl = new URL("/subscribe/celebrate", baseUrl);
-  successUrl.searchParams.set("tier", tierId);
+  successUrl.searchParams.set("tier", tierSlug);
   successUrl.searchParams.set("guildId", guildId);
   successUrl.searchParams.set("session_id", "{CHECKOUT_SESSION_ID}");
 
   const cancelUrl = new URL("/subscribe/pay", baseUrl);
-  cancelUrl.searchParams.set("tier", tierId);
+  cancelUrl.searchParams.set("tier", tierSlug);
   cancelUrl.searchParams.set("guildId", guildId);
-  if (mode) {
-    cancelUrl.searchParams.set("mode", mode);
-  }
 
   try {
     const stripe = new Stripe(stripeSecret);
@@ -156,10 +134,30 @@ export async function POST(request: NextRequest) {
     });
     if (!guild?._id) {
       return buildPayRedirect(request, {
-        tierId,
+        tierSlug,
         guildId,
-        mode,
         error: "Guild not found for checkout.",
+      });
+    }
+
+    const tier = await convex.query(api.entitlements.getTierBySlug, {
+      guildId: guild._id,
+      slug: tierSlug,
+    });
+    if (!tier) {
+      return buildPayRedirect(request, {
+        tierSlug,
+        guildId,
+        error: "Tier not found for checkout.",
+      });
+    }
+
+    const configResult = resolveStripeCheckoutConfig(tier);
+    if (!configResult.ok) {
+      return buildPayRedirect(request, {
+        tierSlug,
+        guildId,
+        error: configResult.error,
       });
     }
 
@@ -199,18 +197,18 @@ export async function POST(request: NextRequest) {
       ],
       success_url: successUrl.toString(),
       cancel_url: cancelUrl.toString(),
-      client_reference_id: `${guildId}:${tierId}`,
+      client_reference_id: `${guildId}:${tierSlug}`,
       metadata: {
         guildId,
-        tierId,
+        tierId: tier._id,
+        tierSlug,
       },
     });
 
     if (!session.url) {
       return buildPayRedirect(request, {
-        tierId,
+        tierSlug,
         guildId,
-        mode,
         error: "Stripe checkout session is missing a redirect URL.",
       });
     }
@@ -218,9 +216,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.redirect(session.url, 303);
   } catch {
     return buildPayRedirect(request, {
-      tierId,
+      tierSlug,
       guildId,
-      mode,
       error: clampMessage("Stripe checkout failed. Please try again."),
     });
   }

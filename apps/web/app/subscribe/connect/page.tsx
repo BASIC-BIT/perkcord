@@ -1,15 +1,36 @@
 import Link from "next/link";
-import { getTier } from "../tiers";
+import { fetchPublicTierBySlug } from "@/lib/tierCatalog";
+import type { PublicTier } from "@/lib/tierCatalog";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
 const getParam = (value: SearchParams[string]) => (Array.isArray(value) ? value[0] : value);
 
-export default function ConnectDiscordPage({ searchParams }: { searchParams: SearchParams }) {
+export default async function ConnectDiscordPage({ searchParams }: { searchParams: SearchParams }) {
   const tierParam = getParam(searchParams.tier);
   const guildId = getParam(searchParams.guildId) ?? getParam(searchParams.guild);
-  const tier = getTier(tierParam);
-  const oauthUrl = guildId ? `/api/subscribe/discord?guildId=${guildId}&tier=${tier.id}` : null;
+
+  let tier: PublicTier | null = null;
+  let tierError: string | null = null;
+
+  if (!guildId) {
+    tierError = "Missing guildId. Add ?guildId=<serverId> to the URL to continue.";
+  } else if (!tierParam) {
+    tierError = "Missing tier selection.";
+  } else {
+    try {
+      tier = await fetchPublicTierBySlug(guildId, tierParam);
+      if (!tier) {
+        tierError = "Selected tier was not found.";
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to load tier.";
+      tierError = message;
+    }
+  }
+
+  const oauthUrl =
+    guildId && tierParam ? `/api/subscribe/discord?guildId=${guildId}&tier=${tierParam}` : null;
 
   return (
     <main className="card">
@@ -19,17 +40,13 @@ export default function ConnectDiscordPage({ searchParams }: { searchParams: Sea
         We link your Discord account to your purchase so the bot can grant access. Member OAuth will
         request the role_connections.write scope.
       </p>
-      {!guildId && (
-        <div className="banner">
-          Missing guildId. Add ?guildId=&lt;serverId&gt; to the URL to continue.
-        </div>
-      )}
+      {tierError && <div className="banner">{tierError}</div>}
       <div className="tier-summary">
         <div className="tier-header">
-          <h3>{tier.name}</h3>
-          <span className="tier-price">{tier.price}</span>
+          <h3>{tier?.name ?? "Selected tier"}</h3>
+          <span className="tier-price">{tier?.displayPrice ?? ""}</span>
         </div>
-        <p>{tier.description}</p>
+        <p>{tier?.description ?? "Connect Discord to continue."}</p>
       </div>
       <div className="tier-actions">
         {oauthUrl ? (

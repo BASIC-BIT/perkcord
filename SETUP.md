@@ -52,7 +52,18 @@ Required for provider reconciliation jobs:
 - `NMI_SECURITY_KEY` or `NMI_API_KEY`
 - `NMI_API_URL` (optional override)
 
-Note: The admin page fetches Convex data server-side, so you won't see these requests in the browser's Network tab. Check the Next.js server logs instead.
+Local dev note: Convex runs two local ports. Use `http://127.0.0.1:3210` for `CONVEX_URL` (client/mutations) and `http://127.0.0.1:3211` for HTTP actions like `/api/guilds`. Set `PERKCORD_CONVEX_HTTP_URL` accordingly.
+
+The admin page fetches Convex data server-side, so you won't see these requests in the browser's Network tab. Check the Next.js server logs instead.
+
+## Configure tiers (required for member flow)
+
+Tiers are configured per guild in the admin portal (not via `.env`). Visit `/admin`
+after signing in and create tiers with:
+- Slug, name, display price, perks, and sort order
+- Purchase type (subscription, one_time, or lifetime)
+- Provider references (Stripe price IDs, Authorize.Net key, NMI key)
+- Provider checkout settings (Authorize.Net amount/interval, NMI hosted URL)
 
 ## Playwright browsers (for E2E)
 

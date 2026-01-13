@@ -5,7 +5,7 @@ const meta: Meta<typeof AuthorizeNetCard> = {
   title: "Subscribe/AuthorizeNetCard",
   component: AuthorizeNetCard,
   args: {
-    tierId: "plus",
+    tierSlug: "plus",
     guildId: "123456789012345678",
     amount: "$15",
     mode: "subscription",

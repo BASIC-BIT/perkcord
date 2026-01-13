@@ -18,7 +18,7 @@ type AcceptDispatchResponse = {
 };
 
 type AuthorizeNetCardProps = {
-  tierId: string;
+  tierSlug: string;
   guildId: string | null;
   amount: string | null;
   mode: "subscription" | "one_time" | null;
@@ -137,7 +137,7 @@ const normalizeYear = (value: string) => {
 };
 
 export function AuthorizeNetCard({
-  tierId,
+  tierSlug,
   guildId,
   amount,
   mode,
@@ -194,7 +194,7 @@ export function AuthorizeNetCard({
           "content-type": "application/json",
         },
         body: JSON.stringify({
-          tier: tierId,
+          tier: tierSlug,
           guildId,
           opaqueData,
         }),

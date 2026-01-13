@@ -5,7 +5,7 @@ import { anyApi } from "convex/server";
 import type { Id } from "../../../convex/_generated/dataModel.js";
 import type { BotConfig } from "./config.js";
 
-type ApiType = typeof import("../../../convex/_generated/api.js")["api"];
+type ApiType = (typeof import("../../../convex/_generated/api.js"))["api"];
 const api = anyApi as unknown as ApiType;
 
 type RoleSyncRequest = {

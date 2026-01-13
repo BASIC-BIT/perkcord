@@ -1,4 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const configDir = path.dirname(fileURLToPath(import.meta.url));
 
 const parsedPort = Number(process.env.PLAYWRIGHT_TEST_PORT);
 const port = Number.isFinite(parsedPort) ? parsedPort : 3001;
@@ -20,8 +24,9 @@ export default defineConfig({
     timezoneId: "UTC",
   },
   webServer: {
-    command: `npm run dev -- --hostname 127.0.0.1 --port ${port}`,
+    command: `node node_modules/next/dist/bin/next dev --hostname 127.0.0.1 --port ${port}`,
     url: baseURL,
+    cwd: configDir,
     reuseExistingServer: !process.env.CI,
     env: {
       PERKCORD_SESSION_SECRET: "playwright-smoke-secret",

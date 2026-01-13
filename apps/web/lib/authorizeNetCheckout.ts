@@ -17,53 +17,25 @@ export type AuthorizeNetOneTimeConfig = {
 
 export type AuthorizeNetCheckoutConfig = AuthorizeNetSubscriptionConfig | AuthorizeNetOneTimeConfig;
 
-type AuthorizeNetTierEnvConfig = {
-  oneTimeKeyEnv?: string;
-  oneTimeAmountEnv?: string;
-  subscriptionKeyEnv?: string;
-  subscriptionAmountEnv?: string;
-  subscriptionIntervalLengthEnv?: string;
-  subscriptionIntervalUnitEnv?: string;
+export type AuthorizeNetTierConfig = {
+  entitlementPolicy: {
+    kind: "subscription" | "one_time";
+    isLifetime?: boolean;
+  };
+  providerRefs?: {
+    authorizeNetSubscriptionIds?: string[];
+    authorizeNetOneTimeKeys?: string[];
+  };
+  checkoutConfig?: {
+    authorizeNet?: {
+      amount: string;
+      intervalLength?: number;
+      intervalUnit?: "days" | "months";
+    };
+  };
 };
 
-const AUTHORIZE_NET_TIER_ENV: Record<string, AuthorizeNetTierEnvConfig> = {
-  starter: {
-    oneTimeKeyEnv: "AUTHORIZE_NET_STARTER_ONE_TIME_KEY",
-    oneTimeAmountEnv: "AUTHORIZE_NET_STARTER_ONE_TIME_AMOUNT",
-    subscriptionKeyEnv: "AUTHORIZE_NET_STARTER_SUBSCRIPTION_KEY",
-    subscriptionAmountEnv: "AUTHORIZE_NET_STARTER_SUBSCRIPTION_AMOUNT",
-    subscriptionIntervalLengthEnv: "AUTHORIZE_NET_STARTER_SUBSCRIPTION_INTERVAL_LENGTH",
-    subscriptionIntervalUnitEnv: "AUTHORIZE_NET_STARTER_SUBSCRIPTION_INTERVAL_UNIT",
-  },
-  plus: {
-    oneTimeKeyEnv: "AUTHORIZE_NET_PLUS_ONE_TIME_KEY",
-    oneTimeAmountEnv: "AUTHORIZE_NET_PLUS_ONE_TIME_AMOUNT",
-    subscriptionKeyEnv: "AUTHORIZE_NET_PLUS_SUBSCRIPTION_KEY",
-    subscriptionAmountEnv: "AUTHORIZE_NET_PLUS_SUBSCRIPTION_AMOUNT",
-    subscriptionIntervalLengthEnv: "AUTHORIZE_NET_PLUS_SUBSCRIPTION_INTERVAL_LENGTH",
-    subscriptionIntervalUnitEnv: "AUTHORIZE_NET_PLUS_SUBSCRIPTION_INTERVAL_UNIT",
-  },
-  legend: {
-    oneTimeKeyEnv: "AUTHORIZE_NET_LEGEND_ONE_TIME_KEY",
-    oneTimeAmountEnv: "AUTHORIZE_NET_LEGEND_ONE_TIME_AMOUNT",
-    subscriptionKeyEnv: "AUTHORIZE_NET_LEGEND_SUBSCRIPTION_KEY",
-    subscriptionAmountEnv: "AUTHORIZE_NET_LEGEND_SUBSCRIPTION_AMOUNT",
-    subscriptionIntervalLengthEnv: "AUTHORIZE_NET_LEGEND_SUBSCRIPTION_INTERVAL_LENGTH",
-    subscriptionIntervalUnitEnv: "AUTHORIZE_NET_LEGEND_SUBSCRIPTION_INTERVAL_UNIT",
-  },
-};
-
-const readEnvValue = (key?: string) => {
-  if (!key) {
-    return undefined;
-  }
-  const value = process.env[key];
-  if (!value) {
-    return undefined;
-  }
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
-};
+const pickFirst = (values?: string[]) => values?.find((value) => value.trim().length > 0);
 
 const normalizeAmount = (value?: string) => {
   if (!value) {
@@ -80,37 +52,6 @@ const normalizeAmount = (value?: string) => {
   return parsed.toFixed(2);
 };
 
-const normalizeIntervalUnit = (value?: string) => {
-  if (!value) {
-    return undefined;
-  }
-  const trimmed = value.trim().toLowerCase();
-  if (trimmed === "month" || trimmed === "months") {
-    return "months";
-  }
-  if (trimmed === "day" || trimmed === "days") {
-    return "days";
-  }
-  return undefined;
-};
-
-const normalizeIntervalLength = (value?: string, unit?: "days" | "months") => {
-  if (!value) {
-    return undefined;
-  }
-  const parsed = Number(value.trim());
-  if (!Number.isFinite(parsed) || !Number.isInteger(parsed) || parsed <= 0) {
-    return undefined;
-  }
-  if (unit === "months" && parsed > 12) {
-    return undefined;
-  }
-  if (unit === "days" && parsed > 365) {
-    return undefined;
-  }
-  return parsed;
-};
-
 const formatIntervalLabel = (length: number, unit: "days" | "months") => {
   if (length === 1) {
     return unit === "months" ? "month" : "day";
@@ -123,44 +64,57 @@ export type AuthorizeNetCheckoutConfigResult =
   | { ok: false; error: string };
 
 export const resolveAuthorizeNetCheckoutConfig = (
-  tierId: string,
+  tier: AuthorizeNetTierConfig,
 ): AuthorizeNetCheckoutConfigResult => {
-  const envConfig = AUTHORIZE_NET_TIER_ENV[tierId];
-  if (!envConfig) {
-    return { ok: false, error: "Unknown tier for Authorize.Net checkout." };
+  const checkout = tier.checkoutConfig?.authorizeNet;
+  if (!checkout) {
+    return { ok: false, error: "Authorize.Net checkout is not configured for this tier." };
+  }
+  const amount = normalizeAmount(checkout.amount);
+  if (!amount) {
+    return { ok: false, error: "Authorize.Net amount must be a positive number." };
   }
 
-  const subscriptionKey = readEnvValue(envConfig.subscriptionKeyEnv);
-  const subscriptionAmount = normalizeAmount(readEnvValue(envConfig.subscriptionAmountEnv));
-  const subscriptionUnit = normalizeIntervalUnit(
-    readEnvValue(envConfig.subscriptionIntervalUnitEnv),
-  );
-  const subscriptionLength = normalizeIntervalLength(
-    readEnvValue(envConfig.subscriptionIntervalLengthEnv),
-    subscriptionUnit,
-  );
-
-  if (subscriptionKey && subscriptionAmount && subscriptionUnit && subscriptionLength) {
+  if (tier.entitlementPolicy.kind === "subscription") {
+    const subscriptionKey = pickFirst(tier.providerRefs?.authorizeNetSubscriptionIds);
+    if (!subscriptionKey) {
+      return {
+        ok: false,
+        error: "Authorize.Net subscription key is not configured for this tier.",
+      };
+    }
+    const intervalLength = checkout.intervalLength;
+    const intervalUnit = checkout.intervalUnit;
+    if (!intervalLength || !intervalUnit) {
+      return {
+        ok: false,
+        error: "Authorize.Net subscription interval is not configured for this tier.",
+      };
+    }
+    if (intervalUnit === "months" && intervalLength > 12) {
+      return { ok: false, error: "Authorize.Net interval length cannot exceed 12 months." };
+    }
+    if (intervalUnit === "days" && intervalLength > 365) {
+      return { ok: false, error: "Authorize.Net interval length cannot exceed 365 days." };
+    }
     return {
       ok: true,
       config: {
         mode: "subscription",
-        amount: subscriptionAmount,
+        amount,
         subscriptionKey,
-        intervalLength: subscriptionLength,
-        intervalUnit: subscriptionUnit,
-        intervalLabel: formatIntervalLabel(subscriptionLength, subscriptionUnit),
+        intervalLength,
+        intervalUnit,
+        intervalLabel: formatIntervalLabel(intervalLength, intervalUnit),
       },
     };
   }
 
-  const oneTimeKey = readEnvValue(envConfig.oneTimeKeyEnv);
-  const amount = normalizeAmount(readEnvValue(envConfig.oneTimeAmountEnv));
-
-  if (!oneTimeKey || !amount) {
+  const oneTimeKey = pickFirst(tier.providerRefs?.authorizeNetOneTimeKeys);
+  if (!oneTimeKey) {
     return {
       ok: false,
-      error: "Authorize.Net checkout is not configured for this tier.",
+      error: "Authorize.Net one-time key is not configured for this tier.",
     };
   }
 

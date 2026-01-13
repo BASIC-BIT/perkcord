@@ -71,8 +71,12 @@ export default defineSchema({
 
   tiers: defineTable({
     guildId: v.id("guilds"),
+    slug: v.string(),
     name: v.string(),
     description: v.optional(v.string()),
+    displayPrice: v.string(),
+    perks: v.array(v.string()),
+    sortOrder: v.optional(v.number()),
     roleIds: v.array(v.string()),
     entitlementPolicy: v.object({
       kind: v.union(v.literal("subscription"), v.literal("one_time")),
@@ -81,6 +85,22 @@ export default defineSchema({
       gracePeriodDays: v.optional(v.number()),
       cancelAtPeriodEnd: v.optional(v.boolean()),
     }),
+    checkoutConfig: v.optional(
+      v.object({
+        authorizeNet: v.optional(
+          v.object({
+            amount: v.string(),
+            intervalLength: v.optional(v.number()),
+            intervalUnit: v.optional(v.union(v.literal("days"), v.literal("months"))),
+          }),
+        ),
+        nmi: v.optional(
+          v.object({
+            hostedUrl: v.string(),
+          }),
+        ),
+      }),
+    ),
     providerRefs: v.optional(
       v.object({
         stripeSubscriptionPriceIds: v.optional(v.array(v.string())),
@@ -93,7 +113,9 @@ export default defineSchema({
     ),
     createdAt: v.number(),
     updatedAt: v.number(),
-  }).index("by_guild", ["guildId"]),
+  })
+    .index("by_guild", ["guildId"])
+    .index("by_guild_slug", ["guildId", "slug"]),
 
   memberIdentities: defineTable({
     guildId: v.id("guilds"),

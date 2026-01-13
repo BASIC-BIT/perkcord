@@ -124,19 +124,14 @@ export async function POST(request: NextRequest) {
     return jsonError("Invalid checkout request.");
   }
 
-  const tierId = readString(body?.tier);
+  const tierSlug = readString(body?.tier);
   const guildId = readString(body?.guildId);
   const opaqueData = body?.opaqueData;
   const dataDescriptor = readString(opaqueData?.dataDescriptor);
   const dataValue = readString(opaqueData?.dataValue);
 
-  if (!tierId || !guildId || !dataDescriptor || !dataValue) {
+  if (!tierSlug || !guildId || !dataDescriptor || !dataValue) {
     return jsonError("Missing checkout details.");
-  }
-
-  const configResult = resolveAuthorizeNetCheckoutConfig(tierId);
-  if (!configResult.ok) {
-    return jsonError(configResult.error);
   }
 
   let sessionSecret: string;
@@ -173,6 +168,19 @@ export async function POST(request: NextRequest) {
       return jsonError("Guild not found for checkout.", 404);
     }
 
+    const tier = await convex.query(api.entitlements.getTierBySlug, {
+      guildId: guild._id,
+      slug: tierSlug,
+    });
+    if (!tier) {
+      return jsonError("Tier not found for checkout.", 404);
+    }
+
+    const configResult = resolveAuthorizeNetCheckoutConfig(tier);
+    if (!configResult.ok) {
+      return jsonError(configResult.error);
+    }
+
     const existingLink = await convex.query(api.providerCustomers.getProviderCustomerLinkForUser, {
       guildId: guild._id,
       provider: "authorize_net",
@@ -192,7 +200,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const refId = `${guildId}:${tierId}`;
+    const refId = `${guildId}:${tierSlug}`;
     const invoiceNumber =
       configResult.config.mode === "subscription"
         ? configResult.config.subscriptionKey
@@ -215,7 +223,7 @@ export async function POST(request: NextRequest) {
           },
           order: {
             invoiceNumber,
-            description: `Perkcord ${tierId} membership`,
+            description: `Perkcord ${tier.name} membership`,
           },
           customer: {
             id: providerCustomerId,
@@ -258,7 +266,7 @@ export async function POST(request: NextRequest) {
           },
           refId,
           subscription: {
-            name: `Perkcord ${tierId} subscription`,
+            name: `Perkcord ${tier.name} subscription`,
             paymentSchedule: {
               interval: {
                 length: configResult.config.intervalLength,
@@ -277,7 +285,7 @@ export async function POST(request: NextRequest) {
             },
             order: {
               invoiceNumber: configResult.config.subscriptionKey,
-              description: `Perkcord ${tierId} subscription`,
+              description: `Perkcord ${tier.name} subscription`,
             },
             customer: {
               id: providerCustomerId,
@@ -301,7 +309,7 @@ export async function POST(request: NextRequest) {
 
     const baseUrl = new URL(request.url).origin;
     const redirectUrl = new URL("/subscribe/celebrate", baseUrl);
-    redirectUrl.searchParams.set("tier", tierId);
+    redirectUrl.searchParams.set("tier", tierSlug);
     redirectUrl.searchParams.set("guildId", guildId);
 
     return NextResponse.json({ ok: true, redirectUrl: redirectUrl.toString() });
