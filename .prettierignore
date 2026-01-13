@@ -4,3 +4,5 @@ dist
 coverage
 .out
 .convex
+convex/_generated
+convex/convex

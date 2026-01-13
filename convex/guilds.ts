@@ -1,9 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
-const actorType = v.optional(
-  v.union(v.literal("system"), v.literal("admin"))
-);
+const actorType = v.optional(v.union(v.literal("system"), v.literal("admin")));
 const coerceLimit = (limit?: number) => {
   if (limit === undefined) {
     return 50;
@@ -30,9 +28,7 @@ export const upsertGuild = mutation({
 
     const existing = await ctx.db
       .query("guilds")
-      .withIndex("by_discord_id", (q) =>
-        q.eq("discordGuildId", args.discordGuildId)
-      )
+      .withIndex("by_discord_id", (q) => q.eq("discordGuildId", args.discordGuildId))
       .unique();
 
     if (!existing) {
@@ -94,9 +90,7 @@ export const getGuildByDiscordId = query({
   handler: async (ctx, args) => {
     return await ctx.db
       .query("guilds")
-      .withIndex("by_discord_id", (q) =>
-        q.eq("discordGuildId", args.discordGuildId)
-      )
+      .withIndex("by_discord_id", (q) => q.eq("discordGuildId", args.discordGuildId))
       .unique();
   },
 });

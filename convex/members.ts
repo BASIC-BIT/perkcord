@@ -58,7 +58,7 @@ export const upsertMemberIdentity = mutation({
     const existing = await ctx.db
       .query("memberIdentities")
       .withIndex("by_guild_user", (q) =>
-        q.eq("guildId", args.guildId).eq("discordUserId", discordUserId)
+        q.eq("guildId", args.guildId).eq("discordUserId", discordUserId),
       )
       .unique();
 
@@ -152,7 +152,7 @@ export const searchMembers = query({
       const match = await ctx.db
         .query("memberIdentities")
         .withIndex("by_guild_user", (q) =>
-          q.eq("guildId", args.guildId).eq("discordUserId", search)
+          q.eq("guildId", args.guildId).eq("discordUserId", search),
         )
         .unique();
 

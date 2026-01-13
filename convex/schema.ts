@@ -7,25 +7,21 @@ const entitlementStatus = v.union(
   v.literal("past_due"),
   v.literal("canceled"),
   v.literal("expired"),
-  v.literal("suspended_dispute")
+  v.literal("suspended_dispute"),
 );
 const roleSyncRequestStatus = v.union(
   v.literal("pending"),
   v.literal("in_progress"),
   v.literal("completed"),
-  v.literal("failed")
+  v.literal("failed"),
 );
 const roleConnectionUpdateStatus = v.union(
   v.literal("pending"),
   v.literal("in_progress"),
   v.literal("completed"),
-  v.literal("failed")
+  v.literal("failed"),
 );
-const providerName = v.union(
-  v.literal("stripe"),
-  v.literal("authorize_net"),
-  v.literal("nmi")
-);
+const providerName = v.union(v.literal("stripe"), v.literal("authorize_net"), v.literal("nmi"));
 const normalizedProviderEventType = v.union(
   v.literal("PAYMENT_SUCCEEDED"),
   v.literal("PAYMENT_FAILED"),
@@ -34,12 +30,9 @@ const normalizedProviderEventType = v.union(
   v.literal("SUBSCRIPTION_CANCELED"),
   v.literal("REFUND_ISSUED"),
   v.literal("CHARGEBACK_OPENED"),
-  v.literal("CHARGEBACK_CLOSED")
+  v.literal("CHARGEBACK_CLOSED"),
 );
-const providerEventStatus = v.union(
-  v.literal("processed"),
-  v.literal("failed")
-);
+const providerEventStatus = v.union(v.literal("processed"), v.literal("failed"));
 const outboundWebhookEventType = v.union(
   v.literal("membership.activated"),
   v.literal("membership.updated"),
@@ -48,13 +41,13 @@ const outboundWebhookEventType = v.union(
   v.literal("grant.created"),
   v.literal("grant.revoked"),
   v.literal("role_sync.succeeded"),
-  v.literal("role_sync.failed")
+  v.literal("role_sync.failed"),
 );
 const outboundWebhookDeliveryStatus = v.union(
   v.literal("pending"),
   v.literal("delivering"),
   v.literal("succeeded"),
-  v.literal("failed")
+  v.literal("failed"),
 );
 
 const entitlementSource = v.union(
@@ -65,7 +58,7 @@ const entitlementSource = v.union(
   v.literal("nmi_subscription"),
   v.literal("nmi_one_time"),
   v.literal("manual"),
-  v.literal("api")
+  v.literal("api"),
 );
 
 export default defineSchema({
@@ -96,7 +89,7 @@ export default defineSchema({
         authorizeNetOneTimeKeys: v.optional(v.array(v.string())),
         nmiPlanIds: v.optional(v.array(v.string())),
         nmiOneTimeKeys: v.optional(v.array(v.string())),
-      })
+      }),
     ),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -111,7 +104,7 @@ export default defineSchema({
         accessTokenEnc: v.string(),
         refreshTokenEnc: v.string(),
         expiresAt: v.number(),
-      })
+      }),
     ),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -127,11 +120,8 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index("by_guild_provider_customer", [
-      "guildId",
-      "provider",
-      "providerCustomerId",
-    ])
+    .index("by_guild", ["guildId"])
+    .index("by_guild_provider_customer", ["guildId", "provider", "providerCustomerId"])
     .index("by_guild_user", ["guildId", "discordUserId"])
     .index("by_provider_customer", ["provider", "providerCustomerId"]),
 
@@ -251,11 +241,7 @@ export default defineSchema({
     payloadJson: v.optional(v.string()),
   })
     .index("by_guild_time", ["guildId", "timestamp"])
-    .index("by_guild_user_time", [
-      "guildId",
-      "subjectDiscordUserId",
-      "timestamp",
-    ]),
+    .index("by_guild_user_time", ["guildId", "subjectDiscordUserId", "timestamp"]),
 
   guildDiagnostics: defineTable({
     guildId: v.id("guilds"),
@@ -269,11 +255,7 @@ export default defineSchema({
     rolesExistOk: v.boolean(),
     missingRoleIds: v.array(v.string()),
     checkedRoleIds: v.array(v.string()),
-    overallStatus: v.union(
-      v.literal("pass"),
-      v.literal("warn"),
-      v.literal("fail")
-    ),
+    overallStatus: v.union(v.literal("pass"), v.literal("warn"), v.literal("fail")),
     notes: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),

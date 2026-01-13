@@ -1,20 +1,17 @@
 import type { Client, Guild, GuildMember } from "discord.js";
 import { PermissionsBitField } from "discord.js";
 import type { ConvexHttpClient } from "convex/browser";
+import { anyApi } from "convex/server";
+import type { Id } from "../../../convex/_generated/dataModel.js";
 import type { BotConfig } from "./config.js";
 
+type ApiType = typeof import("../../../convex/_generated/api.js")["api"];
+const api = anyApi as unknown as ApiType;
+
 type RoleSyncRequest = {
-  _id: string;
+  _id: Id<"roleSyncRequests">;
   scope: "guild" | "user";
   discordUserId?: string;
-};
-
-type DesiredRoles = {
-  desiredRoleIds: string[];
-};
-
-type Tier = {
-  roleIds: string[];
 };
 
 type WorkerOptions = {
@@ -26,15 +23,12 @@ type WorkerOptions = {
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const asRecord = (value: unknown): Record<string, unknown> | null =>
-  typeof value === "object" && value !== null
-    ? (value as Record<string, unknown>)
-    : null;
+  typeof value === "object" && value !== null ? (value as Record<string, unknown>) : null;
 
 const readNumber = (value: unknown): number | null =>
   typeof value === "number" && Number.isFinite(value) ? value : null;
 
-const readString = (value: unknown): string | null =>
-  typeof value === "string" ? value : null;
+const readString = (value: unknown): string | null => (typeof value === "string" ? value : null);
 
 const getRetryAfterMs = (error: unknown): number | null => {
   const record = asRecord(error);
@@ -77,13 +71,7 @@ const isRetryableDiscordError = (error: unknown): boolean => {
   }
   const code = getErrorCode(error);
   if (typeof code === "string") {
-    return [
-      "ECONNRESET",
-      "ETIMEDOUT",
-      "EAI_AGAIN",
-      "ECONNREFUSED",
-      "ENOTFOUND",
-    ].includes(code);
+    return ["ECONNRESET", "ETIMEDOUT", "EAI_AGAIN", "ECONNREFUSED", "ENOTFOUND"].includes(code);
   }
   const message = readString(asRecord(error)?.["message"]);
   if (message && message.toLowerCase().includes("rate limit")) {
@@ -103,8 +91,8 @@ export class RoleSyncWorker {
   private readonly client: Client;
   private readonly convex: ConvexHttpClient;
   private readonly config: BotConfig;
-  private readonly convexGuildIdByDiscordId = new Map<string, string>();
-  private readonly guildByConvexId = new Map<string, Guild>();
+  private readonly convexGuildIdByDiscordId = new Map<string, Id<"guilds">>();
+  private readonly guildByConvexId = new Map<Id<"guilds">, Guild>();
   private readonly retryMaxAttempts = 3;
   private readonly retryBaseDelayMs = 1000;
   private readonly retryMaxDelayMs = 15000;
@@ -126,19 +114,16 @@ export class RoleSyncWorker {
   }
 
   async registerGuild(guild: Guild) {
-    if (
-      this.config.guildAllowList &&
-      !this.config.guildAllowList.includes(guild.id)
-    ) {
+    if (this.config.guildAllowList && !this.config.guildAllowList.includes(guild.id)) {
       return;
     }
 
-    const convexGuildId = (await this.convex.mutation("guilds:upsertGuild", {
+    const convexGuildId = await this.convex.mutation(api.guilds.upsertGuild, {
       discordGuildId: guild.id,
       name: guild.name,
       actorType: "system",
       actorId: this.config.actorId,
-    })) as string;
+    });
 
     this.convexGuildIdByDiscordId.set(guild.id, convexGuildId);
     this.guildByConvexId.set(convexGuildId, guild);
@@ -177,15 +162,12 @@ export class RoleSyncWorker {
     }
   }
 
-  private async handleGuildTick(guild: Guild, convexGuildId: string) {
-    const request = (await this.convex.mutation(
-      "roleSync:claimNextRoleSyncRequest",
-      {
-        guildId: convexGuildId,
-        actorId: this.config.actorId,
-        actorType: "system",
-      }
-    )) as RoleSyncRequest | null;
+  private async handleGuildTick(guild: Guild, convexGuildId: Id<"guilds">) {
+    const request = await this.convex.mutation(api.roleSync.claimNextRoleSyncRequest, {
+      guildId: convexGuildId,
+      actorId: this.config.actorId,
+      actorType: "system",
+    });
 
     if (!request) {
       return;
@@ -196,8 +178,8 @@ export class RoleSyncWorker {
 
   private async processRequest(
     guild: Guild,
-    convexGuildId: string,
-    request: RoleSyncRequest
+    convexGuildId: Id<"guilds">,
+    request: RoleSyncRequest,
   ) {
     try {
       if (request.scope === "guild") {
@@ -209,14 +191,14 @@ export class RoleSyncWorker {
         await this.syncMember(guild, convexGuildId, request.discordUserId);
       }
 
-      await this.convex.mutation("roleSync:completeRoleSyncRequest", {
+      await this.convex.mutation(api.roleSync.completeRoleSyncRequest, {
         requestId: request._id,
         status: "completed",
         actorId: this.config.actorId,
         actorType: "system",
       });
     } catch (error) {
-      await this.convex.mutation("roleSync:completeRoleSyncRequest", {
+      await this.convex.mutation(api.roleSync.completeRoleSyncRequest, {
         requestId: request._id,
         status: "failed",
         lastError: formatError(error),
@@ -226,7 +208,7 @@ export class RoleSyncWorker {
     }
   }
 
-  private async syncGuild(guild: Guild, convexGuildId: string) {
+  private async syncGuild(guild: Guild, convexGuildId: Id<"guilds">) {
     const managedRoleIds = await this.fetchManagedRoleIds(convexGuildId);
     if (managedRoleIds.size === 0) {
       return;
@@ -234,47 +216,33 @@ export class RoleSyncWorker {
 
     const members = await guild.members.fetch();
     for (const member of members.values()) {
-      await this.syncMemberWithRoles(
-        guild,
-        convexGuildId,
-        member,
-        managedRoleIds
-      );
+      await this.syncMemberWithRoles(guild, convexGuildId, member, managedRoleIds);
       if (this.config.memberSyncDelayMs > 0) {
         await sleep(this.config.memberSyncDelayMs);
       }
     }
   }
 
-  private async syncMember(
-    guild: Guild,
-    convexGuildId: string,
-    discordUserId: string
-  ) {
+  private async syncMember(guild: Guild, convexGuildId: Id<"guilds">, discordUserId: string) {
     const managedRoleIds = await this.fetchManagedRoleIds(convexGuildId);
     if (managedRoleIds.size === 0) {
       return;
     }
 
     const member = await guild.members.fetch(discordUserId);
-    await this.syncMemberWithRoles(
-      guild,
-      convexGuildId,
-      member,
-      managedRoleIds
-    );
+    await this.syncMemberWithRoles(guild, convexGuildId, member, managedRoleIds);
   }
 
   private async syncMemberWithRoles(
     guild: Guild,
-    convexGuildId: string,
+    convexGuildId: Id<"guilds">,
     member: GuildMember,
-    managedRoleIds: Set<string>
+    managedRoleIds: Set<string>,
   ) {
-    const desired = (await this.convex.query("roleSync:getDesiredRolesForMember", {
+    const desired = await this.convex.query(api.roleSync.getDesiredRolesForMember, {
       guildId: convexGuildId,
       discordUserId: member.id,
-    })) as DesiredRoles;
+    });
 
     await this.applyRoleDelta(guild, member, managedRoleIds, desired.desiredRoleIds);
   }
@@ -283,33 +251,29 @@ export class RoleSyncWorker {
     guild: Guild,
     member: GuildMember,
     managedRoleIds: Set<string>,
-    desiredRoleIds: string[]
+    desiredRoleIds: string[],
   ) {
     const desiredSet = new Set(desiredRoleIds);
     const currentManaged = new Set(
-      member.roles.cache
-        .map((role) => role.id)
-        .filter((roleId) => managedRoleIds.has(roleId))
+      member.roles.cache.map((role) => role.id).filter((roleId) => managedRoleIds.has(roleId)),
     );
 
-    const rolesToAdd = desiredRoleIds.filter(
-      (roleId) => !member.roles.cache.has(roleId)
-    );
+    const rolesToAdd = desiredRoleIds.filter((roleId) => !member.roles.cache.has(roleId));
     const rolesToRemove = Array.from(currentManaged).filter(
-      (roleId) => !desiredSet.has(roleId) && roleId !== guild.id
+      (roleId) => !desiredSet.has(roleId) && roleId !== guild.id,
     );
 
     if (rolesToAdd.length > 0) {
       await this.runWithRetry(
         () => member.roles.add(rolesToAdd, "Perkcord role sync"),
-        `add roles for ${member.id}`
+        `add roles for ${member.id}`,
       );
     }
 
     if (rolesToRemove.length > 0) {
       await this.runWithRetry(
         () => member.roles.remove(rolesToRemove, "Perkcord role sync"),
-        `remove roles for ${member.id}`
+        `remove roles for ${member.id}`,
       );
     }
   }
@@ -329,8 +293,8 @@ export class RoleSyncWorker {
         }
         console.warn(
           `Role sync ${context} failed (attempt ${attempt}/${this.retryMaxAttempts}). Retrying in ${Math.round(
-            delayMs
-          )}ms.`
+            delayMs,
+          )}ms.`,
         );
         await sleep(delayMs);
       }
@@ -348,16 +312,16 @@ export class RoleSyncWorker {
     }
     const baseDelay = Math.min(
       this.retryBaseDelayMs * Math.pow(2, attempt - 1),
-      this.retryMaxDelayMs
+      this.retryMaxDelayMs,
     );
     const jitter = baseDelay * 0.2 * Math.random();
     return baseDelay + jitter;
   }
 
-  private async fetchManagedRoleIds(convexGuildId: string) {
-    const tiers = (await this.convex.query("entitlements:listTiers", {
+  private async fetchManagedRoleIds(convexGuildId: Id<"guilds">) {
+    const tiers = await this.convex.query(api.entitlements.listTiers, {
       guildId: convexGuildId,
-    })) as Tier[];
+    });
 
     const managedRoleIds = new Set<string>();
     for (const tier of tiers) {
@@ -369,7 +333,7 @@ export class RoleSyncWorker {
     return managedRoleIds;
   }
 
-  private async updateDiagnostics(guild: Guild, convexGuildId: string) {
+  private async updateDiagnostics(guild: Guild, convexGuildId: Id<"guilds">) {
     await guild.roles.fetch();
     const botMember = guild.members.me ?? (await guild.members.fetchMe());
     const botRole = botMember.roles.highest ?? null;
@@ -395,7 +359,7 @@ export class RoleSyncWorker {
       }
     }
 
-    await this.convex.mutation("diagnostics:upsertGuildDiagnostics", {
+    await this.convex.mutation(api.diagnostics.upsertGuildDiagnostics, {
       guildId: convexGuildId,
       checkedAt: Date.now(),
       botUserId: botMember.id,

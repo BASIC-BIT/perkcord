@@ -27,11 +27,7 @@ export const requireUrl = (name: string) => {
   return value;
 };
 
-export const parsePositiveInt = (
-  value: string | undefined,
-  fallback: number,
-  name?: string
-) => {
+export const parsePositiveInt = (value: string | undefined, fallback: number, name?: string) => {
   if (!value) {
     return fallback;
   }

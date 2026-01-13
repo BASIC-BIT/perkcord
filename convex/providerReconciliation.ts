@@ -26,10 +26,7 @@ const subscriptionSources = new Map<
   ["nmi_subscription", "nmi"],
 ]);
 
-const activeGrantStatuses: Doc<"entitlementGrants">["status"][] = [
-  "active",
-  "past_due",
-];
+const activeGrantStatuses: Doc<"entitlementGrants">["status"][] = ["active", "past_due"];
 
 const coerceLimit = (limit?: number) => {
   if (limit === undefined) {
@@ -113,10 +110,7 @@ const pickFromRecords = (records: Record<string, unknown>[], keys: string[]) => 
   return undefined;
 };
 
-const collectFromRecords = (
-  records: Record<string, unknown>[],
-  keys: string[]
-) => {
+const collectFromRecords = (records: Record<string, unknown>[], keys: string[]) => {
   const values = new Set<string>();
   for (const record of records) {
     for (const key of keys) {
@@ -140,7 +134,7 @@ const collectFromRecords = (
 };
 
 const normalizeStripeSubscriptionStatus = (
-  status?: string
+  status?: string,
 ): Doc<"providerEvents">["normalizedEventType"] => {
   switch (status) {
     case "past_due":
@@ -158,7 +152,7 @@ const normalizeStripeSubscriptionStatus = (
 };
 
 const normalizeAuthorizeNetSubscriptionStatus = (
-  status?: string
+  status?: string,
 ): Doc<"providerEvents">["normalizedEventType"] => {
   const normalized = status?.trim().toLowerCase();
   switch (normalized) {
@@ -178,7 +172,7 @@ const normalizeAuthorizeNetSubscriptionStatus = (
 };
 
 const normalizeNmiSubscriptionStatus = (
-  status?: string
+  status?: string,
 ): Doc<"providerEvents">["normalizedEventType"] | null => {
   if (!status) {
     return null;
@@ -252,10 +246,22 @@ const getAuthorizeNetApiUrl = () => {
   return "https://apitest.authorize.net/xml/v1/request.api";
 };
 
-const extractAuthorizeNetError = (payload: any) => {
-  const messageText = payload?.messages?.message?.[0]?.text;
-  if (typeof messageText === "string" && messageText.trim().length > 0) {
-    return messageText.trim();
+const extractAuthorizeNetError = (payload: unknown) => {
+  const record =
+    payload && typeof payload === "object" ? (payload as Record<string, unknown>) : null;
+  const messages = record?.messages;
+  if (messages && typeof messages === "object") {
+    const messageList = (messages as Record<string, unknown>).message;
+    if (Array.isArray(messageList) && messageList.length > 0) {
+      const message = messageList[0];
+      const text =
+        message && typeof message === "object"
+          ? (message as Record<string, unknown>).text
+          : undefined;
+      if (typeof text === "string" && text.trim().length > 0) {
+        return text.trim();
+      }
+    }
   }
   return "Authorize.Net request failed.";
 };
@@ -330,18 +336,8 @@ const parseNmiQueryPayload = (value: string) => {
 };
 
 const extractNmiError = (records: Record<string, unknown>[]) => {
-  const result = pickFromRecords(records, [
-    "result",
-    "response",
-    "response_code",
-    "success",
-  ]);
-  const message = pickFromRecords(records, [
-    "error",
-    "error_message",
-    "message",
-    "result_text",
-  ]);
+  const result = pickFromRecords(records, ["result", "response", "response_code", "success"]);
+  const message = pickFromRecords(records, ["error", "error_message", "message", "result_text"]);
   if (result) {
     const normalized = result.trim().toLowerCase();
     if (["1", "success", "approved", "ok"].includes(normalized)) {
@@ -397,14 +393,13 @@ export const reconcileProviderSubscriptions = action({
     const limit = coerceLimit(args.limit);
     const grants = await ctx.runQuery(
       internal.providerReconciliation.listSubscriptionGrantsForReconciliation,
-      { limit }
+      { limit },
     );
 
     const results: ReconcileResult[] = [];
     const stripeSecret = process.env.STRIPE_SECRET_KEY?.trim();
     const authorizeNetLoginId = process.env.AUTHORIZE_NET_API_LOGIN_ID?.trim();
-    const authorizeNetTransactionKey =
-      process.env.AUTHORIZE_NET_TRANSACTION_KEY?.trim();
+    const authorizeNetTransactionKey = process.env.AUTHORIZE_NET_TRANSACTION_KEY?.trim();
 
     for (const grant of grants) {
       const provider = subscriptionSources.get(grant.source);
@@ -443,15 +438,12 @@ export const reconcileProviderSubscriptions = action({
             continue;
           }
 
-          const response = await fetch(
-            `https://api.stripe.com/v1/subscriptions/${sourceRefId}`,
-            {
-              method: "GET",
-              headers: {
-                authorization: `Bearer ${stripeSecret}`,
-              },
-            }
-          );
+          const response = await fetch(`https://api.stripe.com/v1/subscriptions/${sourceRefId}`, {
+            method: "GET",
+            headers: {
+              authorization: `Bearer ${stripeSecret}`,
+            },
+          });
           const payload = await response.json().catch(() => ({}));
           if (!response.ok) {
             const message =
@@ -467,8 +459,7 @@ export const reconcileProviderSubscriptions = action({
             continue;
           }
 
-          const status =
-            typeof payload?.status === "string" ? payload.status : undefined;
+          const status = typeof payload?.status === "string" ? payload.status : undefined;
           const normalizedEventType = normalizeStripeSubscriptionStatus(status);
           const periodEnd = toOptionalUnixMs(payload?.current_period_end);
           const customerId = getStripeCustomerId(payload?.customer);
@@ -476,26 +467,23 @@ export const reconcileProviderSubscriptions = action({
           const priceIds = collectStripePriceIds(items);
           const eventKey = `reconcile:stripe:${sourceRefId}:${normalizedEventType}:${periodEnd ?? "none"}`;
 
-          const recordResult = await ctx.runMutation(
-            api.providerEvents.recordProviderEvent,
-            {
-              provider: "stripe",
-              providerEventId: eventKey,
-              providerEventType: "subscription.reconciled",
-              normalizedEventType,
-              providerObjectId: sourceRefId,
-              providerCustomerId: customerId,
-              providerPriceIds: priceIds.length > 0 ? priceIds : undefined,
-              providerPeriodEnd: periodEnd,
-              occurredAt: Date.now(),
-              payloadSummaryJson: JSON.stringify({
-                subscriptionId: sourceRefId,
-                status: status ?? null,
-                periodEnd: periodEnd ?? null,
-                customerId: customerId ?? null,
-              }),
-            }
-          );
+          const recordResult = await ctx.runMutation(api.providerEvents.recordProviderEvent, {
+            provider: "stripe",
+            providerEventId: eventKey,
+            providerEventType: "subscription.reconciled",
+            normalizedEventType,
+            providerObjectId: sourceRefId,
+            providerCustomerId: customerId,
+            providerPriceIds: priceIds.length > 0 ? priceIds : undefined,
+            providerPeriodEnd: periodEnd,
+            occurredAt: Date.now(),
+            payloadSummaryJson: JSON.stringify({
+              subscriptionId: sourceRefId,
+              status: status ?? null,
+              periodEnd: periodEnd ?? null,
+              customerId: customerId ?? null,
+            }),
+          });
 
           results.push({
             grantId: grant._id,
@@ -548,25 +536,21 @@ export const reconcileProviderSubscriptions = action({
             typeof payload?.subscriptionStatus === "string"
               ? payload.subscriptionStatus
               : undefined;
-          const normalizedEventType =
-            normalizeAuthorizeNetSubscriptionStatus(status);
+          const normalizedEventType = normalizeAuthorizeNetSubscriptionStatus(status);
           const eventKey = `reconcile:authorize_net:${sourceRefId}:${normalizedEventType}`;
 
-          const recordResult = await ctx.runMutation(
-            api.providerEvents.recordProviderEvent,
-            {
-              provider: "authorize_net",
-              providerEventId: eventKey,
-              providerEventType: "subscription.reconciled",
-              normalizedEventType,
-              providerObjectId: sourceRefId,
-              occurredAt: Date.now(),
-              payloadSummaryJson: JSON.stringify({
-                subscriptionId: sourceRefId,
-                status: status ?? null,
-              }),
-            }
-          );
+          const recordResult = await ctx.runMutation(api.providerEvents.recordProviderEvent, {
+            provider: "authorize_net",
+            providerEventId: eventKey,
+            providerEventType: "subscription.reconciled",
+            normalizedEventType,
+            providerObjectId: sourceRefId,
+            occurredAt: Date.now(),
+            payloadSummaryJson: JSON.stringify({
+              subscriptionId: sourceRefId,
+              status: status ?? null,
+            }),
+          });
 
           results.push({
             grantId: grant._id,
@@ -579,8 +563,7 @@ export const reconcileProviderSubscriptions = action({
 
         if (provider === "nmi") {
           const nmiSecurityKey =
-            process.env.NMI_SECURITY_KEY?.trim() ??
-            process.env.NMI_API_KEY?.trim();
+            process.env.NMI_SECURITY_KEY?.trim() ?? process.env.NMI_API_KEY?.trim();
           if (!nmiSecurityKey) {
             results.push({
               grantId: grant._id,
@@ -659,7 +642,7 @@ export const reconcileProviderSubscriptions = action({
               "endDate",
               "expires_at",
               "expiresAt",
-            ])
+            ]),
           );
           const customerId = pickFromRecords(records, [
             "customer_vault_id",
@@ -683,31 +666,27 @@ export const reconcileProviderSubscriptions = action({
             "tier_key",
             "tierKey",
           ]);
-          const providerPriceIds =
-            priceIds.size > 0 ? Array.from(priceIds) : undefined;
+          const providerPriceIds = priceIds.size > 0 ? Array.from(priceIds) : undefined;
           const eventKey = `reconcile:nmi:${sourceRefId}:${normalizedEventType}:${periodEnd ?? "none"}`;
 
-          const recordResult = await ctx.runMutation(
-            api.providerEvents.recordProviderEvent,
-            {
-              provider: "nmi",
-              providerEventId: eventKey,
-              providerEventType: "subscription.reconciled",
-              normalizedEventType,
-              providerObjectId: sourceRefId,
-              providerCustomerId: customerId,
-              providerPriceIds,
-              providerPeriodEnd: periodEnd,
-              occurredAt: Date.now(),
-              payloadSummaryJson: JSON.stringify({
-                subscriptionId: sourceRefId,
-                status: statusValue ?? null,
-                periodEnd: periodEnd ?? null,
-                customerId: customerId ?? null,
-                planIds: providerPriceIds ?? null,
-              }),
-            }
-          );
+          const recordResult = await ctx.runMutation(api.providerEvents.recordProviderEvent, {
+            provider: "nmi",
+            providerEventId: eventKey,
+            providerEventType: "subscription.reconciled",
+            normalizedEventType,
+            providerObjectId: sourceRefId,
+            providerCustomerId: customerId,
+            providerPriceIds,
+            providerPeriodEnd: periodEnd,
+            occurredAt: Date.now(),
+            payloadSummaryJson: JSON.stringify({
+              subscriptionId: sourceRefId,
+              status: statusValue ?? null,
+              periodEnd: periodEnd ?? null,
+              customerId: customerId ?? null,
+              planIds: providerPriceIds ?? null,
+            }),
+          });
 
           results.push({
             grantId: grant._id,
@@ -725,8 +704,7 @@ export const reconcileProviderSubscriptions = action({
           reason: "Provider reconciliation not implemented.",
         });
       } catch (error) {
-        const message =
-          error instanceof Error ? error.message : "Unexpected reconcile error.";
+        const message = error instanceof Error ? error.message : "Unexpected reconcile error.";
         results.push({
           grantId: grant._id,
           provider,

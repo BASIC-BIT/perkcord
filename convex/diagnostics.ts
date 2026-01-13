@@ -3,16 +3,10 @@ import { v } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
 
 const actorType = v.optional(v.union(v.literal("system"), v.literal("admin")));
-const statusType = v.union(
-  v.literal("pass"),
-  v.literal("warn"),
-  v.literal("fail")
-);
+const statusType = v.union(v.literal("pass"), v.literal("warn"), v.literal("fail"));
 
 const normalizeStringList = (values: string[]) => {
-  const cleaned = values
-    .map((value) => value.trim())
-    .filter((value) => value.length > 0);
+  const cleaned = values.map((value) => value.trim()).filter((value) => value.length > 0);
   return Array.from(new Set(cleaned)).sort();
 };
 
@@ -70,8 +64,7 @@ export const upsertGuildDiagnostics = mutation({
     const roleHierarchyOk = blockedRoleIds.length === 0;
     const rolesExistOk = missingRoleIds.length === 0;
     const overallStatus =
-      args.overallStatus ??
-      computeOverallStatus({ permissionsOk, roleHierarchyOk, rolesExistOk });
+      args.overallStatus ?? computeOverallStatus({ permissionsOk, roleHierarchyOk, rolesExistOk });
 
     const existing = await ctx.db
       .query("guildDiagnostics")

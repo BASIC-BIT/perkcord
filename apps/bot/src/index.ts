@@ -16,7 +16,7 @@ const worker = new RoleSyncWorker({
   config,
 });
 
-client.once("ready", async () => {
+client.once("clientReady", async () => {
   console.log("Perkcord bot connected.");
   await worker.bootstrapGuilds();
   worker.start();

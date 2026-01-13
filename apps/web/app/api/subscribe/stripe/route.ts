@@ -1,9 +1,10 @@
 import { ConvexHttpClient } from "convex/browser";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { getMemberSessionFromCookies } from "@/lib/memberSession";
 import { resolveStripeCheckoutConfig } from "@/lib/stripeCheckout";
 import { requireEnv, resolveEnvError } from "@/lib/serverEnv";
+import { api } from "../../../../../../convex/_generated/api";
 
 export const runtime = "nodejs";
 
@@ -48,7 +49,7 @@ const buildPayRedirect = (
   return NextResponse.redirect(url);
 };
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   let stripeSecret: string;
   try {
     stripeSecret = requireEnv("STRIPE_SECRET_KEY", "Stripe checkout is not configured yet.");
@@ -150,9 +151,9 @@ export async function POST(request: Request) {
   try {
     const stripe = new Stripe(stripeSecret);
     const convex = new ConvexHttpClient(convexUrl);
-    const guild = (await convex.query("guilds:getGuildByDiscordId", {
+    const guild = await convex.query(api.guilds.getGuildByDiscordId, {
       discordGuildId: guildId,
-    })) as { _id: string } | null;
+    });
     if (!guild?._id) {
       return buildPayRedirect(request, {
         tierId,
@@ -162,11 +163,11 @@ export async function POST(request: Request) {
       });
     }
 
-    const existingLink = (await convex.query("providerCustomers:getProviderCustomerLinkForUser", {
+    const existingLink = await convex.query(api.providerCustomers.getProviderCustomerLinkForUser, {
       guildId: guild._id,
       provider: "stripe",
       discordUserId: memberSession.discordUserId,
-    })) as { providerCustomerId?: string } | null;
+    });
 
     let customerId = existingLink?.providerCustomerId ?? null;
     if (!customerId) {
@@ -177,7 +178,7 @@ export async function POST(request: Request) {
         },
       });
       customerId = customer.id;
-      await convex.mutation("providerCustomers:upsertProviderCustomerLink", {
+      await convex.mutation(api.providerCustomers.upsertProviderCustomerLink, {
         guildId: guild._id,
         provider: "stripe",
         providerCustomerId: customerId,

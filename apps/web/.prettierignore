@@ -1,0 +1,11 @@
+.next
+out
+dist
+coverage
+storybook-static
+playwright-report
+test-results
+e2e/visual.spec.ts-snapshots
+node_modules
+.vercel
+.turbo

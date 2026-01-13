@@ -1,4 +1,3 @@
-import { createHmac, timingSafeEqual } from "crypto";
 import { httpAction } from "./_generated/server";
 import { api } from "./_generated/api";
 
@@ -23,6 +22,50 @@ type StripeEvent = {
 };
 
 const STRIPE_SIGNATURE_TOLERANCE_MS = 5 * 60 * 1000;
+const textEncoder = new TextEncoder();
+const textDecoder = new TextDecoder();
+
+const fromHex = (hex: string) => {
+  if (hex.length % 2 !== 0) {
+    return null;
+  }
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let index = 0; index < hex.length; index += 2) {
+    const parsed = Number.parseInt(hex.slice(index, index + 2), 16);
+    if (Number.isNaN(parsed)) {
+      return null;
+    }
+    bytes[index / 2] = parsed;
+  }
+  return bytes;
+};
+
+const timingSafeEqual = (left: Uint8Array, right: Uint8Array) => {
+  if (left.length !== right.length) {
+    return false;
+  }
+  let diff = 0;
+  for (let index = 0; index < left.length; index += 1) {
+    diff |= left[index] ^ right[index];
+  }
+  return diff === 0;
+};
+
+const hmacSha256 = async (payload: string, secret: string) => {
+  const subtle = globalThis.crypto?.subtle;
+  if (!subtle) {
+    throw new Error("crypto.subtle is not available for webhook verification.");
+  }
+  const key = await subtle.importKey(
+    "raw",
+    textEncoder.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signature = await subtle.sign("HMAC", key, textEncoder.encode(payload));
+  return new Uint8Array(signature);
+};
 
 const parseStripeSignatureHeader = (header: string) => {
   const parts = header.split(",");
@@ -46,11 +89,7 @@ const parseStripeSignatureHeader = (header: string) => {
   return { timestamp, signatures };
 };
 
-const isStripeSignatureValid = (
-  payload: Buffer,
-  header: string,
-  secret: string
-) => {
+const isStripeSignatureValid = async (payloadText: string, header: string, secret: string) => {
   const parsed = parseStripeSignatureHeader(header);
   if (!parsed) {
     return false;
@@ -67,27 +106,22 @@ const isStripeSignatureValid = (
     return false;
   }
 
-  const signedPayload = `${parsed.timestamp}.${payload.toString("utf8")}`;
-  const expectedSignature = createHmac("sha256", secret)
-    .update(signedPayload, "utf8")
-    .digest("hex");
-  const expectedBuffer = Buffer.from(expectedSignature);
+  const signedPayload = `${parsed.timestamp}.${payloadText}`;
+  const expected = await hmacSha256(signedPayload, secret);
 
   for (const signature of parsed.signatures) {
-    const signatureBuffer = Buffer.from(signature);
-    if (signatureBuffer.length !== expectedBuffer.length) {
+    const signatureBuffer = fromHex(signature);
+    if (!signatureBuffer) {
       continue;
     }
-    if (timingSafeEqual(signatureBuffer, expectedBuffer)) {
+    if (timingSafeEqual(signatureBuffer, expected)) {
       return true;
     }
   }
   return false;
 };
 
-const normalizeStripeSubscriptionStatus = (
-  status?: string
-): NormalizedProviderEventType => {
+const normalizeStripeSubscriptionStatus = (status?: string): NormalizedProviderEventType => {
   switch (status) {
     case "past_due":
     case "unpaid":
@@ -103,9 +137,7 @@ const normalizeStripeSubscriptionStatus = (
   }
 };
 
-const normalizeStripeEvent = (
-  event: StripeEvent
-): NormalizedProviderEventType | null => {
+const normalizeStripeEvent = (event: StripeEvent): NormalizedProviderEventType | null => {
   switch (event.type) {
     case "invoice.payment_succeeded":
     case "payment_intent.succeeded":
@@ -256,14 +288,15 @@ export const stripeWebhook = httpAction(async (ctx, request) => {
     return new Response("Missing Stripe signature.", { status: 400 });
   }
 
-  const rawBody = Buffer.from(await request.arrayBuffer());
-  if (!isStripeSignatureValid(rawBody, signatureHeader, secret)) {
+  const rawBody = new Uint8Array(await request.arrayBuffer());
+  const payloadText = textDecoder.decode(rawBody);
+  if (!(await isStripeSignatureValid(payloadText, signatureHeader, secret))) {
     return new Response("Invalid Stripe signature.", { status: 400 });
   }
 
   let event: StripeEvent;
   try {
-    event = JSON.parse(rawBody.toString("utf8")) as StripeEvent;
+    event = JSON.parse(payloadText) as StripeEvent;
   } catch (error) {
     return new Response("Invalid JSON payload.", { status: 400 });
   }
@@ -282,8 +315,7 @@ export const stripeWebhook = httpAction(async (ctx, request) => {
   const customerId = getStripeCustomerId(object);
   const priceIds = getStripePriceIds(object);
   const periodEnd = getStripePeriodEnd(object);
-  const occurredAt =
-    typeof event.created === "number" ? event.created * 1000 : undefined;
+  const occurredAt = typeof event.created === "number" ? event.created * 1000 : undefined;
 
   const payloadSummaryJson = JSON.stringify({
     id: event.id,

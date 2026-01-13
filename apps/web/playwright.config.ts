@@ -18,7 +18,6 @@ export default defineConfig({
     trace: "on-first-retry",
     locale: "en-US",
     timezoneId: "UTC",
-    reducedMotion: "reduce",
   },
   webServer: {
     command: `npm run dev -- --hostname 127.0.0.1 --port ${port}`,

@@ -1,7 +1,7 @@
+import type { MutationCtx } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
 
-export type OutboundWebhookEventType =
-  Doc<"outboundWebhookEndpoints">["eventTypes"][number];
+export type OutboundWebhookEventType = Doc<"outboundWebhookEndpoints">["eventTypes"][number];
 
 type OutboundWebhookPayload = {
   id: string;
@@ -18,15 +18,13 @@ type EnqueueArgs = {
   payloadJson: string;
 };
 
-export const createOutboundWebhookPayload = (
-  payload: OutboundWebhookPayload
-) => {
+export const createOutboundWebhookPayload = (payload: OutboundWebhookPayload) => {
   return JSON.stringify(payload);
 };
 
 export const enqueueOutboundWebhookDeliveries = async (
-  ctx: { db: any },
-  args: EnqueueArgs
+  ctx: Pick<MutationCtx, "db">,
+  args: EnqueueArgs,
 ) => {
   const now = Date.now();
   const eventId = args.eventId.trim();
@@ -41,7 +39,7 @@ export const enqueueOutboundWebhookDeliveries = async (
 
   const activeEndpoints = endpoints.filter(
     (endpoint: Doc<"outboundWebhookEndpoints">) =>
-      endpoint.isActive && endpoint.eventTypes.includes(args.eventType)
+      endpoint.isActive && endpoint.eventTypes.includes(args.eventType),
   );
 
   const deliveryIds: Array<Doc<"outboundWebhookDeliveries">["_id"]> = [];
@@ -50,10 +48,7 @@ export const enqueueOutboundWebhookDeliveries = async (
     const existing = await ctx.db
       .query("outboundWebhookDeliveries")
       .withIndex("by_endpoint_event", (q) =>
-        q
-          .eq("endpointId", endpoint._id)
-          .eq("eventType", args.eventType)
-          .eq("eventId", eventId)
+        q.eq("endpointId", endpoint._id).eq("eventType", args.eventType).eq("eventId", eventId),
       )
       .unique();
 

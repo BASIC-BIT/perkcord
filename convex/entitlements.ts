@@ -14,12 +14,9 @@ const entitlementStatus = v.union(
   v.literal("past_due"),
   v.literal("canceled"),
   v.literal("expired"),
-  v.literal("suspended_dispute")
+  v.literal("suspended_dispute"),
 );
-const activeGrantStatuses: Doc<"entitlementGrants">["status"][] = [
-  "active",
-  "past_due",
-];
+const activeGrantStatuses: Doc<"entitlementGrants">["status"][] = ["active", "past_due"];
 
 const entitlementPolicy = v.object({
   kind: v.union(v.literal("subscription"), v.literal("one_time")),
@@ -37,7 +34,7 @@ const providerRefs = v.optional(
     authorizeNetOneTimeKeys: v.optional(v.array(v.string())),
     nmiPlanIds: v.optional(v.array(v.string())),
     nmiOneTimeKeys: v.optional(v.array(v.string())),
-  })
+  }),
 );
 
 type EntitlementPolicy = {
@@ -91,7 +88,7 @@ const validateEntitlementPolicy = (policy: EntitlementPolicy) => {
     const isLifetime = Boolean(policy.isLifetime);
     if (hasDuration === isLifetime) {
       throw new Error(
-        "One-time entitlements require either durationDays or isLifetime=true (but not both)."
+        "One-time entitlements require either durationDays or isLifetime=true (but not both).",
       );
     }
   }
@@ -151,9 +148,7 @@ export const createTier = mutation({
 
     const roleIds = normalizeRoleIds(args.roleIds);
     validateRoleIds(roleIds);
-    const normalizedPolicy = applyEntitlementPolicyDefaults(
-      args.entitlementPolicy
-    );
+    const normalizedPolicy = applyEntitlementPolicyDefaults(args.entitlementPolicy);
     validateEntitlementPolicy(normalizedPolicy);
 
     const tierId = await ctx.db.insert("tiers", {
@@ -207,9 +202,7 @@ export const updateTier = mutation({
       throw new Error("Tier does not belong to guild.");
     }
 
-    const nextRoleIds = args.roleIds
-      ? normalizeRoleIds(args.roleIds)
-      : tier.roleIds;
+    const nextRoleIds = args.roleIds ? normalizeRoleIds(args.roleIds) : tier.roleIds;
     if (args.roleIds) {
       validateRoleIds(nextRoleIds);
     }
@@ -390,9 +383,7 @@ export const revokeEntitlementGrant = mutation({
 
     const nextStatus = grant.status === "canceled" ? grant.status : "canceled";
     const nextValidThrough =
-      grant.validThrough === undefined || grant.validThrough > now
-        ? now
-        : grant.validThrough;
+      grant.validThrough === undefined || grant.validThrough > now ? now : grant.validThrough;
 
     const shouldPatch =
       nextStatus !== grant.status ||
@@ -473,14 +464,14 @@ export const getMemberSnapshot = query({
     const memberIdentity = await ctx.db
       .query("memberIdentities")
       .withIndex("by_guild_user", (q) =>
-        q.eq("guildId", args.guildId).eq("discordUserId", args.discordUserId)
+        q.eq("guildId", args.guildId).eq("discordUserId", args.discordUserId),
       )
       .unique();
 
     const grants = await ctx.db
       .query("entitlementGrants")
       .withIndex("by_guild_user", (q) =>
-        q.eq("guildId", args.guildId).eq("discordUserId", args.discordUserId)
+        q.eq("guildId", args.guildId).eq("discordUserId", args.discordUserId),
       )
       .collect();
 
@@ -491,7 +482,7 @@ export const getMemberSnapshot = query({
     const tierById = new Map(
       tiers
         .filter((tier): tier is NonNullable<typeof tier> => Boolean(tier))
-        .map((tier) => [tier._id, tier])
+        .map((tier) => [tier._id, tier]),
     );
 
     const grantsWithTier = grants.map((grant) => ({
@@ -503,7 +494,7 @@ export const getMemberSnapshot = query({
     const auditEvents = await ctx.db
       .query("auditEvents")
       .withIndex("by_guild_user_time", (q) =>
-        q.eq("guildId", args.guildId).eq("subjectDiscordUserId", args.discordUserId)
+        q.eq("guildId", args.guildId).eq("subjectDiscordUserId", args.discordUserId),
       )
       .order("desc")
       .take(auditLimit);
@@ -576,9 +567,7 @@ export const expireEntitlementGrants = mutation({
       }
       const candidates = await ctx.db
         .query("entitlementGrants")
-        .withIndex("by_status_validThrough", (q) =>
-          q.eq("status", status).lt("validThrough", now)
-        )
+        .withIndex("by_status_validThrough", (q) => q.eq("status", status).lt("validThrough", now))
         .take(remaining);
 
       for (const grant of candidates) {
@@ -592,10 +581,7 @@ export const expireEntitlementGrants = mutation({
         if (!activeGrantStatuses.includes(current.status)) {
           continue;
         }
-        if (
-          current.validThrough === undefined ||
-          current.validThrough > now
-        ) {
+        if (current.validThrough === undefined || current.validThrough > now) {
           continue;
         }
 

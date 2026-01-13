@@ -6,17 +6,10 @@ import {
   enqueueOutboundWebhookDeliveries,
 } from "./outboundWebhookQueue";
 import { enqueueRoleConnectionUpdate } from "./roleConnectionQueue";
-import {
-  getCancelAtPeriodEnd,
-  getGracePeriodDays,
-} from "./entitlementPolicyDefaults";
+import { getCancelAtPeriodEnd, getGracePeriodDays } from "./entitlementPolicyDefaults";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-const providers: Doc<"providerEvents">["provider"][] = [
-  "stripe",
-  "authorize_net",
-  "nmi",
-];
+const providers: Doc<"providerEvents">["provider"][] = ["stripe", "authorize_net", "nmi"];
 
 type PurchaseKind = "subscription" | "one_time";
 type MembershipEventType =
@@ -25,9 +18,10 @@ type MembershipEventType =
   | "membership.canceled"
   | "membership.expired";
 
-const activationEventTypes = new Set<
-  Doc<"providerEvents">["normalizedEventType"]
->(["PAYMENT_SUCCEEDED", "SUBSCRIPTION_ACTIVE"]);
+const activationEventTypes = new Set<Doc<"providerEvents">["normalizedEventType"]>([
+  "PAYMENT_SUCCEEDED",
+  "SUBSCRIPTION_ACTIVE",
+]);
 
 const normalizePriceIds = (priceIds?: string[]) => {
   if (!priceIds) {
@@ -66,7 +60,7 @@ const normalizePeriodEnd = (value?: number, min?: number) => {
 };
 
 const mapEventToStatus = (
-  eventType: Doc<"providerEvents">["normalizedEventType"]
+  eventType: Doc<"providerEvents">["normalizedEventType"],
 ): Doc<"entitlementGrants">["status"] => {
   switch (eventType) {
     case "PAYMENT_SUCCEEDED":
@@ -87,7 +81,7 @@ const mapEventToStatus = (
 
 const getSourceForProvider = (
   provider: Doc<"providerEvents">["provider"],
-  purchaseKind: PurchaseKind
+  purchaseKind: PurchaseKind,
 ): Doc<"entitlementGrants">["source"] => {
   if (purchaseKind === "subscription") {
     return `${provider}_subscription` as Doc<"entitlementGrants">["source"];
@@ -96,7 +90,7 @@ const getSourceForProvider = (
 };
 
 const derivePurchaseKindFromSource = (
-  source: Doc<"entitlementGrants">["source"]
+  source: Doc<"entitlementGrants">["source"],
 ): PurchaseKind | null => {
   if (source.endsWith("_subscription")) {
     return "subscription";
@@ -110,14 +104,13 @@ const derivePurchaseKindFromSource = (
 const getMatchKind = (
   tier: Doc<"tiers">,
   provider: Doc<"providerEvents">["provider"],
-  priceIds: Set<string>
+  priceIds: Set<string>,
 ): PurchaseKind | "ambiguous" | null => {
   if (!tier.providerRefs || priceIds.size === 0) {
     return null;
   }
 
-  const hasAny = (ids?: string[]) =>
-    Boolean(ids?.some((id) => priceIds.has(id.trim())));
+  const hasAny = (ids?: string[]) => Boolean(ids?.some((id) => priceIds.has(id.trim())));
 
   switch (provider) {
     case "stripe": {
@@ -135,9 +128,7 @@ const getMatchKind = (
       return null;
     }
     case "authorize_net": {
-      const subscription = hasAny(
-        tier.providerRefs.authorizeNetSubscriptionIds
-      );
+      const subscription = hasAny(tier.providerRefs.authorizeNetSubscriptionIds);
       const oneTime = hasAny(tier.providerRefs.authorizeNetOneTimeKeys);
       if (subscription && oneTime) {
         return "ambiguous";
@@ -170,7 +161,7 @@ const getMatchKind = (
 const computeValidThroughForNewGrant = (
   tier: Doc<"tiers">,
   purchaseKind: PurchaseKind,
-  validFrom: number
+  validFrom: number,
 ) => {
   if (purchaseKind !== "one_time") {
     return undefined;
@@ -190,7 +181,7 @@ const computeNextValidThrough = (
   purchaseKind: PurchaseKind,
   nextStatus: Doc<"entitlementGrants">["status"],
   now: number,
-  eventPeriodEnd?: number
+  eventPeriodEnd?: number,
 ) => {
   let next = grant.validThrough;
   if (purchaseKind === "subscription" && eventPeriodEnd !== undefined) {
@@ -225,7 +216,7 @@ const computeNextValidThrough = (
 
 const getMembershipEventType = (
   previousStatus: Doc<"entitlementGrants">["status"] | null,
-  nextStatus: Doc<"entitlementGrants">["status"]
+  nextStatus: Doc<"entitlementGrants">["status"],
 ): MembershipEventType => {
   if (nextStatus === "canceled") {
     return "membership.canceled";
@@ -277,10 +268,7 @@ const truncateError = (value: string, limit = 500) => {
   return `${value.slice(0, limit - 3)}...`;
 };
 
-const buildSecondaryIds = (
-  sourceRefId: string,
-  event: Doc<"providerEvents">
-) => {
+const buildSecondaryIds = (sourceRefId: string, event: Doc<"providerEvents">) => {
   const secondary: string[] = [];
   if (event.providerObjectId && event.providerObjectId !== sourceRefId) {
     secondary.push(event.providerObjectId);
@@ -334,9 +322,7 @@ export const processProviderEvents = mutation({
           existingGrant = await ctx.db
             .query("entitlementGrants")
             .withIndex("by_source_ref", (q) =>
-              q
-                .eq("sourceRefProvider", event.provider)
-                .eq("sourceRefId", sourceRefId)
+              q.eq("sourceRefProvider", event.provider).eq("sourceRefId", sourceRefId),
             )
             .unique();
         }
@@ -356,9 +342,7 @@ export const processProviderEvents = mutation({
           const links = await ctx.db
             .query("providerCustomerLinks")
             .withIndex("by_provider_customer", (q) =>
-              q
-                .eq("provider", event.provider)
-                .eq("providerCustomerId", providerCustomerId)
+              q.eq("provider", event.provider).eq("providerCustomerId", providerCustomerId),
             )
             .take(2);
 
@@ -401,7 +385,7 @@ export const processProviderEvents = mutation({
             const matchKind = getMatchKind(candidate, event.provider, priceSet);
             if (matchKind === "ambiguous") {
               throw new Error(
-                `Tier ${candidate._id} matches both subscription and one-time price ids.`
+                `Tier ${candidate._id} matches both subscription and one-time price ids.`,
               );
             }
             if (matchKind) {
@@ -430,18 +414,11 @@ export const processProviderEvents = mutation({
           }
 
           const validFrom = coerceEventTimestamp(event);
-          const eventPeriodEnd = normalizePeriodEnd(
-            event.providerPeriodEnd,
-            validFrom
-          );
+          const eventPeriodEnd = normalizePeriodEnd(event.providerPeriodEnd, validFrom);
           const validThrough =
             purchaseKind === "subscription"
               ? eventPeriodEnd
-              : computeValidThroughForNewGrant(
-                  tier,
-                  purchaseKind,
-                  validFrom
-                );
+              : computeValidThroughForNewGrant(tier, purchaseKind, validFrom);
 
           const sourceRefProvider = event.provider;
           const resolvedSourceRefId = sourceRefId || event.providerEventId;
@@ -457,8 +434,7 @@ export const processProviderEvents = mutation({
             source: getSourceForProvider(event.provider, purchaseKind),
             sourceRefProvider,
             sourceRefId: resolvedSourceRefId,
-            sourceRefSecondaryIds:
-              secondaryIds.length > 0 ? secondaryIds : undefined,
+            sourceRefSecondaryIds: secondaryIds.length > 0 ? secondaryIds : undefined,
             createdAt: now,
             updatedAt: now,
           });
@@ -548,24 +524,18 @@ export const processProviderEvents = mutation({
           continue;
         }
 
-        if (
-          existingGrant.sourceRefProvider &&
-          existingGrant.sourceRefProvider !== event.provider
-        ) {
+        if (existingGrant.sourceRefProvider && existingGrant.sourceRefProvider !== event.provider) {
           throw new Error("Provider mismatch for existing grant.");
         }
 
-        const eventPeriodEnd = normalizePeriodEnd(
-          event.providerPeriodEnd,
-          existingGrant.validFrom
-        );
+        const eventPeriodEnd = normalizePeriodEnd(event.providerPeriodEnd, existingGrant.validFrom);
         const nextValidThrough = computeNextValidThrough(
           existingGrant,
           tier,
           purchaseKind,
           nextStatus,
           now,
-          eventPeriodEnd
+          eventPeriodEnd,
         );
 
         const patch: Partial<Doc<"entitlementGrants">> = {};
@@ -588,13 +558,10 @@ export const processProviderEvents = mutation({
           updatedFields.push("sourceRefId");
         }
 
-        const secondaryIds = buildSecondaryIds(
-          existingGrant.sourceRefId ?? sourceRefId,
-          event
-        );
+        const secondaryIds = buildSecondaryIds(existingGrant.sourceRefId ?? sourceRefId, event);
         const mergedSecondaryIds = mergeSecondaryIds(
           existingGrant.sourceRefSecondaryIds,
-          secondaryIds
+          secondaryIds,
         );
         if (!arraysEqual(mergedSecondaryIds, existingGrant.sourceRefSecondaryIds)) {
           patch.sourceRefSecondaryIds = mergedSecondaryIds;
@@ -629,13 +596,9 @@ export const processProviderEvents = mutation({
           });
 
           const shouldEmitMembership =
-            updatedFields.includes("status") ||
-            updatedFields.includes("validThrough");
+            updatedFields.includes("status") || updatedFields.includes("validThrough");
           if (shouldEmitMembership) {
-            const membershipEventType = getMembershipEventType(
-              existingGrant.status,
-              nextStatus
-            );
+            const membershipEventType = getMembershipEventType(existingGrant.status, nextStatus);
             await enqueueOutboundWebhookDeliveries(ctx, {
               guildId,
               eventType: membershipEventType,
@@ -678,8 +641,7 @@ export const processProviderEvents = mutation({
           grantId: existingGrant._id,
         });
       } catch (error) {
-        const message =
-          error instanceof Error ? error.message : "Unexpected error.";
+        const message = error instanceof Error ? error.message : "Unexpected error.";
         await ctx.db.patch(event._id, {
           processedStatus: "failed",
           processedAt: now,
@@ -696,8 +658,7 @@ export const processProviderEvents = mutation({
 
     return {
       evaluatedAt: Date.now(),
-      processedCount: results.filter((item) => item.status === "processed")
-        .length,
+      processedCount: results.filter((item) => item.status === "processed").length,
       failedCount: results.filter((item) => item.status === "failed").length,
       results,
     };

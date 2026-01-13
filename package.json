@@ -2,9 +2,35 @@
   "name": "perkcord-root",
   "private": true,
   "type": "module",
+  "devDependencies": {
+    "@eslint/eslintrc": "^2.1.4",
+    "@eslint/js": "^8.57.0",
+    "convex": "^1.14.1",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "globals": "^13.24.0",
+    "prettier": "^3.2.5",
+    "typescript": "5.5.4",
+    "typescript-eslint": "^7.10.0"
+  },
   "scripts": {
-    "check": "npm --prefix apps/web run format:write && npm --prefix apps/web run lint && npm --prefix apps/web run typecheck && npm --prefix apps/web run test && npm --prefix apps/web run test:e2e && npm --prefix apps/bot run format:write && npm --prefix apps/bot run lint && npm --prefix apps/bot run typecheck && npm --prefix convex run format:write && npm --prefix convex run lint",
-    "check:verify": "npm --prefix apps/web run format && npm --prefix apps/web run lint && npm --prefix apps/web run typecheck && npm --prefix apps/web run test && npm --prefix apps/web run test:e2e && npm --prefix apps/bot run format && npm --prefix apps/bot run lint && npm --prefix apps/bot run typecheck && npm --prefix convex run format && npm --prefix convex run lint",
-    "check:ci": "npm run check:verify && bash scripts/check-metrics.sh"
+    "check": "npm --prefix apps/web run format:write && npm --prefix apps/web run lint && npm --prefix apps/web run typecheck && npm --prefix apps/web run test && npm --prefix apps/web run test:e2e && npm --prefix apps/bot run format:write && npm --prefix apps/bot run lint && npm --prefix apps/bot run typecheck && npm run convex:format:write && npm run convex:lint",
+    "check:verify": "npm --prefix apps/web run format && npm --prefix apps/web run lint && npm --prefix apps/web run typecheck && npm --prefix apps/web run test && npm --prefix apps/web run test:e2e && npm --prefix apps/bot run format && npm --prefix apps/bot run lint && npm --prefix apps/bot run typecheck && npm run convex:format && npm run convex:lint",
+    "check:ci": "npm run check:verify && bash scripts/check-metrics.sh",
+    "install:apps": "npm install && npm --prefix apps/web install && npm --prefix apps/bot install",
+    "codegen": "node scripts/convex-codegen.mjs",
+    "playwright:install": "npm --prefix apps/web exec -- playwright install",
+    "setup": "npm run install:apps && npm run playwright:install",
+    "format": "npm --prefix apps/web run format && npm --prefix apps/bot run format && npm run convex:format",
+    "format:write": "npm --prefix apps/web run format:write && npm --prefix apps/bot run format:write && npm run convex:format:write",
+    "lint": "npm --prefix apps/web run lint && npm --prefix apps/bot run lint && npm run convex:lint",
+    "convex:format": "npm --prefix convex run format",
+    "convex:format:write": "npm --prefix convex run format:write",
+    "convex:lint": "npm --prefix convex run lint",
+    "typecheck": "npm --prefix apps/web run typecheck && npm --prefix apps/bot run typecheck",
+    "test": "npm --prefix apps/web run test",
+    "test:e2e": "npm --prefix apps/web run test:e2e",
+    "test:e2e:visual": "npm --prefix apps/web run test:e2e:visual",
+    "test:e2e:visual:update": "npm --prefix apps/web run test:e2e:visual:update"
   }
 }

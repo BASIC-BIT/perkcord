@@ -2,11 +2,7 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
 
-const providerName = v.union(
-  v.literal("stripe"),
-  v.literal("authorize_net"),
-  v.literal("nmi")
-);
+const providerName = v.union(v.literal("stripe"), v.literal("authorize_net"), v.literal("nmi"));
 const actorType = v.optional(v.union(v.literal("system"), v.literal("admin")));
 
 const normalizeId = (value: string, fieldName: string) => {
@@ -28,10 +24,7 @@ export const upsertProviderCustomerLink = mutation({
   },
   handler: async (ctx, args) => {
     const now = Date.now();
-    const providerCustomerId = normalizeId(
-      args.providerCustomerId,
-      "Provider customer id"
-    );
+    const providerCustomerId = normalizeId(args.providerCustomerId, "Provider customer id");
     const discordUserId = normalizeId(args.discordUserId, "Discord user id");
 
     const guild = await ctx.db.get(args.guildId);
@@ -45,7 +38,7 @@ export const upsertProviderCustomerLink = mutation({
         q
           .eq("guildId", args.guildId)
           .eq("provider", args.provider)
-          .eq("providerCustomerId", providerCustomerId)
+          .eq("providerCustomerId", providerCustomerId),
       )
       .unique();
 
@@ -117,10 +110,7 @@ export const getProviderCustomerLink = query({
     providerCustomerId: v.string(),
   },
   handler: async (ctx, args) => {
-    const providerCustomerId = normalizeId(
-      args.providerCustomerId,
-      "Provider customer id"
-    );
+    const providerCustomerId = normalizeId(args.providerCustomerId, "Provider customer id");
 
     return await ctx.db
       .query("providerCustomerLinks")
@@ -128,7 +118,7 @@ export const getProviderCustomerLink = query({
         q
           .eq("guildId", args.guildId)
           .eq("provider", args.provider)
-          .eq("providerCustomerId", providerCustomerId)
+          .eq("providerCustomerId", providerCustomerId),
       )
       .unique();
   },
@@ -146,7 +136,7 @@ export const getProviderCustomerLinkForUser = query({
     const links = await ctx.db
       .query("providerCustomerLinks")
       .withIndex("by_guild_user", (q) =>
-        q.eq("guildId", args.guildId).eq("discordUserId", discordUserId)
+        q.eq("guildId", args.guildId).eq("discordUserId", discordUserId),
       )
       .collect();
 

@@ -2,11 +2,7 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
 
-const providerName = v.union(
-  v.literal("stripe"),
-  v.literal("authorize_net"),
-  v.literal("nmi")
-);
+const providerName = v.union(v.literal("stripe"), v.literal("authorize_net"), v.literal("nmi"));
 
 const normalizedProviderEventType = v.union(
   v.literal("PAYMENT_SUCCEEDED"),
@@ -16,13 +12,10 @@ const normalizedProviderEventType = v.union(
   v.literal("SUBSCRIPTION_CANCELED"),
   v.literal("REFUND_ISSUED"),
   v.literal("CHARGEBACK_OPENED"),
-  v.literal("CHARGEBACK_CLOSED")
+  v.literal("CHARGEBACK_CLOSED"),
 );
 
-const processedStatus = v.union(
-  v.literal("processed"),
-  v.literal("failed")
-);
+const processedStatus = v.union(v.literal("processed"), v.literal("failed"));
 
 const normalizeOptionalStringArray = (values?: string[]) => {
   if (!values) {
@@ -65,11 +58,7 @@ const coerceWindowDays = (value?: number) => {
   return Math.min(value, 365);
 };
 
-const providers: Doc<"providerEvents">["provider"][] = [
-  "stripe",
-  "authorize_net",
-  "nmi",
-];
+const providers: Doc<"providerEvents">["provider"][] = ["stripe", "authorize_net", "nmi"];
 
 const addIdValues = (target: Set<string>, values?: string[]) => {
   if (!values) {
@@ -109,7 +98,7 @@ export const recordProviderEvent = mutation({
     const existing = await ctx.db
       .query("providerEvents")
       .withIndex("by_provider_event", (q) =>
-        q.eq("provider", args.provider).eq("providerEventId", providerEventId)
+        q.eq("provider", args.provider).eq("providerEventId", providerEventId),
       )
       .unique();
 
@@ -168,10 +157,7 @@ export const getLatestProviderEventsForGuild = query({
       .withIndex("by_guild", (q) => q.eq("guildId", args.guildId))
       .collect();
 
-    const customerIdsByProvider = new Map<
-      Doc<"providerEvents">["provider"],
-      Set<string>
-    >();
+    const customerIdsByProvider = new Map<Doc<"providerEvents">["provider"], Set<string>>();
     for (const link of customerLinks) {
       let set = customerIdsByProvider.get(link.provider);
       if (!set) {
@@ -186,10 +172,7 @@ export const getLatestProviderEventsForGuild = query({
       .withIndex("by_guild", (q) => q.eq("guildId", args.guildId))
       .collect();
 
-    const priceIdsByProvider = new Map<
-      Doc<"providerEvents">["provider"],
-      Set<string>
-    >();
+    const priceIdsByProvider = new Map<Doc<"providerEvents">["provider"], Set<string>>();
 
     for (const tier of tiers) {
       const refs = tier.providerRefs;
@@ -301,10 +284,7 @@ export const getRevenueIndicatorsForGuild = query({
       .withIndex("by_guild", (q) => q.eq("guildId", args.guildId))
       .collect();
 
-    const customerIdsByProvider = new Map<
-      Doc<"providerEvents">["provider"],
-      Set<string>
-    >();
+    const customerIdsByProvider = new Map<Doc<"providerEvents">["provider"], Set<string>>();
     for (const link of customerLinks) {
       let set = customerIdsByProvider.get(link.provider);
       if (!set) {
@@ -319,10 +299,7 @@ export const getRevenueIndicatorsForGuild = query({
       .withIndex("by_guild", (q) => q.eq("guildId", args.guildId))
       .collect();
 
-    const priceIdsByProvider = new Map<
-      Doc<"providerEvents">["provider"],
-      Set<string>
-    >();
+    const priceIdsByProvider = new Map<Doc<"providerEvents">["provider"], Set<string>>();
 
     for (const tier of tiers) {
       const refs = tier.providerRefs;
@@ -408,8 +385,7 @@ export const getRevenueIndicatorsForGuild = query({
         }
 
         const matchesCustomer =
-          event.providerCustomerId &&
-          customerIds.has(event.providerCustomerId);
+          event.providerCustomerId && customerIds.has(event.providerCustomerId);
         const matchesPrice = hasAnyOverlap(event.providerPriceIds, priceIds);
         if (!matchesCustomer && !matchesPrice) {
           continue;

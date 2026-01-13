@@ -11,7 +11,9 @@ test.describe("smoke", () => {
   });
 
   test("signed-in admin panels render", async ({ page }, testInfo) => {
-    const baseURL = (testInfo.project.use.baseURL as string | undefined) ?? "http://127.0.0.1:3001";
+    const baseURL = new URL(
+      (testInfo.project.use.baseURL as string | undefined) ?? "http://127.0.0.1:3001",
+    );
     const sessionSecret = process.env.PERKCORD_SESSION_SECRET ?? "playwright-smoke-secret";
     const token = encodeSession(
       {
@@ -26,8 +28,7 @@ test.describe("smoke", () => {
       {
         name: ADMIN_SESSION_COOKIE,
         value: token,
-        url: baseURL,
-        path: "/",
+        url: baseURL.toString(),
       },
     ]);
 
@@ -51,8 +52,8 @@ test.describe("smoke", () => {
 
     await page.goto(`/subscribe/pay?tier=starter&guildId=${guildId}`);
     await expect(page.getByRole("heading", { name: "Payment" })).toBeVisible();
-    await expect(page.getByText("Stripe checkout")).toBeVisible();
-    await expect(page.getByText("Authorize.Net checkout")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Stripe checkout" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Authorize.Net checkout" })).toBeVisible();
 
     await page.goto(`/subscribe/celebrate?tier=starter&guildId=${guildId}`);
     await expect(page.getByRole("heading", { name: "You are all set" })).toBeVisible();

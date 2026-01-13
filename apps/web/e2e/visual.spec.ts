@@ -8,12 +8,12 @@ async function prepareVisualPage(page: Page) {
     ({ fixedTimestamp }) => {
       const OriginalDate = Date;
       class MockDate extends OriginalDate {
-        constructor(...args: ConstructorParameters<typeof Date>) {
+        constructor(...args: ConstructorParameters<typeof Date> | []) {
           if (args.length === 0) {
             super(fixedTimestamp);
             return;
           }
-          super(...args);
+          super(...(args as ConstructorParameters<typeof Date>));
         }
         static now() {
           return fixedTimestamp;
@@ -22,7 +22,7 @@ async function prepareVisualPage(page: Page) {
 
       MockDate.UTC = OriginalDate.UTC;
       MockDate.parse = OriginalDate.parse;
-      globalThis.Date = MockDate;
+      globalThis.Date = MockDate as unknown as DateConstructor;
 
       const style = document.createElement("style");
       style.setAttribute("data-visual-test", "true");

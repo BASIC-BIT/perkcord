@@ -1,9 +1,10 @@
 import { ConvexHttpClient } from "convex/browser";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { getMemberSessionFromCookies } from "@/lib/memberSession";
 import { resolveAuthorizeNetCheckoutConfig } from "@/lib/authorizeNetCheckout";
 import { requireEnv, resolveEnvError } from "@/lib/serverEnv";
+import { api } from "../../../../../../convex/_generated/api";
 
 export const runtime = "nodejs";
 
@@ -41,15 +42,39 @@ const getAuthorizeNetApiUrl = () => {
   return "https://apitest.authorize.net/xml/v1/request.api";
 };
 
-const extractAuthorizeNetError = (payload: any) => {
-  const messageText = payload?.messages?.message?.[0]?.text;
-  if (typeof messageText === "string" && messageText.trim().length > 0) {
-    return messageText.trim();
+const extractAuthorizeNetError = (payload: unknown) => {
+  const record =
+    payload && typeof payload === "object" ? (payload as Record<string, unknown>) : null;
+  const messages = record?.messages;
+  if (messages && typeof messages === "object") {
+    const messageList = (messages as Record<string, unknown>).message;
+    if (Array.isArray(messageList) && messageList.length > 0) {
+      const message = messageList[0];
+      const text =
+        message && typeof message === "object"
+          ? (message as Record<string, unknown>).text
+          : undefined;
+      if (typeof text === "string" && text.trim().length > 0) {
+        return text.trim();
+      }
+    }
   }
-  const errorText = payload?.transactionResponse?.errors?.[0]?.errorText;
-  if (typeof errorText === "string" && errorText.trim().length > 0) {
-    return errorText.trim();
+
+  const transactionResponse = record?.transactionResponse;
+  if (transactionResponse && typeof transactionResponse === "object") {
+    const errorList = (transactionResponse as Record<string, unknown>).errors;
+    if (Array.isArray(errorList) && errorList.length > 0) {
+      const error = errorList[0];
+      const errorText =
+        error && typeof error === "object"
+          ? (error as Record<string, unknown>).errorText
+          : undefined;
+      if (typeof errorText === "string" && errorText.trim().length > 0) {
+        return errorText.trim();
+      }
+    }
   }
+
   return "Authorize.Net transaction failed.";
 };
 
@@ -76,7 +101,7 @@ const addIntervalUtc = (value: Date, length: number, unit: "days" | "months") =>
   );
 };
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   let apiLoginId: string;
   let transactionKey: string;
   try {
@@ -141,23 +166,23 @@ export async function POST(request: Request) {
 
   try {
     const convex = new ConvexHttpClient(convexUrl);
-    const guild = (await convex.query("guilds:getGuildByDiscordId", {
+    const guild = await convex.query(api.guilds.getGuildByDiscordId, {
       discordGuildId: guildId,
-    })) as { _id: string } | null;
+    });
     if (!guild?._id) {
       return jsonError("Guild not found for checkout.", 404);
     }
 
-    const existingLink = (await convex.query("providerCustomers:getProviderCustomerLinkForUser", {
+    const existingLink = await convex.query(api.providerCustomers.getProviderCustomerLinkForUser, {
       guildId: guild._id,
       provider: "authorize_net",
       discordUserId: memberSession.discordUserId,
-    })) as { providerCustomerId?: string } | null;
+    });
 
     const providerCustomerId = existingLink?.providerCustomerId ?? `anet_${randomUUID()}`;
 
     if (!existingLink?.providerCustomerId) {
-      await convex.mutation("providerCustomers:upsertProviderCustomerLink", {
+      await convex.mutation(api.providerCustomers.upsertProviderCustomerLink, {
         guildId: guild._id,
         provider: "authorize_net",
         providerCustomerId,

@@ -7,18 +7,14 @@ type EntitlementPolicyLike = {
 export const DEFAULT_GRACE_PERIOD_DAYS = 7;
 export const DEFAULT_CANCEL_AT_PERIOD_END = true;
 
-export const applyEntitlementPolicyDefaults = <T extends EntitlementPolicyLike>(
-  policy: T
-): T => {
+export const applyEntitlementPolicyDefaults = <T extends EntitlementPolicyLike>(policy: T): T => {
   if (policy.kind !== "subscription") {
     return policy;
   }
   return {
     ...policy,
-    gracePeriodDays:
-      policy.gracePeriodDays ?? DEFAULT_GRACE_PERIOD_DAYS,
-    cancelAtPeriodEnd:
-      policy.cancelAtPeriodEnd ?? DEFAULT_CANCEL_AT_PERIOD_END,
+    gracePeriodDays: policy.gracePeriodDays ?? DEFAULT_GRACE_PERIOD_DAYS,
+    cancelAtPeriodEnd: policy.cancelAtPeriodEnd ?? DEFAULT_CANCEL_AT_PERIOD_END,
   };
 };
 

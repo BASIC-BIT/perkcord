@@ -8,7 +8,7 @@ import tseslint from "typescript-eslint";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const compat = new FlatCompat({ baseDirectory: __dirname });
 
-export default [
+const config = [
   {
     ignores: ["**/.next/**", "**/dist/**", "**/node_modules/**", "**/storybook-static/**"],
   },
@@ -25,3 +25,5 @@ export default [
   ...compat.extends("next/core-web-vitals"),
   ...compat.extends("prettier"),
 ];
+
+export default config;

@@ -1,9 +1,7 @@
+import type { MutationCtx } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
 
-const pendingStatuses: Doc<"roleConnectionUpdates">["status"][] = [
-  "pending",
-  "in_progress",
-];
+const pendingStatuses: Doc<"roleConnectionUpdates">["status"][] = ["pending", "in_progress"];
 
 type EnqueueArgs = {
   guildId: Doc<"guilds">["_id"];
@@ -11,8 +9,8 @@ type EnqueueArgs = {
 };
 
 export const enqueueRoleConnectionUpdate = async (
-  ctx: { db: any },
-  args: EnqueueArgs
+  ctx: Pick<MutationCtx, "db">,
+  args: EnqueueArgs,
 ) => {
   const now = Date.now();
   const discordUserId = args.discordUserId.trim();
@@ -24,10 +22,7 @@ export const enqueueRoleConnectionUpdate = async (
     const existing = await ctx.db
       .query("roleConnectionUpdates")
       .withIndex("by_guild_user_status", (q) =>
-        q
-          .eq("guildId", args.guildId)
-          .eq("discordUserId", discordUserId)
-          .eq("status", status)
+        q.eq("guildId", args.guildId).eq("discordUserId", discordUserId).eq("status", status),
       )
       .take(1);
     if (existing.length > 0) {

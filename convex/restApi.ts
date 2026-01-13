@@ -1,5 +1,6 @@
 import { httpAction } from "./_generated/server";
 import { api } from "./_generated/api";
+import type { Doc, Id, TableNames } from "./_generated/dataModel";
 
 const API_KEY_HEADER = "x-perkcord-api-key";
 
@@ -25,8 +26,7 @@ const authorizeRequest = (request: Request) => {
     return jsonResponse({ error: "API key not configured." }, 500);
   }
   const provided =
-    request.headers.get(API_KEY_HEADER) ??
-    getBearerToken(request.headers.get("authorization"));
+    request.headers.get(API_KEY_HEADER) ?? getBearerToken(request.headers.get("authorization"));
   if (!provided || provided.trim() !== expected) {
     return jsonResponse({ error: "Unauthorized." }, 401);
   }
@@ -49,6 +49,9 @@ const getOptionalParam = (url: URL, key: string) => {
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : undefined;
 };
+
+const getRequiredParamId = <TableName extends TableNames>(url: URL, key: string) =>
+  getRequiredParam(url, key) as Id<TableName>;
 
 const getOptionalInteger = (url: URL, key: string) => {
   const value = getOptionalParam(url, key);
@@ -110,6 +113,11 @@ const getOptionalBodyString = (body: Record<string, unknown>, key: string) => {
   return trimmed.length > 0 ? trimmed : undefined;
 };
 
+const getRequiredBodyId = <TableName extends TableNames>(
+  body: Record<string, unknown>,
+  key: string,
+) => getRequiredBodyString(body, key) as Id<TableName>;
+
 const getOptionalBodyInteger = (body: Record<string, unknown>, key: string) => {
   const value = body[key];
   if (value === undefined || value === null) {
@@ -141,7 +149,7 @@ const hasBodyKey = (body: Record<string, unknown>, key: string) =>
 const getOptionalBodyStringArray = (
   body: Record<string, unknown>,
   key: string,
-  options?: { allowEmpty?: boolean }
+  options?: { allowEmpty?: boolean },
 ) => {
   if (!hasBodyKey(body, key)) {
     return undefined;
@@ -164,10 +172,7 @@ const getOptionalBodyStringArray = (
   return cleaned;
 };
 
-const getRequiredBodyStringArray = (
-  body: Record<string, unknown>,
-  key: string
-) => {
+const getRequiredBodyStringArray = (body: Record<string, unknown>, key: string) => {
   const value = getOptionalBodyStringArray(body, key);
   if (!value) {
     throw new Error(`${key} is required.`);
@@ -175,10 +180,7 @@ const getRequiredBodyStringArray = (
   return value;
 };
 
-const getOptionalBodyObject = (
-  body: Record<string, unknown>,
-  key: string
-) => {
+const getOptionalBodyObject = (body: Record<string, unknown>, key: string) => {
   if (!hasBodyKey(body, key)) {
     return undefined;
   }
@@ -189,11 +191,7 @@ const getOptionalBodyObject = (
   return value as Record<string, unknown>;
 };
 
-const getRequiredRecordString = (
-  record: Record<string, unknown>,
-  key: string,
-  scope: string
-) => {
+const getRequiredRecordString = (record: Record<string, unknown>, key: string, scope: string) => {
   const value = record[key];
   if (typeof value !== "string" || value.trim().length === 0) {
     throw new Error(`${scope}.${key} is required.`);
@@ -201,11 +199,7 @@ const getRequiredRecordString = (
   return value.trim();
 };
 
-const getOptionalRecordInteger = (
-  record: Record<string, unknown>,
-  key: string,
-  scope: string
-) => {
+const getOptionalRecordInteger = (record: Record<string, unknown>, key: string, scope: string) => {
   const value = record[key];
   if (value === undefined) {
     return undefined;
@@ -219,11 +213,7 @@ const getOptionalRecordInteger = (
   return value;
 };
 
-const getOptionalRecordBoolean = (
-  record: Record<string, unknown>,
-  key: string,
-  scope: string
-) => {
+const getOptionalRecordBoolean = (record: Record<string, unknown>, key: string, scope: string) => {
   const value = record[key];
   if (value === undefined) {
     return undefined;
@@ -238,7 +228,7 @@ const getOptionalRecordStringArray = (
   record: Record<string, unknown>,
   key: string,
   scope: string,
-  options?: { allowEmpty?: boolean }
+  options?: { allowEmpty?: boolean },
 ) => {
   if (!Object.prototype.hasOwnProperty.call(record, key)) {
     return undefined;
@@ -261,10 +251,7 @@ const getOptionalRecordStringArray = (
   return cleaned;
 };
 
-const getEntitlementPolicyFromBody = (
-  body: Record<string, unknown>,
-  required: boolean
-) => {
+const getEntitlementPolicyFromBody = (body: Record<string, unknown>, required: boolean) => {
   const record = getOptionalBodyObject(body, "entitlementPolicy");
   if (!record) {
     if (required) {
@@ -274,29 +261,15 @@ const getEntitlementPolicyFromBody = (
   }
   const kind = getRequiredRecordString(record, "kind", "entitlementPolicy");
   if (kind !== "subscription" && kind !== "one_time") {
-    throw new Error(
-      "entitlementPolicy.kind must be 'subscription' or 'one_time'."
-    );
+    throw new Error("entitlementPolicy.kind must be 'subscription' or 'one_time'.");
   }
-  const durationDays = getOptionalRecordInteger(
-    record,
-    "durationDays",
-    "entitlementPolicy"
-  );
-  const isLifetime = getOptionalRecordBoolean(
-    record,
-    "isLifetime",
-    "entitlementPolicy"
-  );
-  const gracePeriodDays = getOptionalRecordInteger(
-    record,
-    "gracePeriodDays",
-    "entitlementPolicy"
-  );
+  const durationDays = getOptionalRecordInteger(record, "durationDays", "entitlementPolicy");
+  const isLifetime = getOptionalRecordBoolean(record, "isLifetime", "entitlementPolicy");
+  const gracePeriodDays = getOptionalRecordInteger(record, "gracePeriodDays", "entitlementPolicy");
   const cancelAtPeriodEnd = getOptionalRecordBoolean(
     record,
     "cancelAtPeriodEnd",
-    "entitlementPolicy"
+    "entitlementPolicy",
   );
   return {
     kind: kind as "subscription" | "one_time",
@@ -317,7 +290,7 @@ const getProviderRefsFromBody = (body: Record<string, unknown>) => {
     record,
     "stripeSubscriptionPriceIds",
     "providerRefs",
-    { allowEmpty: true }
+    { allowEmpty: true },
   );
   if (stripeSubscriptionPriceIds !== undefined) {
     providerRefs.stripeSubscriptionPriceIds = stripeSubscriptionPriceIds;
@@ -326,7 +299,7 @@ const getProviderRefsFromBody = (body: Record<string, unknown>) => {
     record,
     "stripeOneTimePriceIds",
     "providerRefs",
-    { allowEmpty: true }
+    { allowEmpty: true },
   );
   if (stripeOneTimePriceIds !== undefined) {
     providerRefs.stripeOneTimePriceIds = stripeOneTimePriceIds;
@@ -335,7 +308,7 @@ const getProviderRefsFromBody = (body: Record<string, unknown>) => {
     record,
     "authorizeNetSubscriptionIds",
     "providerRefs",
-    { allowEmpty: true }
+    { allowEmpty: true },
   );
   if (authorizeNetSubscriptionIds !== undefined) {
     providerRefs.authorizeNetSubscriptionIds = authorizeNetSubscriptionIds;
@@ -344,33 +317,30 @@ const getProviderRefsFromBody = (body: Record<string, unknown>) => {
     record,
     "authorizeNetOneTimeKeys",
     "providerRefs",
-    { allowEmpty: true }
+    { allowEmpty: true },
   );
   if (authorizeNetOneTimeKeys !== undefined) {
     providerRefs.authorizeNetOneTimeKeys = authorizeNetOneTimeKeys;
   }
-  const nmiPlanIds = getOptionalRecordStringArray(
-    record,
-    "nmiPlanIds",
-    "providerRefs",
-    { allowEmpty: true }
-  );
+  const nmiPlanIds = getOptionalRecordStringArray(record, "nmiPlanIds", "providerRefs", {
+    allowEmpty: true,
+  });
   if (nmiPlanIds !== undefined) {
     providerRefs.nmiPlanIds = nmiPlanIds;
   }
-  const nmiOneTimeKeys = getOptionalRecordStringArray(
-    record,
-    "nmiOneTimeKeys",
-    "providerRefs",
-    { allowEmpty: true }
-  );
+  const nmiOneTimeKeys = getOptionalRecordStringArray(record, "nmiOneTimeKeys", "providerRefs", {
+    allowEmpty: true,
+  });
   if (nmiOneTimeKeys !== undefined) {
     providerRefs.nmiOneTimeKeys = nmiOneTimeKeys;
   }
   return providerRefs;
 };
 
-const allowedGrantStatuses = new Set([
+type EntitlementGrantStatus = Doc<"entitlementGrants">["status"];
+type OutboundWebhookEventType = Doc<"outboundWebhookEndpoints">["eventTypes"][number];
+
+const allowedGrantStatuses = new Set<EntitlementGrantStatus>([
   "active",
   "pending",
   "past_due",
@@ -379,7 +349,7 @@ const allowedGrantStatuses = new Set([
   "suspended_dispute",
 ]);
 
-const allowedOutboundEventTypes = new Set([
+const allowedOutboundEventTypes = new Set<OutboundWebhookEventType>([
   "membership.activated",
   "membership.updated",
   "membership.canceled",
@@ -393,22 +363,19 @@ const allowedOutboundEventTypes = new Set([
 const allowedRoleSyncScopes = new Set(["guild", "user"]);
 const getOptionalGrantStatus = (
   body: Record<string, unknown>,
-  key: string
-) => {
+  key: string,
+): EntitlementGrantStatus | undefined => {
   const value = getOptionalBodyString(body, key);
   if (value === undefined) {
     return undefined;
   }
-  if (!allowedGrantStatuses.has(value)) {
+  if (!allowedGrantStatuses.has(value as EntitlementGrantStatus)) {
     throw new Error(`${key} must be a valid entitlement status.`);
   }
-  return value;
+  return value as EntitlementGrantStatus;
 };
 
-const getRequiredRoleSyncScope = (
-  body: Record<string, unknown>,
-  key: string
-) => {
+const getRequiredRoleSyncScope = (body: Record<string, unknown>, key: string) => {
   const value = getRequiredBodyString(body, key);
   if (!allowedRoleSyncScopes.has(value)) {
     throw new Error(`${key} must be one of: guild, user.`);
@@ -416,17 +383,19 @@ const getRequiredRoleSyncScope = (
   return value as "guild" | "user";
 };
 
-const getOptionalOutboundEventTypes = (body: Record<string, unknown>) => {
+const getOptionalOutboundEventTypes = (
+  body: Record<string, unknown>,
+): OutboundWebhookEventType[] | undefined => {
   const eventTypes = getOptionalBodyStringArray(body, "eventTypes");
   if (!eventTypes) {
     return undefined;
   }
   for (const eventType of eventTypes) {
-    if (!allowedOutboundEventTypes.has(eventType)) {
+    if (!allowedOutboundEventTypes.has(eventType as OutboundWebhookEventType)) {
       throw new Error("eventTypes must be valid outbound webhook event names.");
     }
   }
-  return eventTypes;
+  return eventTypes as OutboundWebhookEventType[];
 };
 const handleError = (error: unknown) => {
   const message = error instanceof Error ? error.message : "Unexpected error.";
@@ -445,7 +414,7 @@ export const listTiers = httpAction(async (ctx, request) => {
 
   try {
     const url = new URL(request.url);
-    const guildId = getRequiredParam(url, "guildId");
+    const guildId = getRequiredParamId<"guilds">(url, "guildId");
     const tiers = await ctx.runQuery(api.entitlements.listTiers, { guildId });
     return jsonResponse({ tiers });
   } catch (error) {
@@ -465,12 +434,12 @@ export const createTier = httpAction(async (ctx, request) => {
 
   try {
     const body = await readJsonBody(request);
-    const guildId = getRequiredBodyString(body, "guildId");
+    const guildId = getRequiredBodyId<"guilds">(body, "guildId");
     const name = getRequiredBodyString(body, "name");
     const description = getOptionalBodyString(body, "description");
     const roleIds = getRequiredBodyStringArray(body, "roleIds");
     const actorId = getRequiredBodyString(body, "actorId");
-    const entitlementPolicy = getEntitlementPolicyFromBody(body, true);
+    const entitlementPolicy = getEntitlementPolicyFromBody(body, true)!;
     const providerRefs = getProviderRefsFromBody(body);
 
     const tierId = await ctx.runMutation(api.entitlements.createTier, {
@@ -501,8 +470,8 @@ export const updateTier = httpAction(async (ctx, request) => {
 
   try {
     const body = await readJsonBody(request);
-    const guildId = getRequiredBodyString(body, "guildId");
-    const tierId = getRequiredBodyString(body, "tierId");
+    const guildId = getRequiredBodyId<"guilds">(body, "guildId");
+    const tierId = getRequiredBodyId<"tiers">(body, "tierId");
     const actorId = getRequiredBodyString(body, "actorId");
     const name = getOptionalBodyString(body, "name");
     const description = getOptionalBodyString(body, "description");
@@ -539,7 +508,7 @@ export const listMembers = httpAction(async (ctx, request) => {
 
   try {
     const url = new URL(request.url);
-    const guildId = getRequiredParam(url, "guildId");
+    const guildId = getRequiredParamId<"guilds">(url, "guildId");
     const search = getOptionalParam(url, "search");
     const limit = getOptionalInteger(url, "limit");
     const members = await ctx.runQuery(api.members.searchMembers, {
@@ -585,7 +554,7 @@ export const getMemberSnapshot = httpAction(async (ctx, request) => {
 
   try {
     const url = new URL(request.url);
-    const guildId = getRequiredParam(url, "guildId");
+    const guildId = getRequiredParamId<"guilds">(url, "guildId");
     const discordUserId = getRequiredParam(url, "discordUserId");
     const auditLimit = getOptionalInteger(url, "auditLimit");
     const snapshot = await ctx.runQuery(api.entitlements.getMemberSnapshot, {
@@ -611,7 +580,7 @@ export const listAuditEvents = httpAction(async (ctx, request) => {
 
   try {
     const url = new URL(request.url);
-    const guildId = getRequiredParam(url, "guildId");
+    const guildId = getRequiredParamId<"guilds">(url, "guildId");
     const subjectDiscordUserId = getOptionalParam(url, "subjectDiscordUserId");
     const limit = getOptionalInteger(url, "limit");
     const before = getOptionalInteger(url, "before");
@@ -639,7 +608,7 @@ export const listRoleSyncRequests = httpAction(async (ctx, request) => {
 
   try {
     const url = new URL(request.url);
-    const guildId = getRequiredParam(url, "guildId");
+    const guildId = getRequiredParamId<"guilds">(url, "guildId");
     const discordUserId = getOptionalParam(url, "discordUserId");
     const limit = getOptionalInteger(url, "limit");
     const requests = await ctx.runQuery(api.roleSync.listRoleSyncRequests, {
@@ -665,7 +634,7 @@ export const getActiveMemberCounts = httpAction(async (ctx, request) => {
 
   try {
     const url = new URL(request.url);
-    const guildId = getRequiredParam(url, "guildId");
+    const guildId = getRequiredParamId<"guilds">(url, "guildId");
     const tiers = await ctx.runQuery(api.entitlements.getActiveMemberCountsByTier, {
       guildId,
     });
@@ -687,17 +656,14 @@ export const getRevenueIndicators = httpAction(async (ctx, request) => {
 
   try {
     const url = new URL(request.url);
-    const guildId = getRequiredParam(url, "guildId");
+    const guildId = getRequiredParamId<"guilds">(url, "guildId");
     const scanLimit = getOptionalInteger(url, "scanLimit");
     const windowDays = getOptionalInteger(url, "windowDays");
-    const indicators = await ctx.runQuery(
-      api.providerEvents.getRevenueIndicatorsForGuild,
-      {
-        guildId,
-        scanLimit,
-        windowDays,
-      }
-    );
+    const indicators = await ctx.runQuery(api.providerEvents.getRevenueIndicatorsForGuild, {
+      guildId,
+      scanLimit,
+      windowDays,
+    });
     return jsonResponse(indicators);
   } catch (error) {
     return handleError(error);
@@ -716,15 +682,12 @@ export const getProviderEventDiagnostics = httpAction(async (ctx, request) => {
 
   try {
     const url = new URL(request.url);
-    const guildId = getRequiredParam(url, "guildId");
+    const guildId = getRequiredParamId<"guilds">(url, "guildId");
     const scanLimit = getOptionalInteger(url, "scanLimit");
-    const summary = await ctx.runQuery(
-      api.providerEvents.getLatestProviderEventsForGuild,
-      {
-        guildId,
-        scanLimit,
-      }
-    );
+    const summary = await ctx.runQuery(api.providerEvents.getLatestProviderEventsForGuild, {
+      guildId,
+      scanLimit,
+    });
     return jsonResponse(summary);
   } catch (error) {
     return handleError(error);
@@ -743,13 +706,10 @@ export const getGuildDiagnostics = httpAction(async (ctx, request) => {
 
   try {
     const url = new URL(request.url);
-    const guildId = getRequiredParam(url, "guildId");
-    const diagnostics = await ctx.runQuery(
-      api.diagnostics.getGuildDiagnostics,
-      {
-        guildId,
-      }
-    );
+    const guildId = getRequiredParamId<"guilds">(url, "guildId");
+    const diagnostics = await ctx.runQuery(api.diagnostics.getGuildDiagnostics, {
+      guildId,
+    });
     return jsonResponse({ diagnostics });
   } catch (error) {
     return handleError(error);
@@ -768,14 +728,14 @@ export const listFailedOutboundWebhooks = httpAction(async (ctx, request) => {
 
   try {
     const url = new URL(request.url);
-    const guildId = getRequiredParam(url, "guildId");
+    const guildId = getRequiredParamId<"guilds">(url, "guildId");
     const limit = getOptionalInteger(url, "limit");
     const deliveries = await ctx.runQuery(
       api.outboundWebhooks.listFailedOutboundWebhookDeliveries,
       {
         guildId,
         limit,
-      }
+      },
     );
     return jsonResponse({ deliveries });
   } catch (error) {
@@ -795,102 +755,89 @@ export const listOutboundWebhookEndpoints = httpAction(async (ctx, request) => {
 
   try {
     const url = new URL(request.url);
-    const guildId = getRequiredParam(url, "guildId");
+    const guildId = getRequiredParamId<"guilds">(url, "guildId");
     const activeOnly = getOptionalBooleanParam(url, "activeOnly");
-    const endpoints = await ctx.runQuery(
-      api.outboundWebhooks.listOutboundWebhookEndpoints,
-      {
-        guildId,
-        activeOnly,
-      }
-    );
+    const endpoints = await ctx.runQuery(api.outboundWebhooks.listOutboundWebhookEndpoints, {
+      guildId,
+      activeOnly,
+    });
     return jsonResponse({ endpoints });
   } catch (error) {
     return handleError(error);
   }
 });
 
-export const createOutboundWebhookEndpoint = httpAction(
-  async (ctx, request) => {
-    if (request.method !== "POST") {
-      return jsonResponse({ error: "Method not allowed." }, 405);
-    }
-
-    const authError = authorizeRequest(request);
-    if (authError) {
-      return authError;
-    }
-
-    try {
-      const body = await readJsonBody(request);
-      const guildId = getRequiredBodyString(body, "guildId");
-      const url = getRequiredBodyString(body, "url");
-      const actorId = getRequiredBodyString(body, "actorId");
-      const eventTypes = getOptionalOutboundEventTypes(body);
-      const isActive = getOptionalBodyBoolean(body, "isActive");
-
-      const result = await ctx.runMutation(
-        api.outboundWebhooks.createOutboundWebhookEndpoint,
-        {
-          guildId,
-          url,
-          eventTypes,
-          isActive,
-          actorId,
-          actorType: "admin",
-        }
-      );
-
-      return jsonResponse(result, 200);
-    } catch (error) {
-      return handleError(error);
-    }
+export const createOutboundWebhookEndpoint = httpAction(async (ctx, request) => {
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
   }
-);
 
-export const updateOutboundWebhookEndpoint = httpAction(
-  async (ctx, request) => {
-    if (request.method !== "POST") {
-      return jsonResponse({ error: "Method not allowed." }, 405);
-    }
-
-    const authError = authorizeRequest(request);
-    if (authError) {
-      return authError;
-    }
-
-    try {
-      const body = await readJsonBody(request);
-      const guildId = getRequiredBodyString(body, "guildId");
-      const endpointId = getRequiredBodyString(body, "endpointId");
-      const actorId = getRequiredBodyString(body, "actorId");
-      const url = getOptionalBodyString(body, "url");
-      const eventTypes = getOptionalOutboundEventTypes(body);
-      const isActive = getOptionalBodyBoolean(body, "isActive");
-
-      if (url === undefined && eventTypes === undefined && isActive === undefined) {
-        throw new Error("At least one update field is required.");
-      }
-
-      const updatedId = await ctx.runMutation(
-        api.outboundWebhooks.updateOutboundWebhookEndpoint,
-        {
-          guildId,
-          endpointId,
-          url,
-          eventTypes,
-          isActive,
-          actorId,
-          actorType: "admin",
-        }
-      );
-
-      return jsonResponse({ endpointId: updatedId }, 200);
-    } catch (error) {
-      return handleError(error);
-    }
+  const authError = authorizeRequest(request);
+  if (authError) {
+    return authError;
   }
-);
+
+  try {
+    const body = await readJsonBody(request);
+    const guildId = getRequiredBodyId<"guilds">(body, "guildId");
+    const url = getRequiredBodyString(body, "url");
+    const actorId = getRequiredBodyString(body, "actorId");
+    const eventTypes = getOptionalOutboundEventTypes(body);
+    const isActive = getOptionalBodyBoolean(body, "isActive");
+
+    const result = await ctx.runMutation(api.outboundWebhooks.createOutboundWebhookEndpoint, {
+      guildId,
+      url,
+      eventTypes,
+      isActive,
+      actorId,
+      actorType: "admin",
+    });
+
+    return jsonResponse(result, 200);
+  } catch (error) {
+    return handleError(error);
+  }
+});
+
+export const updateOutboundWebhookEndpoint = httpAction(async (ctx, request) => {
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  const authError = authorizeRequest(request);
+  if (authError) {
+    return authError;
+  }
+
+  try {
+    const body = await readJsonBody(request);
+    const guildId = getRequiredBodyId<"guilds">(body, "guildId");
+    const endpointId = getRequiredBodyId<"outboundWebhookEndpoints">(body, "endpointId");
+    const actorId = getRequiredBodyString(body, "actorId");
+    const url = getOptionalBodyString(body, "url");
+    const eventTypes = getOptionalOutboundEventTypes(body);
+    const isActive = getOptionalBodyBoolean(body, "isActive");
+
+    if (url === undefined && eventTypes === undefined && isActive === undefined) {
+      throw new Error("At least one update field is required.");
+    }
+
+    const updatedId = await ctx.runMutation(api.outboundWebhooks.updateOutboundWebhookEndpoint, {
+      guildId,
+      endpointId,
+      url,
+      eventTypes,
+      isActive,
+      actorId,
+      actorType: "admin",
+    });
+
+    return jsonResponse({ endpointId: updatedId }, 200);
+  } catch (error) {
+    return handleError(error);
+  }
+});
 
 export const createManualGrant = httpAction(async (ctx, request) => {
   if (request.method !== "POST") {
@@ -904,8 +851,8 @@ export const createManualGrant = httpAction(async (ctx, request) => {
 
   try {
     const body = await readJsonBody(request);
-    const guildId = getRequiredBodyString(body, "guildId");
-    const tierId = getRequiredBodyString(body, "tierId");
+    const guildId = getRequiredBodyId<"guilds">(body, "guildId");
+    const tierId = getRequiredBodyId<"tiers">(body, "tierId");
     const discordUserId = getRequiredBodyString(body, "discordUserId");
     const actorId = getRequiredBodyString(body, "actorId");
     const status = getOptionalGrantStatus(body, "status");
@@ -942,8 +889,8 @@ export const revokeManualGrant = httpAction(async (ctx, request) => {
 
   try {
     const body = await readJsonBody(request);
-    const guildId = getRequiredBodyString(body, "guildId");
-    const grantId = getRequiredBodyString(body, "grantId");
+    const guildId = getRequiredBodyId<"guilds">(body, "guildId");
+    const grantId = getRequiredBodyId<"entitlementGrants">(body, "grantId");
     const actorId = getRequiredBodyString(body, "actorId");
     const note = getOptionalBodyString(body, "note");
 
@@ -972,7 +919,7 @@ export const requestRoleSync = httpAction(async (ctx, request) => {
 
   try {
     const body = await readJsonBody(request);
-    const guildId = getRequiredBodyString(body, "guildId");
+    const guildId = getRequiredBodyId<"guilds">(body, "guildId");
     const scope = getRequiredRoleSyncScope(body, "scope");
     const actorId = getRequiredBodyString(body, "actorId");
     const reason = getOptionalBodyString(body, "reason");
@@ -1012,15 +959,15 @@ export const registerRoleConnectionMetadata = httpAction(async (ctx, request) =>
 
   try {
     const body = await readJsonBody(request);
-    const guildId = getRequiredBodyString(body, "guildId");
+    const guildId = getRequiredBodyId<"guilds">(body, "guildId");
     const actorId = getRequiredBodyString(body, "actorId");
 
     const result = await ctx.runAction(
-      api.discordRoleConnections.registerRoleConnectionMetadata,
+      api.discordRoleConnectionsActions.registerRoleConnectionMetadata,
       {
         guildId,
         actorId,
-      }
+      },
     );
 
     return jsonResponse(result, 200);

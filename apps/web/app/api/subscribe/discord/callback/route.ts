@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { ConvexHttpClient } from "convex/browser";
 import {
   DISCORD_MEMBER_OAUTH_CONTEXT_COOKIE,
@@ -14,6 +14,7 @@ import {
   encodeMemberSession,
 } from "@/lib/memberSession";
 import { requireEnv, resolveEnvError } from "@/lib/serverEnv";
+import { api } from "../../../../../../../convex/_generated/api";
 
 type MemberOAuthContext = {
   guildId?: string;
@@ -43,7 +44,7 @@ const sanitizeReturnTo = (value: string | null | undefined) => {
   return value.startsWith("/") ? value : null;
 };
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
   const state = searchParams.get("state");
@@ -111,16 +112,16 @@ export async function GET(request: Request) {
 
     const user = await fetchDiscordUser(token.access_token);
     const convex = new ConvexHttpClient(convexUrl);
-    const guild = (await convex.query("guilds:getGuildByDiscordId", {
+    const guild = await convex.query(api.guilds.getGuildByDiscordId, {
       discordGuildId,
-    })) as { _id: string } | null;
+    });
 
     if (!guild?._id) {
       return NextResponse.json({ error: "Guild not found for member OAuth." }, { status: 404 });
     }
 
     const expiresAt = Date.now() + token.expires_in * 1000;
-    await convex.mutation("members:upsertMemberIdentity", {
+    await convex.mutation(api.members.upsertMemberIdentity, {
       guildId: guild._id,
       discordUserId: user.id,
       discordUsername: user.global_name ?? user.username,

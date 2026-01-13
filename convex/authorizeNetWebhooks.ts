@@ -1,4 +1,3 @@
-import { createHmac, timingSafeEqual } from "crypto";
 import { httpAction } from "./_generated/server";
 import { api } from "./_generated/api";
 
@@ -20,6 +19,50 @@ type AuthorizeNetEvent = {
 };
 
 const ANET_SIGNATURE_HEADER = "x-anet-signature";
+const textEncoder = new TextEncoder();
+const textDecoder = new TextDecoder();
+
+const fromHex = (hex: string) => {
+  if (hex.length % 2 !== 0) {
+    return null;
+  }
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let index = 0; index < hex.length; index += 2) {
+    const parsed = Number.parseInt(hex.slice(index, index + 2), 16);
+    if (Number.isNaN(parsed)) {
+      return null;
+    }
+    bytes[index / 2] = parsed;
+  }
+  return bytes;
+};
+
+const timingSafeEqual = (left: Uint8Array, right: Uint8Array) => {
+  if (left.length !== right.length) {
+    return false;
+  }
+  let diff = 0;
+  for (let index = 0; index < left.length; index += 1) {
+    diff |= left[index] ^ right[index];
+  }
+  return diff === 0;
+};
+
+const hmacSha512 = async (payload: Uint8Array, secret: string) => {
+  const subtle = globalThis.crypto?.subtle;
+  if (!subtle) {
+    throw new Error("crypto.subtle is not available for webhook verification.");
+  }
+  const key = await subtle.importKey(
+    "raw",
+    textEncoder.encode(secret),
+    { name: "HMAC", hash: "SHA-512" },
+    false,
+    ["sign"],
+  );
+  const signature = await subtle.sign("HMAC", key, payload);
+  return new Uint8Array(signature);
+};
 
 const parseAuthorizeNetSignature = (header: string) => {
   const trimmed = header.trim();
@@ -35,10 +78,10 @@ const parseAuthorizeNetSignature = (header: string) => {
   return normalized;
 };
 
-const isAuthorizeNetSignatureValid = (
-  payload: Buffer,
+const isAuthorizeNetSignatureValid = async (
+  payload: Uint8Array,
   header: string,
-  signatureKey: string
+  signatureKey: string,
 ) => {
   const signature = parseAuthorizeNetSignature(header);
   if (!signature) {
@@ -51,20 +94,18 @@ const isAuthorizeNetSignatureValid = (
     return false;
   }
 
-  const expectedSignature = createHmac("sha512", signatureKey)
-    .update(payload)
-    .digest("hex");
-  const expectedBuffer = Buffer.from(expectedSignature, "hex");
-  const signatureBuffer = Buffer.from(signature, "hex");
-  if (signatureBuffer.length !== expectedBuffer.length) {
+  const expected = await hmacSha512(payload, signatureKey);
+  const signatureBuffer = fromHex(signature);
+  if (!signatureBuffer) {
     return false;
   }
-  return timingSafeEqual(signatureBuffer, expectedBuffer);
+  if (signatureBuffer.length !== expected.length) {
+    return false;
+  }
+  return timingSafeEqual(signatureBuffer, expected);
 };
 
-const normalizeAuthorizeNetEvent = (
-  eventType?: string
-): NormalizedProviderEventType | null => {
+const normalizeAuthorizeNetEvent = (eventType?: string): NormalizedProviderEventType | null => {
   switch (eventType) {
     case "net.authorize.payment.authcapture.created":
       return "PAYMENT_SUCCEEDED";
@@ -131,7 +172,7 @@ const getPayloadField = (payload: Record<string, unknown> | undefined, key: stri
 const getNestedPayloadField = (
   payload: Record<string, unknown> | undefined,
   key: string,
-  nestedKey: string
+  nestedKey: string,
 ) => {
   if (!payload) {
     return undefined;
@@ -178,14 +219,16 @@ export const authorizeNetWebhook = httpAction(async (ctx, request) => {
     return new Response("Missing Authorize.Net signature.", { status: 400 });
   }
 
-  const rawBody = Buffer.from(await request.arrayBuffer());
-  if (!isAuthorizeNetSignatureValid(rawBody, signatureHeader, signatureKey)) {
+  const rawBody = new Uint8Array(await request.arrayBuffer());
+  if (!(await isAuthorizeNetSignatureValid(rawBody, signatureHeader, signatureKey))) {
     return new Response("Invalid Authorize.Net signature.", { status: 400 });
   }
 
   let event: AuthorizeNetEvent;
+  let rawText = "";
   try {
-    event = JSON.parse(rawBody.toString("utf8")) as AuthorizeNetEvent;
+    rawText = textDecoder.decode(rawBody);
+    event = JSON.parse(rawText) as AuthorizeNetEvent;
   } catch (error) {
     return new Response("Invalid JSON payload.", { status: 400 });
   }
@@ -215,8 +258,7 @@ export const authorizeNetWebhook = httpAction(async (ctx, request) => {
   if (invoiceNumber) {
     priceIdSet.add(invoiceNumber);
   }
-  const providerPriceIds =
-    priceIdSet.size > 0 ? Array.from(priceIdSet) : undefined;
+  const providerPriceIds = priceIdSet.size > 0 ? Array.from(priceIdSet) : undefined;
   const occurredAt = parseAuthorizeNetEventDate(event.eventDate);
 
   const payloadSummaryJson = JSON.stringify({

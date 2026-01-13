@@ -1,1 +1,48 @@
 ralph-last.txt
+
+# dependencies
+node_modules
+**/node_modules
+
+# logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# env files
+.env
+.env.*
+!.env.example
+
+# Next.js / Vercel / Turbo
+.next
+out
+.vercel
+.turbo
+
+# build outputs
+dist
+build
+coverage
+
+# Storybook
+storybook-static
+
+# Playwright
+playwright-report
+test-results
+
+# Convex local state
+convex/.convex
+convex/_generated
+convex/convex
+
+# TypeScript
+*.tsbuildinfo
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode
+.idea

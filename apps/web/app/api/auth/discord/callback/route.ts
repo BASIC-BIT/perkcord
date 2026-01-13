@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import {
   DISCORD_OAUTH_STATE_COOKIE,
   exchangeDiscordCode,
@@ -7,7 +7,7 @@ import {
 import { ADMIN_SESSION_COOKIE, encodeSession, type AdminSession } from "@/lib/session";
 import { requireEnv, resolveEnvError } from "@/lib/serverEnv";
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
   const state = searchParams.get("state");

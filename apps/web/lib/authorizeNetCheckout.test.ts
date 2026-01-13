@@ -52,8 +52,7 @@ describe("resolveAuthorizeNetCheckoutConfig", () => {
 
     const result = resolveAuthorizeNetCheckoutConfig("starter");
     expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.config.mode).toBe("subscription");
+    if (result.ok && result.config.mode === "subscription") {
       expect(result.config.amount).toBe("20.00");
       expect(result.config.intervalLabel).toBe("month");
     }
@@ -69,8 +68,7 @@ describe("resolveAuthorizeNetCheckoutConfig", () => {
 
     const result = resolveAuthorizeNetCheckoutConfig("starter");
     expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.config.mode).toBe("one_time");
+    if (result.ok && result.config.mode === "one_time") {
       expect(result.config.amount).toBe("15.00");
       expect(result.config.oneTimeKey).toBe("one_time_key");
     }

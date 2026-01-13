@@ -1,4 +1,3 @@
-import { createHash, createHmac, timingSafeEqual } from "crypto";
 import { httpAction } from "./_generated/server";
 import { api } from "./_generated/api";
 
@@ -15,6 +14,71 @@ type NormalizedProviderEventType =
 type NmiEvent = Record<string, unknown>;
 
 const NMI_SIGNATURE_HEADER = "x-nmi-signature";
+const textEncoder = new TextEncoder();
+const textDecoder = new TextDecoder();
+
+const fromHex = (hex: string) => {
+  if (hex.length % 2 !== 0) {
+    return null;
+  }
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let index = 0; index < hex.length; index += 2) {
+    const parsed = Number.parseInt(hex.slice(index, index + 2), 16);
+    if (Number.isNaN(parsed)) {
+      return null;
+    }
+    bytes[index / 2] = parsed;
+  }
+  return bytes;
+};
+
+const timingSafeEqual = (left: Uint8Array, right: Uint8Array) => {
+  if (left.length !== right.length) {
+    return false;
+  }
+  let diff = 0;
+  for (let index = 0; index < left.length; index += 1) {
+    diff |= left[index] ^ right[index];
+  }
+  return diff === 0;
+};
+
+const hmacSha256 = async (payload: Uint8Array, secret: string) => {
+  const subtle = globalThis.crypto?.subtle;
+  if (!subtle) {
+    throw new Error("crypto.subtle is not available for webhook verification.");
+  }
+  const key = await subtle.importKey(
+    "raw",
+    textEncoder.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signature = await subtle.sign("HMAC", key, payload);
+  return new Uint8Array(signature);
+};
+
+const sha256Hex = async (value: string) => {
+  const subtle = globalThis.crypto?.subtle;
+  if (!subtle) {
+    throw new Error("crypto.subtle is not available for hashing.");
+  }
+  const digest = await subtle.digest("SHA-256", textEncoder.encode(value));
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+};
+
+const decodeBase64 = (value: string) => {
+  if (typeof globalThis.atob !== "function") {
+    throw new Error("Base64 decoding is not available.");
+  }
+  const binary = globalThis.atob(value);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return bytes;
+};
 
 const parseSignatureHeader = (header: string) => {
   const trimmed = header.trim();
@@ -41,28 +105,23 @@ const normalizeBase64 = (value: string) => {
   return normalized;
 };
 
-const isNmiSignatureValid = (
-  payload: Buffer,
-  header: string,
-  secret: string
-) => {
+const isNmiSignatureValid = async (payload: Uint8Array, header: string, secret: string) => {
   const signature = parseSignatureHeader(header);
   if (!signature) {
     return false;
   }
 
   const isHex = /^[0-9a-fA-F]+$/.test(signature);
-  const expected = createHmac("sha256", secret)
-    .update(payload)
-    .digest(isHex ? "hex" : "base64");
-  const expectedBuffer = Buffer.from(expected, isHex ? "hex" : "base64");
-  const providedValue = isHex ? signature : normalizeBase64(signature);
-  const providedBuffer = Buffer.from(providedValue, isHex ? "hex" : "base64");
-
-  if (providedBuffer.length !== expectedBuffer.length) {
+  const expected = await hmacSha256(payload, secret);
+  const providedBuffer = isHex ? fromHex(signature) : decodeBase64(normalizeBase64(signature));
+  if (!providedBuffer) {
     return false;
   }
-  return timingSafeEqual(providedBuffer, expectedBuffer);
+
+  if (providedBuffer.length !== expected.length) {
+    return false;
+  }
+  return timingSafeEqual(providedBuffer, expected);
 };
 
 const toOptionalString = (value: unknown) => {
@@ -123,10 +182,7 @@ const collectRecords = (event: NmiEvent) => {
   return records;
 };
 
-const pickFromRecords = (
-  records: Record<string, unknown>[],
-  keys: string[]
-) => {
+const pickFromRecords = (records: Record<string, unknown>[], keys: string[]) => {
   for (const record of records) {
     for (const key of keys) {
       const value = toOptionalString(record[key]);
@@ -138,10 +194,7 @@ const pickFromRecords = (
   return undefined;
 };
 
-const collectFromRecords = (
-  records: Record<string, unknown>[],
-  keys: string[]
-) => {
+const collectFromRecords = (records: Record<string, unknown>[], keys: string[]) => {
   const values = new Set<string>();
   for (const record of records) {
     for (const key of keys) {
@@ -164,9 +217,7 @@ const collectFromRecords = (
   return values;
 };
 
-const normalizeNmiEventType = (
-  eventType?: string
-): NormalizedProviderEventType | null => {
+const normalizeNmiEventType = (eventType?: string): NormalizedProviderEventType | null => {
   if (!eventType) {
     return null;
   }
@@ -236,9 +287,8 @@ const normalizeNmiEventType = (
   return null;
 };
 
-const parseRequestBody = async (request: Request, rawBody: Buffer) => {
+const parseRequestBody = async (request: Request, rawText: string) => {
   const contentType = request.headers.get("content-type") ?? "";
-  const rawText = rawBody.toString("utf8");
   if (!rawText.trim()) {
     throw new Error("Empty webhook payload.");
   }
@@ -273,25 +323,24 @@ export const nmiWebhook = httpAction(async (ctx, request) => {
   }
 
   const signatureHeader =
-    request.headers.get(NMI_SIGNATURE_HEADER) ??
-    request.headers.get("x-webhook-signature");
+    request.headers.get(NMI_SIGNATURE_HEADER) ?? request.headers.get("x-webhook-signature");
   if (!signatureHeader) {
     return new Response("Missing NMI signature.", { status: 400 });
   }
 
-  const rawBody = Buffer.from(await request.arrayBuffer());
-  if (!isNmiSignatureValid(rawBody, signatureHeader, signatureKey)) {
+  const rawBody = new Uint8Array(await request.arrayBuffer());
+  if (!(await isNmiSignatureValid(rawBody, signatureHeader, signatureKey))) {
     return new Response("Invalid NMI signature.", { status: 400 });
   }
 
   let event: NmiEvent;
+  const rawText = textDecoder.decode(rawBody);
   try {
-    event = await parseRequestBody(request, rawBody);
+    event = await parseRequestBody(request, rawText);
   } catch (error) {
-    return new Response(
-      error instanceof Error ? error.message : "Invalid payload.",
-      { status: 400 }
-    );
+    return new Response(error instanceof Error ? error.message : "Invalid payload.", {
+      status: 400,
+    });
   }
 
   const records = collectRecords(event);
@@ -351,8 +400,7 @@ export const nmiWebhook = httpAction(async (ctx, request) => {
     "tier_key",
     "tierKey",
   ]);
-  const providerPriceIds =
-    priceIds.size > 0 ? Array.from(priceIds) : undefined;
+  const providerPriceIds = priceIds.size > 0 ? Array.from(priceIds) : undefined;
   const providerPeriodEnd = toOptionalUnixMs(
     pickFromRecords(records, [
       "period_end",
@@ -361,7 +409,7 @@ export const nmiWebhook = httpAction(async (ctx, request) => {
       "nextBillingDate",
       "next_charge_date",
       "nextChargeDate",
-    ])
+    ]),
   );
   const occurredAt = toOptionalUnixMs(
     pickFromRecords(records, [
@@ -372,7 +420,7 @@ export const nmiWebhook = httpAction(async (ctx, request) => {
       "eventDate",
       "occurred_at",
       "occurredAt",
-    ])
+    ]),
   );
 
   let eventId = rawEventId;
@@ -395,7 +443,7 @@ export const nmiWebhook = httpAction(async (ctx, request) => {
       periodEnd: providerPeriodEnd ?? null,
       occurredAt: occurredAt ?? null,
     });
-    eventId = `fallback:${createHash("sha256").update(fallbackSeed).digest("hex")}`;
+    eventId = `fallback:${await sha256Hex(fallbackSeed)}`;
     usedFallbackEventId = true;
   }
 

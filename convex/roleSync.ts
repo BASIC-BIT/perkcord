@@ -1,4 +1,5 @@
 import { mutation, query } from "./_generated/server";
+import type { QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
 import {
@@ -7,10 +8,7 @@ import {
 } from "./outboundWebhookQueue";
 
 const actorType = v.optional(v.union(v.literal("system"), v.literal("admin")));
-const activeGrantStatuses: Doc<"entitlementGrants">["status"][] = [
-  "active",
-  "past_due",
-];
+const activeGrantStatuses: Doc<"entitlementGrants">["status"][] = ["active", "past_due"];
 
 const coerceLimit = (limit?: number) => {
   if (limit === undefined) {
@@ -72,10 +70,7 @@ const coerceMinIntervalMs = (value?: number) => {
   return value;
 };
 
-const isGrantEffective = (
-  grant: Doc<"entitlementGrants">,
-  now: number
-) => {
+const isGrantEffective = (grant: Doc<"entitlementGrants">, now: number) => {
   if (!activeGrantStatuses.includes(grant.status)) {
     return false;
   }
@@ -100,13 +95,10 @@ const getLastFailureTimestamp = (request: Doc<"roleSyncRequests">) => {
 };
 
 const hasPendingOrInProgress = async (
-  ctx: { db: any },
-  request: Doc<"roleSyncRequests">
+  ctx: Pick<QueryCtx, "db">,
+  request: Doc<"roleSyncRequests">,
 ) => {
-  const statuses: Doc<"roleSyncRequests">["status"][] = [
-    "pending",
-    "in_progress",
-  ];
+  const statuses: Doc<"roleSyncRequests">["status"][] = ["pending", "in_progress"];
 
   if (request.scope === "user") {
     if (!request.discordUserId) {
@@ -119,7 +111,7 @@ const hasPendingOrInProgress = async (
           q
             .eq("guildId", request.guildId)
             .eq("discordUserId", request.discordUserId)
-            .eq("status", status)
+            .eq("status", status),
         )
         .take(1);
       if (existing.length > 0) {
@@ -132,9 +124,7 @@ const hasPendingOrInProgress = async (
   for (const status of statuses) {
     const existing = await ctx.db
       .query("roleSyncRequests")
-      .withIndex("by_guild_status", (q) =>
-        q.eq("guildId", request.guildId).eq("status", status)
-      )
+      .withIndex("by_guild_status", (q) => q.eq("guildId", request.guildId).eq("status", status))
       .order("desc")
       .take(50);
     if (existing.some((item) => item.scope === "guild")) {
@@ -145,8 +135,8 @@ const hasPendingOrInProgress = async (
 };
 
 const getLatestRequestForScope = async (
-  ctx: { db: any },
-  request: Doc<"roleSyncRequests">
+  ctx: Pick<QueryCtx, "db">,
+  request: Doc<"roleSyncRequests">,
 ) => {
   if (request.scope === "user") {
     if (!request.discordUserId) {
@@ -155,9 +145,7 @@ const getLatestRequestForScope = async (
     const [latest] = await ctx.db
       .query("roleSyncRequests")
       .withIndex("by_guild_user_time", (q) =>
-        q
-          .eq("guildId", request.guildId)
-          .eq("discordUserId", request.discordUserId)
+        q.eq("guildId", request.guildId).eq("discordUserId", request.discordUserId),
       )
       .order("desc")
       .take(1);
@@ -187,7 +175,7 @@ export const getDesiredRolesForMember = query({
     const grants = await ctx.db
       .query("entitlementGrants")
       .withIndex("by_guild_user", (q) =>
-        q.eq("guildId", args.guildId).eq("discordUserId", args.discordUserId)
+        q.eq("guildId", args.guildId).eq("discordUserId", args.discordUserId),
       )
       .collect();
 
@@ -201,9 +189,7 @@ export const getDesiredRolesForMember = query({
       };
     }
 
-    const tierIds = Array.from(
-      new Set(activeGrants.map((grant) => grant.tierId))
-    );
+    const tierIds = Array.from(new Set(activeGrants.map((grant) => grant.tierId)));
     const tiers = await Promise.all(tierIds.map((tierId) => ctx.db.get(tierId)));
 
     const roleIdSet = new Set<string>();
@@ -232,8 +218,7 @@ export const listRoleSyncRequests = query({
   },
   handler: async (ctx, args) => {
     const limit = coerceLimit(args.limit);
-    const discordUserId =
-      args.discordUserId === undefined ? undefined : args.discordUserId.trim();
+    const discordUserId = args.discordUserId === undefined ? undefined : args.discordUserId.trim();
     if (discordUserId !== undefined && discordUserId.length === 0) {
       throw new Error("discordUserId cannot be empty.");
     }
@@ -242,7 +227,7 @@ export const listRoleSyncRequests = query({
       return ctx.db
         .query("roleSyncRequests")
         .withIndex("by_guild_user_time", (q) =>
-          q.eq("guildId", args.guildId).eq("discordUserId", discordUserId)
+          q.eq("guildId", args.guildId).eq("discordUserId", discordUserId),
         )
         .order("desc")
         .take(limit);
@@ -334,9 +319,7 @@ export const claimNextRoleSyncRequest = mutation({
 
     const [nextRequest] = await ctx.db
       .query("roleSyncRequests")
-      .withIndex("by_guild_status", (q) =>
-        q.eq("guildId", args.guildId).eq("status", "pending")
-      )
+      .withIndex("by_guild_status", (q) => q.eq("guildId", args.guildId).eq("status", "pending"))
       .order("asc")
       .take(1);
 
@@ -433,8 +416,7 @@ export const completeRoleSyncRequest = mutation({
       }),
     });
 
-    const outboundEventType =
-      status === "failed" ? "role_sync.failed" : "role_sync.succeeded";
+    const outboundEventType = status === "failed" ? "role_sync.failed" : "role_sync.succeeded";
 
     await enqueueOutboundWebhookDeliveries(ctx, {
       guildId: request.guildId,
@@ -480,9 +462,7 @@ export const retryFailedRoleSyncRequests = mutation({
       }
       const failedRequests = await ctx.db
         .query("roleSyncRequests")
-        .withIndex("by_guild_status", (q) =>
-          q.eq("guildId", guild._id).eq("status", "failed")
-        )
+        .withIndex("by_guild_status", (q) => q.eq("guildId", guild._id).eq("status", "failed"))
         .order("desc")
         .take(remaining);
 
@@ -587,19 +567,14 @@ export const enqueueRoleSyncRepairs = mutation({
       const hasGuildPending = recentRequests.some(
         (request) =>
           request.scope === "guild" &&
-          (request.status === "pending" || request.status === "in_progress")
+          (request.status === "pending" || request.status === "in_progress"),
       );
       if (hasGuildPending) {
         continue;
       }
 
-      const latestGuildRequest = recentRequests.find(
-        (request) => request.scope === "guild"
-      );
-      if (
-        latestGuildRequest &&
-        now - latestGuildRequest.requestedAt < minIntervalMs
-      ) {
+      const latestGuildRequest = recentRequests.find((request) => request.scope === "guild");
+      if (latestGuildRequest && now - latestGuildRequest.requestedAt < minIntervalMs) {
         continue;
       }
 

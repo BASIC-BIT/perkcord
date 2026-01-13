@@ -82,36 +82,27 @@ export const listAuditEvents = query({
   handler: async (ctx, args) => {
     const limit = coerceLimit(args.limit);
     const before = coerceBefore(args.before);
-    const subjectDiscordUserId =
-      args.subjectDiscordUserId?.trim() ?? undefined;
+    const subjectDiscordUserId = args.subjectDiscordUserId?.trim() ?? undefined;
 
     if (args.subjectDiscordUserId !== undefined && !subjectDiscordUserId) {
       throw new Error("subjectDiscordUserId cannot be empty.");
     }
 
     if (subjectDiscordUserId) {
-      let queryBuilder = ctx.db
-        .query("auditEvents")
-        .withIndex("by_guild_user_time", (q) =>
-          q
-            .eq("guildId", args.guildId)
-            .eq("subjectDiscordUserId", subjectDiscordUserId)
-        );
-
-      if (before !== undefined) {
-        queryBuilder = queryBuilder.lt("timestamp", before);
-      }
+      const queryBuilder = ctx.db.query("auditEvents").withIndex("by_guild_user_time", (q) => {
+        const builder = q
+          .eq("guildId", args.guildId)
+          .eq("subjectDiscordUserId", subjectDiscordUserId);
+        return before !== undefined ? builder.lt("timestamp", before) : builder;
+      });
 
       return await queryBuilder.order("desc").take(limit);
     }
 
-    let queryBuilder = ctx.db
-      .query("auditEvents")
-      .withIndex("by_guild_time", (q) => q.eq("guildId", args.guildId));
-
-    if (before !== undefined) {
-      queryBuilder = queryBuilder.lt("timestamp", before);
-    }
+    const queryBuilder = ctx.db.query("auditEvents").withIndex("by_guild_time", (q) => {
+      const builder = q.eq("guildId", args.guildId);
+      return before !== undefined ? builder.lt("timestamp", before) : builder;
+    });
 
     return await queryBuilder.order("desc").take(limit);
   },

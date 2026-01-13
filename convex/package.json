@@ -5,16 +5,21 @@
   "scripts": {
     "lint": "eslint .",
     "format": "prettier --check .",
-    "format:write": "prettier --write ."
+    "format:write": "prettier --write .",
+    "codegen": "node ../scripts/convex-codegen.mjs"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^2.1.4",
     "@eslint/js": "^8.57.0",
+    "convex": "^1.14.1",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",
     "globals": "^13.24.0",
     "prettier": "^3.2.5",
-    "typescript": "^5.5.0",
+    "typescript": "5.5.4",
     "typescript-eslint": "^7.10.0"
+  },
+  "dependencies": {
+    "perkcord-root": "file:.."
   }
 }
