@@ -16,7 +16,7 @@
   "scripts": {
     "check": "npm --prefix apps/web run format:write && npm --prefix apps/web run lint && npm --prefix apps/web run typecheck && npm --prefix apps/web run test && npm --prefix apps/web run test:e2e && npm --prefix apps/bot run format:write && npm --prefix apps/bot run lint && npm --prefix apps/bot run typecheck && npm run convex:format:write && npm run convex:lint",
     "check:verify": "npm --prefix apps/web run format && npm --prefix apps/web run lint && npm --prefix apps/web run typecheck && npm --prefix apps/web run test && npm --prefix apps/web run test:e2e && npm --prefix apps/bot run format && npm --prefix apps/bot run lint && npm --prefix apps/bot run typecheck && npm run convex:format && npm run convex:lint",
-    "check:ci": "npm run check:verify && bash scripts/check-metrics.sh",
+    "check:ci": "npm run check:verify && npm run test:coverage && bash scripts/check-metrics.sh",
     "install:apps": "npm install && npm --prefix apps/web install && npm --prefix apps/bot install",
     "codegen": "node scripts/convex-codegen.mjs",
     "playwright:install": "npm --prefix apps/web exec -- playwright install",
@@ -31,6 +31,7 @@
     "test": "npm --prefix apps/web run test",
     "test:e2e": "npm --prefix apps/web run test:e2e",
     "test:e2e:visual": "npm --prefix apps/web run test:e2e:visual",
-    "test:e2e:visual:update": "npm --prefix apps/web run test:e2e:visual:update"
+    "test:e2e:visual:update": "npm --prefix apps/web run test:e2e:visual:update",
+    "test:coverage": "npm --prefix apps/web run test:coverage && npm --prefix apps/bot run test:coverage && npm --prefix convex run test:coverage"
   }
 }

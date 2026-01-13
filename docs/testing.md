@@ -8,6 +8,7 @@ script names work with your package manager of choice.
 From the repo root:
 - `npm run check` (format, lint, typecheck, unit tests, and web e2e smoke)
 - `npm run check:ci` (same as check, plus code metrics via `scripts/check-metrics.sh`)
+- `npm run test:coverage` (unit test coverage across web, bot, and convex)
 
 ## Web app (apps/web)
 
@@ -15,6 +16,7 @@ From the repo root:
 
 - `cd apps/web`
 - Unit tests: `npm run test`
+- Unit test coverage: `npm run test:coverage`
 - E2E smoke + full suite: `npm run test:e2e`
 - Visual-only E2E: `npm run test:e2e:visual`
 - Update Playwright visual snapshots: `npm run test:e2e:visual:update`
@@ -37,11 +39,15 @@ Snapshot locations:
 - `cd apps/bot`
 - Lint: `npm run lint`
 - Typecheck/build: `npm run typecheck` or `npm run build`
+- Unit tests: `npm run test`
+- Unit test coverage: `npm run test:coverage`
 
 ## Convex (convex)
 
 - `cd convex`
 - Lint: `npm run lint`
+- Unit tests: `npm run test`
+- Unit test coverage: `npm run test:coverage`
 
 ## Code metrics (size + complexity)
 

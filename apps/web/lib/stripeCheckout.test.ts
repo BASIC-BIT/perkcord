@@ -36,4 +36,15 @@ describe("resolveStripeCheckoutConfig", () => {
       expect(result.config.priceId).toBe("price_one");
     }
   });
+
+  it("returns an error when one-time price ID is missing", () => {
+    const result = resolveStripeCheckoutConfig({
+      entitlementPolicy: { kind: "one_time", isLifetime: true },
+      providerRefs: { stripeOneTimePriceIds: [] },
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toContain("one-time price");
+    }
+  });
 });

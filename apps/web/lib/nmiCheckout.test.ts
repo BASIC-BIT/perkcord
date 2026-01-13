@@ -30,4 +30,28 @@ describe("resolveNmiCheckoutConfig", () => {
       expect(result.config.mode).toBe("one_time");
     }
   });
+
+  it("returns an error for invalid hosted URL", () => {
+    const result = resolveNmiCheckoutConfig({
+      entitlementPolicy: { kind: "subscription" },
+      checkoutConfig: { nmi: { hostedUrl: "ftp://invalid" } },
+    });
+    expect(result.ok).toBe(false);
+  });
+
+  it("returns an error for empty hosted URL", () => {
+    const result = resolveNmiCheckoutConfig({
+      entitlementPolicy: { kind: "subscription" },
+      checkoutConfig: { nmi: { hostedUrl: "   " } },
+    });
+    expect(result.ok).toBe(false);
+  });
+
+  it("returns an error for malformed hosted URL", () => {
+    const result = resolveNmiCheckoutConfig({
+      entitlementPolicy: { kind: "subscription" },
+      checkoutConfig: { nmi: { hostedUrl: "not-a-url" } },
+    });
+    expect(result.ok).toBe(false);
+  });
 });

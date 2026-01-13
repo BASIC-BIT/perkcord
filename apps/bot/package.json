@@ -9,7 +9,9 @@
     "start": "node --env-file=.env.local dist/apps/bot/src/index.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "format": "prettier --check .",
-    "format:write": "prettier --write ."
+    "format:write": "prettier --write .",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "convex": "^1.14.1",
@@ -20,11 +22,13 @@
     "@eslint/eslintrc": "^2.1.4",
     "@eslint/js": "^8.57.0",
     "@types/node": "^20.11.0",
+    "@vitest/coverage-v8": "^1.6.0",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",
     "globals": "^13.24.0",
     "prettier": "^3.2.5",
     "typescript": "5.5.4",
-    "typescript-eslint": "^7.10.0"
+    "typescript-eslint": "^7.10.0",
+    "vitest": "^1.6.0"
   }
 }
