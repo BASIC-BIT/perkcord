@@ -1,4 +1,5 @@
 import { httpAction } from "./_generated/server";
+import type { ActionCtx } from "./_generated/server";
 import { api } from "./_generated/api";
 
 type NormalizedProviderEventType =
@@ -17,6 +18,8 @@ type AuthorizeNetEvent = {
   eventDate?: string | number;
   payload?: Record<string, unknown>;
 };
+
+type WebhookContext = Pick<ActionCtx, "runMutation">;
 
 const ANET_SIGNATURE_HEADER = "x-anet-signature";
 const textEncoder = new TextEncoder();
@@ -202,7 +205,7 @@ const getAuthorizeNetCustomerId = (payload?: Record<string, unknown>) => {
   );
 };
 
-export const authorizeNetWebhook = httpAction(async (ctx, request) => {
+export const handleAuthorizeNetWebhook = async (ctx: WebhookContext, request: Request) => {
   if (request.method !== "POST") {
     return new Response("Method not allowed.", { status: 405 });
   }
@@ -283,4 +286,8 @@ export const authorizeNetWebhook = httpAction(async (ctx, request) => {
   });
 
   return new Response("ok", { status: 200 });
-});
+};
+
+export const authorizeNetWebhook = httpAction(async (ctx, request) =>
+  handleAuthorizeNetWebhook(ctx, request),
+);

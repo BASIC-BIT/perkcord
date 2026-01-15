@@ -1,4 +1,5 @@
 import { httpAction } from "./_generated/server";
+import type { ActionCtx } from "./_generated/server";
 import { api } from "./_generated/api";
 
 type NormalizedProviderEventType =
@@ -20,6 +21,8 @@ type StripeEvent = {
     object?: Record<string, unknown>;
   };
 };
+
+type WebhookContext = Pick<ActionCtx, "runMutation">;
 
 const STRIPE_SIGNATURE_TOLERANCE_MS = 5 * 60 * 1000;
 const textEncoder = new TextEncoder();
@@ -273,7 +276,7 @@ const getStripePriceIds = (obj?: Record<string, unknown>) => {
   return Array.from(priceIds);
 };
 
-export const stripeWebhook = httpAction(async (ctx, request) => {
+export const handleStripeWebhook = async (ctx: WebhookContext, request: Request) => {
   if (request.method !== "POST") {
     return new Response("Method not allowed.", { status: 405 });
   }
@@ -342,4 +345,6 @@ export const stripeWebhook = httpAction(async (ctx, request) => {
   });
 
   return new Response("ok", { status: 200 });
-});
+};
+
+export const stripeWebhook = httpAction(async (ctx, request) => handleStripeWebhook(ctx, request));

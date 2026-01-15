@@ -1,4 +1,5 @@
 import { httpAction } from "./_generated/server";
+import type { ActionCtx } from "./_generated/server";
 import { api } from "./_generated/api";
 
 type NormalizedProviderEventType =
@@ -12,6 +13,8 @@ type NormalizedProviderEventType =
   | "CHARGEBACK_CLOSED";
 
 type NmiEvent = Record<string, unknown>;
+
+type WebhookContext = Pick<ActionCtx, "runMutation">;
 
 const NMI_SIGNATURE_HEADER = "x-nmi-signature";
 const textEncoder = new TextEncoder();
@@ -310,7 +313,7 @@ const parseRequestBody = async (request: Request, rawText: string) => {
   }
 };
 
-export const nmiWebhook = httpAction(async (ctx, request) => {
+export const handleNmiWebhook = async (ctx: WebhookContext, request: Request) => {
   if (request.method !== "POST") {
     return new Response("Method not allowed.", { status: 405 });
   }
@@ -471,4 +474,6 @@ export const nmiWebhook = httpAction(async (ctx, request) => {
   });
 
   return new Response("ok", { status: 200 });
-});
+};
+
+export const nmiWebhook = httpAction(async (ctx, request) => handleNmiWebhook(ctx, request));

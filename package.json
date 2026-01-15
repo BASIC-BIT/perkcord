@@ -5,13 +5,16 @@
   "devDependencies": {
     "@eslint/eslintrc": "^2.1.4",
     "@eslint/js": "^8.57.0",
+    "@vitest/coverage-v8": "^1.6.0",
     "convex": "^1.14.1",
+    "convex-test": "^0.0.41",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",
     "globals": "^13.24.0",
     "prettier": "^3.2.5",
     "typescript": "5.5.4",
-    "typescript-eslint": "^7.10.0"
+    "typescript-eslint": "^7.10.0",
+    "vitest": "^1.6.0"
   },
   "scripts": {
     "check": "npm --prefix apps/web run format:write && npm --prefix apps/web run lint && npm --prefix apps/web run typecheck && npm --prefix apps/web run test && npm --prefix apps/web run test:e2e && npm --prefix apps/bot run format:write && npm --prefix apps/bot run lint && npm --prefix apps/bot run typecheck && npm run convex:format:write && npm run convex:lint",

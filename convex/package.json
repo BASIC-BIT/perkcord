@@ -3,12 +3,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "lint": "eslint .",
-    "format": "prettier --check .",
-    "format:write": "prettier --write .",
+    "lint": "node ../node_modules/eslint/bin/eslint.js .",
+    "format": "node ../node_modules/prettier/bin/prettier.cjs --check .",
+    "format:write": "node ../node_modules/prettier/bin/prettier.cjs --write .",
     "codegen": "node ../scripts/convex-codegen.mjs",
-    "test": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test": "node ../node_modules/vitest/vitest.mjs run",
+    "test:coverage": "node ../node_modules/vitest/vitest.mjs run --coverage"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^2.1.4",

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { api } from "../_generated/api";
-import { createTestClient } from "./testClient";
+import { createTestClient } from "./testClient.utils";
 
 const createGuild = async () => {
   const t = createTestClient();

@@ -7,6 +7,7 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       reporter: ["text", "json-summary", "lcov"],
+      reportsDirectory: "../coverage/convex",
       include: [
         "entitlements.ts",
         "stripeWebhooks.ts",

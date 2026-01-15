@@ -1,8 +1,8 @@
 import { createHmac } from "crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { authorizeNetWebhook } from "../authorizeNetWebhooks";
-import { nmiWebhook } from "../nmiWebhooks";
-import { stripeWebhook } from "../stripeWebhooks";
+import { handleAuthorizeNetWebhook } from "../authorizeNetWebhooks";
+import { handleNmiWebhook } from "../nmiWebhooks";
+import { handleStripeWebhook } from "../stripeWebhooks";
 
 const signStripe = (payload: string, secret: string, timestamp: number) => {
   const signed = `${timestamp}.${payload}`;
@@ -51,7 +51,7 @@ describe("webhooks", () => {
       Math.floor(Date.now() / 1000),
     );
     const ctx = { runMutation: vi.fn() };
-    const response = await stripeWebhook(
+    const response = await handleStripeWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -94,7 +94,7 @@ describe("webhooks", () => {
       Math.floor(Date.now() / 1000),
     );
     const ctx = { runMutation: vi.fn() };
-    const response = await stripeWebhook(
+    const response = await handleStripeWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -117,7 +117,7 @@ describe("webhooks", () => {
       process.env.STRIPE_WEBHOOK_SECRET,
       Math.floor(Date.now() / 1000),
     );
-    const ignored = await stripeWebhook(
+    const ignored = await handleStripeWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -143,7 +143,7 @@ describe("webhooks", () => {
       process.env.STRIPE_WEBHOOK_SECRET,
       Math.floor(Date.now() / 1000),
     );
-    await stripeWebhook(
+    await handleStripeWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -163,7 +163,7 @@ describe("webhooks", () => {
       process.env.STRIPE_WEBHOOK_SECRET,
       Math.floor(Date.now() / 1000),
     );
-    await stripeWebhook(
+    await handleStripeWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -183,7 +183,7 @@ describe("webhooks", () => {
       process.env.STRIPE_WEBHOOK_SECRET,
       Math.floor(Date.now() / 1000),
     );
-    await stripeWebhook(
+    await handleStripeWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -221,7 +221,7 @@ describe("webhooks", () => {
       .digest("hex");
     const header = `t=${timestamp},v1=bad,v1=${signature}`;
     const ctx = { runMutation: vi.fn() };
-    const response = await stripeWebhook(
+    const response = await handleStripeWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -251,7 +251,7 @@ describe("webhooks", () => {
       data: { object: { id: "pi_1", customer: { id: "cus_pi" } } },
     });
     const intentSig = signStripe(intentPayload, process.env.STRIPE_WEBHOOK_SECRET, timestamp);
-    await stripeWebhook(
+    await handleStripeWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -267,7 +267,7 @@ describe("webhooks", () => {
       data: { object: { id: "ch_refund", customer: "cus_refund" } },
     });
     const refundSig = signStripe(refundPayload, process.env.STRIPE_WEBHOOK_SECRET, timestamp);
-    await stripeWebhook(
+    await handleStripeWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -287,7 +287,7 @@ describe("webhooks", () => {
       process.env.STRIPE_WEBHOOK_SECRET,
       timestamp,
     );
-    await stripeWebhook(
+    await handleStripeWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -332,7 +332,7 @@ describe("webhooks", () => {
       },
     });
     const subSig = signStripe(subscriptionPayload, process.env.STRIPE_WEBHOOK_SECRET, timestamp);
-    await stripeWebhook(
+    await handleStripeWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -348,7 +348,7 @@ describe("webhooks", () => {
       data: { object: { id: "pi_fail", customer: "cus_fail" } },
     });
     const failureSig = signStripe(failurePayload, process.env.STRIPE_WEBHOOK_SECRET, timestamp);
-    await stripeWebhook(
+    await handleStripeWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -390,7 +390,7 @@ describe("webhooks", () => {
       .digest("hex");
     const header = `t=${timestamp},junk,v1=${signature}`;
     const ctx = { runMutation: vi.fn() };
-    const response = await stripeWebhook(
+    const response = await handleStripeWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -421,7 +421,7 @@ describe("webhooks", () => {
     });
     const signature = signStripe(payload, process.env.STRIPE_WEBHOOK_SECRET, timestamp);
     const ctx = { runMutation: vi.fn() };
-    const response = await stripeWebhook(
+    const response = await handleStripeWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -458,7 +458,7 @@ describe("webhooks", () => {
     });
     const signature = signStripe(payload, process.env.STRIPE_WEBHOOK_SECRET, timestamp);
     const ctx = { runMutation: vi.fn() };
-    const response = await stripeWebhook(
+    const response = await handleStripeWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -484,7 +484,7 @@ describe("webhooks", () => {
     });
     const signature = signStripe(payload, process.env.STRIPE_WEBHOOK_SECRET, timestamp);
     const ctx = { runMutation: vi.fn() };
-    const response = await stripeWebhook(
+    const response = await handleStripeWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -510,7 +510,7 @@ describe("webhooks", () => {
     });
     const signature = signStripe(payload, process.env.STRIPE_WEBHOOK_SECRET, timestamp);
     const ctx = { runMutation: vi.fn() };
-    const response = await stripeWebhook(
+    const response = await handleStripeWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -529,7 +529,7 @@ describe("webhooks", () => {
     process.env.STRIPE_WEBHOOK_SECRET = "whsec_test";
     const payload = JSON.stringify({ id: "evt_2", type: "invoice.payment_failed" });
     const ctx = { runMutation: vi.fn() };
-    const response = await stripeWebhook(
+    const response = await handleStripeWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -544,7 +544,7 @@ describe("webhooks", () => {
     process.env.STRIPE_WEBHOOK_SECRET = "whsec_test";
     const payload = JSON.stringify({ id: "evt_no_v1", type: "invoice.payment_succeeded" });
     const ctx = { runMutation: vi.fn() };
-    const response = await stripeWebhook(
+    const response = await handleStripeWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -561,7 +561,7 @@ describe("webhooks", () => {
     const oldTimestamp = Math.floor(Date.now() / 1000) - 60 * 60;
     const signature = signStripe(payload, process.env.STRIPE_WEBHOOK_SECRET, oldTimestamp);
     const ctx = { runMutation: vi.fn() };
-    const response = await stripeWebhook(
+    const response = await handleStripeWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -576,7 +576,7 @@ describe("webhooks", () => {
     process.env.STRIPE_WEBHOOK_SECRET = "whsec_test";
     const payload = JSON.stringify({ id: "evt_non_hex", type: "invoice.payment_failed" });
     const ctx = { runMutation: vi.fn() };
-    const response = await stripeWebhook(
+    const response = await handleStripeWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -591,7 +591,7 @@ describe("webhooks", () => {
     process.env.STRIPE_WEBHOOK_SECRET = "whsec_test";
     const payload = JSON.stringify({ id: "evt_short_sig", type: "invoice.payment_failed" });
     const ctx = { runMutation: vi.fn() };
-    const response = await stripeWebhook(
+    const response = await handleStripeWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -608,7 +608,7 @@ describe("webhooks", () => {
     const timestamp = Math.floor(Date.now() / 1000);
     const badSignature = signStripe(payload, "wrong-secret", timestamp);
     const ctx = { runMutation: vi.fn() };
-    const response = await stripeWebhook(
+    const response = await handleStripeWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -623,7 +623,7 @@ describe("webhooks", () => {
     process.env.STRIPE_WEBHOOK_SECRET = "whsec_test";
     const payload = JSON.stringify({ id: "evt_bad_time", type: "invoice.payment_succeeded" });
     const ctx = { runMutation: vi.fn() };
-    const response = await stripeWebhook(
+    const response = await handleStripeWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -643,7 +643,7 @@ describe("webhooks", () => {
       Math.floor(Date.now() / 1000),
     );
     const ctx = { runMutation: vi.fn() };
-    const response = await stripeWebhook(
+    const response = await handleStripeWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -663,7 +663,7 @@ describe("webhooks", () => {
       Math.floor(Date.now() / 1000),
     );
     const ctx = { runMutation: vi.fn() };
-    const response = await stripeWebhook(
+    const response = await handleStripeWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -677,13 +677,13 @@ describe("webhooks", () => {
   it("fails Stripe webhook when secret or signature is missing", async () => {
     delete process.env.STRIPE_WEBHOOK_SECRET;
     const ctx = { runMutation: vi.fn() };
-    const missingSecret = await stripeWebhook(
+    const missingSecret = await handleStripeWebhook(
       ctx as never,
       new Request("http://localhost", { method: "POST", body: "{}" }),
     );
     expect(missingSecret.status).toBe(500);
     process.env.STRIPE_WEBHOOK_SECRET = "whsec_test";
-    const missingSig = await stripeWebhook(
+    const missingSig = await handleStripeWebhook(
       ctx as never,
       new Request("http://localhost", { method: "POST", body: "{}" }),
     );
@@ -693,7 +693,7 @@ describe("webhooks", () => {
   it("returns 405 for non-POST Stripe webhook requests", async () => {
     process.env.STRIPE_WEBHOOK_SECRET = "whsec_test";
     const ctx = { runMutation: vi.fn() };
-    const response = await stripeWebhook(
+    const response = await handleStripeWebhook(
       ctx as never,
       new Request("http://localhost", { method: "GET" }),
     );
@@ -715,7 +715,7 @@ describe("webhooks", () => {
     const raw = new TextEncoder().encode(payload);
     const signature = signAuthorizeNet(raw, process.env.AUTHORIZE_NET_SIGNATURE_KEY);
     const ctx = { runMutation: vi.fn() };
-    const response = await authorizeNetWebhook(
+    const response = await handleAuthorizeNetWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -741,7 +741,7 @@ describe("webhooks", () => {
       eventType: "net.authorize.payment.authcapture.created",
     });
     const ctx = { runMutation: vi.fn() };
-    const response = await authorizeNetWebhook(
+    const response = await handleAuthorizeNetWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -763,7 +763,7 @@ describe("webhooks", () => {
     const raw = new TextEncoder().encode(payload);
     const signature = signAuthorizeNet(raw, process.env.AUTHORIZE_NET_SIGNATURE_KEY);
     const ctx = { runMutation: vi.fn() };
-    const response = await authorizeNetWebhook(
+    const response = await handleAuthorizeNetWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -787,7 +787,7 @@ describe("webhooks", () => {
     });
     const ignoredRaw = new TextEncoder().encode(ignoredPayload);
     const ignoredSignature = signAuthorizeNet(ignoredRaw, process.env.AUTHORIZE_NET_SIGNATURE_KEY);
-    const ignored = await authorizeNetWebhook(
+    const ignored = await handleAuthorizeNetWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -811,7 +811,7 @@ describe("webhooks", () => {
     const failedSignature = createHmac("sha512", process.env.AUTHORIZE_NET_SIGNATURE_KEY)
       .update(failedRaw)
       .digest("hex");
-    await authorizeNetWebhook(
+    await handleAuthorizeNetWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -829,7 +829,7 @@ describe("webhooks", () => {
     const canceledSignature = createHmac("sha512", process.env.AUTHORIZE_NET_SIGNATURE_KEY)
       .update(canceledRaw)
       .digest("hex");
-    await authorizeNetWebhook(
+    await handleAuthorizeNetWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -859,7 +859,7 @@ describe("webhooks", () => {
       .update(raw)
       .digest("hex");
     const ctx = { runMutation: vi.fn() };
-    const response = await authorizeNetWebhook(
+    const response = await handleAuthorizeNetWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -893,7 +893,7 @@ describe("webhooks", () => {
     const raw = new TextEncoder().encode(payload);
     const signature = signAuthorizeNet(raw, process.env.AUTHORIZE_NET_SIGNATURE_KEY);
     const ctx = { runMutation: vi.fn() };
-    const response = await authorizeNetWebhook(
+    const response = await handleAuthorizeNetWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -922,7 +922,7 @@ describe("webhooks", () => {
     const raw = new TextEncoder().encode(payload);
     const signature = signAuthorizeNet(raw, process.env.AUTHORIZE_NET_SIGNATURE_KEY);
     const ctx = { runMutation: vi.fn() };
-    const response = await authorizeNetWebhook(
+    const response = await handleAuthorizeNetWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -943,7 +943,7 @@ describe("webhooks", () => {
   it("rejects Authorize.Net requests missing signature header", async () => {
     process.env.AUTHORIZE_NET_SIGNATURE_KEY = "anet_key";
     const ctx = { runMutation: vi.fn() };
-    const response = await authorizeNetWebhook(
+    const response = await handleAuthorizeNetWebhook(
       ctx as never,
       new Request("http://localhost", { method: "POST", body: "{}" }),
     );
@@ -957,7 +957,7 @@ describe("webhooks", () => {
       eventType: "net.authorize.payment.authcapture.created",
     });
     const ctx = { runMutation: vi.fn() };
-    const response = await authorizeNetWebhook(
+    const response = await handleAuthorizeNetWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -975,7 +975,7 @@ describe("webhooks", () => {
       eventType: "net.authorize.payment.authcapture.created",
     });
     const ctx = { runMutation: vi.fn() };
-    const response = await authorizeNetWebhook(
+    const response = await handleAuthorizeNetWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -993,7 +993,7 @@ describe("webhooks", () => {
       eventType: "net.authorize.payment.authcapture.created",
     });
     const ctx = { runMutation: vi.fn() };
-    const response = await authorizeNetWebhook(
+    const response = await handleAuthorizeNetWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -1010,7 +1010,7 @@ describe("webhooks", () => {
     const raw = new TextEncoder().encode(payload);
     const signature = signAuthorizeNet(raw, process.env.AUTHORIZE_NET_SIGNATURE_KEY);
     const ctx = { runMutation: vi.fn() };
-    const response = await authorizeNetWebhook(
+    const response = await handleAuthorizeNetWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -1027,7 +1027,7 @@ describe("webhooks", () => {
     const raw = new TextEncoder().encode(payload);
     const signature = signAuthorizeNet(raw, process.env.AUTHORIZE_NET_SIGNATURE_KEY);
     const ctx = { runMutation: vi.fn() };
-    const response = await authorizeNetWebhook(
+    const response = await handleAuthorizeNetWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -1041,7 +1041,7 @@ describe("webhooks", () => {
   it("returns 405 when Authorize.Net webhook uses non-POST", async () => {
     process.env.AUTHORIZE_NET_SIGNATURE_KEY = "anet_key";
     const ctx = { runMutation: vi.fn() };
-    const response = await authorizeNetWebhook(
+    const response = await handleAuthorizeNetWebhook(
       ctx as never,
       new Request("http://localhost", { method: "GET" }),
     );
@@ -1051,7 +1051,7 @@ describe("webhooks", () => {
   it("returns 500 when Authorize.Net signature key is missing", async () => {
     delete process.env.AUTHORIZE_NET_SIGNATURE_KEY;
     const ctx = { runMutation: vi.fn() };
-    const response = await authorizeNetWebhook(
+    const response = await handleAuthorizeNetWebhook(
       ctx as never,
       new Request("http://localhost", { method: "POST", body: "{}" }),
     );
@@ -1070,7 +1070,7 @@ describe("webhooks", () => {
     const raw = new TextEncoder().encode(payload);
     const signature = signNmiHex(raw, process.env.NMI_WEBHOOK_SIGNATURE_KEY);
     const ctx = { runMutation: vi.fn() };
-    const response = await nmiWebhook(
+    const response = await handleNmiWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -1097,7 +1097,7 @@ describe("webhooks", () => {
       .update(raw)
       .digest("base64");
     const ctx = { runMutation: vi.fn() };
-    const response = await nmiWebhook(
+    const response = await handleNmiWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -1128,7 +1128,7 @@ describe("webhooks", () => {
     });
     const openRaw = new TextEncoder().encode(openPayload);
     const openSig = signNmiHex(openRaw, process.env.NMI_WEBHOOK_SIGNATURE_KEY);
-    await nmiWebhook(
+    await handleNmiWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -1144,7 +1144,7 @@ describe("webhooks", () => {
     });
     const closedRaw = new TextEncoder().encode(closedPayload);
     const closedSig = signNmiHex(closedRaw, process.env.NMI_WEBHOOK_SIGNATURE_KEY);
-    await nmiWebhook(
+    await handleNmiWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -1169,7 +1169,7 @@ describe("webhooks", () => {
     });
     const refundRaw = new TextEncoder().encode(refundPayload);
     const refundSig = signNmiHex(refundRaw, process.env.NMI_WEBHOOK_SIGNATURE_KEY);
-    await nmiWebhook(
+    await handleNmiWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -1188,7 +1188,7 @@ describe("webhooks", () => {
     });
     const cancelRaw = new TextEncoder().encode(cancelPayload);
     const cancelSig = signNmiHex(cancelRaw, process.env.NMI_WEBHOOK_SIGNATURE_KEY);
-    await nmiWebhook(
+    await handleNmiWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -1204,7 +1204,7 @@ describe("webhooks", () => {
     });
     const failedRaw = new TextEncoder().encode(failedPayload);
     const failedSig = signNmiHex(failedRaw, process.env.NMI_WEBHOOK_SIGNATURE_KEY);
-    await nmiWebhook(
+    await handleNmiWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -1220,7 +1220,7 @@ describe("webhooks", () => {
     });
     const pastDueRaw = new TextEncoder().encode(pastDuePayload);
     const pastDueSig = signNmiHex(pastDueRaw, process.env.NMI_WEBHOOK_SIGNATURE_KEY);
-    await nmiWebhook(
+    await handleNmiWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -1259,7 +1259,7 @@ describe("webhooks", () => {
     const raw = new TextEncoder().encode(payload);
     const signature = signNmiHex(raw, process.env.NMI_WEBHOOK_SIGNATURE_KEY);
     const ctx = { runMutation: vi.fn() };
-    const response = await nmiWebhook(
+    const response = await handleNmiWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -1284,7 +1284,7 @@ describe("webhooks", () => {
       event_id: "evt_odd",
     });
     const ctx = { runMutation: vi.fn() };
-    const response = await nmiWebhook(
+    const response = await handleNmiWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -1302,7 +1302,7 @@ describe("webhooks", () => {
       event_id: "evt_blank",
     });
     const ctx = { runMutation: vi.fn() };
-    const response = await nmiWebhook(
+    const response = await handleNmiWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -1324,7 +1324,7 @@ describe("webhooks", () => {
       .replace(/\+/g, "-")
       .replace(/\//g, "_");
     const ctx = { runMutation: vi.fn() };
-    const response = await nmiWebhook(
+    const response = await handleNmiWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -1344,7 +1344,7 @@ describe("webhooks", () => {
     const raw = new TextEncoder().encode(payload);
     const signature = signNmiHex(raw, process.env.NMI_WEBHOOK_SIGNATURE_KEY);
     const ctx = { runMutation: vi.fn() };
-    const response = await nmiWebhook(
+    const response = await handleNmiWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -1361,7 +1361,7 @@ describe("webhooks", () => {
     const raw = new TextEncoder().encode(payload);
     const signature = signNmiHex(raw, process.env.NMI_WEBHOOK_SIGNATURE_KEY);
     const ctx = { runMutation: vi.fn() };
-    const response = await nmiWebhook(
+    const response = await handleNmiWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -1378,7 +1378,7 @@ describe("webhooks", () => {
     const raw = new TextEncoder().encode(payload);
     const signature = signNmiHex(raw, process.env.NMI_WEBHOOK_SIGNATURE_KEY);
     const ctx = { runMutation: vi.fn() };
-    const response = await nmiWebhook(
+    const response = await handleNmiWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -1395,7 +1395,7 @@ describe("webhooks", () => {
     const raw = new TextEncoder().encode(payload);
     const signature = signNmiHex(raw, process.env.NMI_WEBHOOK_SIGNATURE_KEY);
     const ctx = { runMutation: vi.fn() };
-    const response = await nmiWebhook(
+    const response = await handleNmiWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -1412,7 +1412,7 @@ describe("webhooks", () => {
     const raw = new TextEncoder().encode(payload);
     const signature = signNmiHex(raw, process.env.NMI_WEBHOOK_SIGNATURE_KEY);
     const ctx = { runMutation: vi.fn() };
-    const response = await nmiWebhook(
+    const response = await handleNmiWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -1426,7 +1426,7 @@ describe("webhooks", () => {
   it("rejects NMI webhooks with missing signature", async () => {
     process.env.NMI_WEBHOOK_SIGNATURE_KEY = "nmi_key";
     const ctx = { runMutation: vi.fn() };
-    const response = await nmiWebhook(
+    const response = await handleNmiWebhook(
       ctx as never,
       new Request("http://localhost", { method: "POST", body: "{}" }),
     );
@@ -1437,7 +1437,7 @@ describe("webhooks", () => {
     process.env.NMI_WEBHOOK_SIGNATURE_KEY = "nmi_key";
     const payload = JSON.stringify({ event_type: "payment.success", event_id: "evt" });
     const ctx = { runMutation: vi.fn() };
-    const response = await nmiWebhook(
+    const response = await handleNmiWebhook(
       ctx as never,
       new Request("http://localhost", {
         method: "POST",
@@ -1451,7 +1451,7 @@ describe("webhooks", () => {
   it("returns 405 for non-POST NMI webhook requests", async () => {
     process.env.NMI_WEBHOOK_SIGNATURE_KEY = "nmi_key";
     const ctx = { runMutation: vi.fn() };
-    const response = await nmiWebhook(
+    const response = await handleNmiWebhook(
       ctx as never,
       new Request("http://localhost", { method: "GET" }),
     );
@@ -1461,7 +1461,7 @@ describe("webhooks", () => {
   it("returns 500 when NMI signature key is missing", async () => {
     delete process.env.NMI_WEBHOOK_SIGNATURE_KEY;
     const ctx = { runMutation: vi.fn() };
-    const response = await nmiWebhook(
+    const response = await handleNmiWebhook(
       ctx as never,
       new Request("http://localhost", { method: "POST", body: "{}" }),
     );
