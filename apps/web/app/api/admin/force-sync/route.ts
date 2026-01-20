@@ -15,7 +15,7 @@ const readFormValue = (form: FormData, key: string) => {
 };
 
 const buildRedirect = (request: Request, params: Record<string, string | undefined>) => {
-  const url = new URL("/admin", request.url);
+  const url = new URL("/admin/ops", request.url);
   for (const [key, value] of Object.entries(params)) {
     if (value) {
       url.searchParams.set(key, value);

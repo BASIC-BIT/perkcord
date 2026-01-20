@@ -13,6 +13,7 @@ export default async function CelebratePage({ searchParams }: { searchParams: Se
 
   let tier: PublicTier | null = null;
   let tierError: string | null = null;
+
   if (!guildId) {
     tierError = "Missing guildId. Add ?guildId=<serverId> to generate a real deep link.";
   } else if (tierParam) {
@@ -25,29 +26,37 @@ export default async function CelebratePage({ searchParams }: { searchParams: Se
   }
 
   return (
-    <main className="card">
-      <p className="subtle">Step 4 of 4</p>
-      <h1>You are all set</h1>
-      <p>
-        Your entitlement is active. The bot will sync roles shortly. If you do not see access within
-        a minute, contact an admin for a force sync.
-      </p>
-      {tierError && <div className="banner">{tierError}</div>}
-      <div className="tier-summary">
-        <div className="tier-header">
-          <h3>{tier?.name ?? "Selected tier"}</h3>
-          <span className="tier-price">{tier?.displayPrice ?? ""}</span>
+    <section className="card p-6">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <p className="subtle">Step 4 of 4</p>
+          <h1 className="text-3xl">You are all set</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Entitlement active. Roles sync shortly. If not, ask an admin.
+          </p>
         </div>
-        <p>Entitlement recorded and ready for role sync.</p>
-      </div>
-      <div className="tier-actions">
-        <a className="button" href={deepLink}>
-          Open Discord server
-        </a>
         <Link className="button secondary" href="/">
           Return home
         </Link>
       </div>
-    </main>
+
+      {tierError && <div className="banner mt-4">{tierError}</div>}
+      <div className="tier-summary mt-6">
+        <div className="tier-header">
+          <h3>{tier?.name ?? "Selected tier"}</h3>
+          <span className="tier-price">{tier?.displayPrice ?? ""}</span>
+        </div>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Entitlement recorded.
+        </p>
+      </div>
+
+      <div className="tier-actions mt-5">
+        <a className="button" href={deepLink}>
+          Open Discord server
+        </a>
+      </div>
+    </section>
   );
 }
+

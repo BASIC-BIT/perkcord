@@ -1,6 +1,7 @@
 import "server-only";
 
 import { ConvexHttpClient } from "convex/browser";
+import { unstable_noStore as noStore } from "next/cache";
 import { api } from "../../../convex/_generated/api";
 import type { Doc, Id } from "../../../convex/_generated/dataModel";
 import { requireEnv } from "./serverEnv";
@@ -17,6 +18,7 @@ export type PublicTier = {
 };
 
 const getConvexClient = () => {
+  noStore();
   const url = requireEnv("CONVEX_URL", "CONVEX_URL is not configured.");
   return new ConvexHttpClient(url);
 };

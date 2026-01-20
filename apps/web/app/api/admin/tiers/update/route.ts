@@ -13,11 +13,21 @@ const readFormValue = (form: FormData, key: string) => {
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
 };
-
-const readFormFlag = (form: FormData, key: string) => form.get(key) !== null;
+const parseOptionalBoolean = (value: string | null, label: string) => {
+  if (value === null) {
+    return undefined;
+  }
+  if (value === "true") {
+    return true;
+  }
+  if (value === "false") {
+    return false;
+  }
+  throw new Error(`${label} must be true or false.`);
+};
 
 const buildRedirect = (request: Request, params: Record<string, string | undefined>) => {
-  const url = new URL("/admin", request.url);
+  const url = new URL("/admin/tiers", request.url);
   for (const [key, value] of Object.entries(params)) {
     if (value) {
       url.searchParams.set(key, value);
@@ -130,7 +140,7 @@ export async function POST(request: Request) {
   const purchaseTypeRaw = readFormValue(form, "purchaseType");
   const policyDurationRaw = readFormValue(form, "policyDurationDays");
   const policyGraceRaw = readFormValue(form, "policyGracePeriodDays");
-  const cancelAtPeriodEnd = readFormFlag(form, "policyCancelAtPeriodEnd");
+  const cancelAtPeriodEndRaw = readFormValue(form, "policyCancelAtPeriodEnd");
   const stripePriceIdsRaw = readFormValue(form, "stripePriceIds");
   const authorizeNetKeyRaw = readFormValue(form, "authorizeNetKey");
   const authorizeNetAmountRaw = readFormValue(form, "authorizeNetAmount");
@@ -158,6 +168,7 @@ export async function POST(request: Request) {
   let purchaseType: PurchaseType | null = null;
   let durationDays: number | undefined;
   let gracePeriodDays: number | undefined;
+  let cancelAtPeriodEnd: boolean | undefined;
   let sortOrder: number | undefined;
   let authorizeNetIntervalLength: number | undefined;
   try {
@@ -166,6 +177,10 @@ export async function POST(request: Request) {
       min: 1,
     });
     gracePeriodDays = parseOptionalInteger(policyGraceRaw, "Grace period days", { min: 0 });
+    cancelAtPeriodEnd = parseOptionalBoolean(
+      cancelAtPeriodEndRaw,
+      "Cancel at period end",
+    );
     sortOrder = parseOptionalInteger(sortOrderRaw, "Sort order", { min: 0 });
     authorizeNetIntervalLength = parseOptionalInteger(
       authorizeNetIntervalLengthRaw,
@@ -184,7 +199,10 @@ export async function POST(request: Request) {
   }
 
   const hasPolicyInputs =
-    policyDurationRaw || policyGraceRaw || cancelAtPeriodEnd || purchaseTypeRaw;
+    policyDurationRaw ||
+    policyGraceRaw ||
+    cancelAtPeriodEndRaw !== null ||
+    purchaseTypeRaw;
   const hasProviderInputs = stripePriceIdsRaw || authorizeNetKeyRaw || nmiKeyRaw;
   const hasCheckoutInputs =
     authorizeNetAmountRaw ||
@@ -334,7 +352,7 @@ export async function POST(request: Request) {
               gracePeriodDays:
                 purchaseType === "subscription" ? (gracePeriodDays ?? undefined) : undefined,
               cancelAtPeriodEnd:
-                purchaseType === "subscription" && cancelAtPeriodEnd ? true : undefined,
+                purchaseType === "subscription" ? cancelAtPeriodEnd : undefined,
             }
           : undefined,
         checkoutConfig: Object.keys(checkoutConfig).length > 0 ? checkoutConfig : undefined,

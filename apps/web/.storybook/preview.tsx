@@ -16,9 +16,11 @@ const preview: Preview = {
   },
   decorators: [
     (Story) => (
-      <div className="shell">
-        <div className="card">
-          <Story />
+      <div className="page-shell">
+        <div className="page-frame">
+          <div className="card p-6">
+            <Story />
+          </div>
         </div>
       </div>
     ),

@@ -25,13 +25,23 @@ export default async function SubscribePage({ searchParams }: { searchParams: Se
       tierError = message;
     }
   }
+
   return (
-    <main className="card">
-      <p className="subtle">Step 1 of 4</p>
-      <h1>Pick your tier</h1>
-      <p>Choose the access level you want. You will connect Discord before checkout.</p>
-      {tierError && <div className="banner">{tierError}</div>}
-      <div className="tier-grid">
+    <section className="card p-6">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <p className="subtle">Step 1 of 4</p>
+          <h1 className="text-3xl">Pick your tier</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Choose a tier, then connect Discord.
+          </p>
+        </div>
+        <Link className="button secondary" href="/">
+          Back to home
+        </Link>
+      </div>
+      {tierError && <div className="banner mt-4">{tierError}</div>}
+      <div className="tier-grid mt-6">
         {tiers.map((tier) => (
           <div
             key={tier.id}
@@ -41,15 +51,17 @@ export default async function SubscribePage({ searchParams }: { searchParams: Se
               <h3>{tier.name}</h3>
               <span className="tier-price">{tier.displayPrice}</span>
             </div>
-            <p>{tier.description ?? "Support the server and unlock perks."}</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {tier.description ?? "Unlock perks."}
+            </p>
             {tier.perks.length > 0 && (
-              <ul>
+              <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
                 {tier.perks.map((perk) => (
                   <li key={perk}>{perk}</li>
                 ))}
               </ul>
             )}
-            <div className="tier-actions">
+            <div className="tier-actions mt-4">
               <Link
                 className="button"
                 href={`/subscribe/connect?tier=${tier.slug}${guildId ? `&guildId=${guildId}` : ""}`}
@@ -60,9 +72,7 @@ export default async function SubscribePage({ searchParams }: { searchParams: Se
           </div>
         ))}
       </div>
-      <p style={{ marginTop: 24 }}>
-        <Link href="/">Back to home</Link>
-      </p>
-    </main>
+    </section>
   );
 }
+

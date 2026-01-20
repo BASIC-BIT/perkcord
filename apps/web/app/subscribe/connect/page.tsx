@@ -6,7 +6,11 @@ type SearchParams = Record<string, string | string[] | undefined>;
 
 const getParam = (value: SearchParams[string]) => (Array.isArray(value) ? value[0] : value);
 
-export default async function ConnectDiscordPage({ searchParams }: { searchParams: SearchParams }) {
+export default async function ConnectDiscordPage({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}) {
   const tierParam = getParam(searchParams.tier);
   const guildId = getParam(searchParams.guildId) ?? getParam(searchParams.guild);
 
@@ -29,26 +33,35 @@ export default async function ConnectDiscordPage({ searchParams }: { searchParam
     }
   }
 
-  const oauthUrl =
-    guildId && tierParam ? `/api/subscribe/discord?guildId=${guildId}&tier=${tierParam}` : null;
+  const oauthUrl = guildId && tierParam ? `/api/subscribe/discord?guildId=${guildId}&tier=${tierParam}` : null;
 
   return (
-    <main className="card">
-      <p className="subtle">Step 2 of 4</p>
-      <h1>Connect Discord</h1>
-      <p>
-        We link your Discord account to your purchase so the bot can grant access. Member OAuth will
-        request the role_connections.write scope.
-      </p>
-      {tierError && <div className="banner">{tierError}</div>}
-      <div className="tier-summary">
+    <section className="card p-6">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <p className="subtle">Step 2 of 4</p>
+          <h1 className="text-3xl">Connect Discord</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Connect Discord to attach this purchase. We request the role_connections.write scope.
+          </p>
+        </div>
+        <Link className="button secondary" href={`/subscribe${guildId ? `?guildId=${guildId}` : ""}`}>
+          Change tier
+        </Link>
+      </div>
+
+      {tierError && <div className="banner mt-4">{tierError}</div>}
+      <div className="tier-summary mt-6">
         <div className="tier-header">
           <h3>{tier?.name ?? "Selected tier"}</h3>
           <span className="tier-price">{tier?.displayPrice ?? ""}</span>
         </div>
-        <p>{tier?.description ?? "Connect Discord to continue."}</p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          {tier?.description ?? "Connect Discord to continue."}
+        </p>
       </div>
-      <div className="tier-actions">
+
+      <div className="tier-actions mt-5">
         {oauthUrl ? (
           <Link className="button" href={oauthUrl}>
             Connect Discord
@@ -56,16 +69,8 @@ export default async function ConnectDiscordPage({ searchParams }: { searchParam
         ) : (
           <span className="button disabled">Connect Discord</span>
         )}
-        <Link
-          className="button secondary"
-          href={`/subscribe${guildId ? `?guildId=${guildId}` : ""}`}
-        >
-          Change tier
-        </Link>
       </div>
-      <p style={{ marginTop: 24 }}>
-        <Link href="/">Back to home</Link>
-      </p>
-    </main>
+    </section>
   );
 }
+

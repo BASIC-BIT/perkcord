@@ -99,9 +99,11 @@ Provider adapters should not mutate Discord directly. They update entitlements o
    - keep bot operations idempotent
    - add diagnostics and failure visibility
 5) Update PRD notes / event taxonomy if behavior changes.
+6) When making UI changes, run `npm --prefix apps/web run test:e2e:visual:update`, run `npm --prefix apps/web run test:e2e`, and review the affected pages with a VLM.
 
 ## Default assumptions if not specified
 - Tenant = guild (Discord server)
 - 3 tiers by default (configurable)
 - Failed payment grace period defaults to 7 days (configurable)
 - Cancel at period end (configurable)
+

@@ -71,6 +71,20 @@ after signing in and create tiers with:
 npm run playwright:install
 ```
 
+## Playwright E2E (Convex)
+
+Playwright will boot (or reuse) a local Convex backend for E2E tests. Defaults:
+- `CONVEX_URL` -> `http://127.0.0.1:3210`
+- `PERKCORD_CONVEX_HTTP_URL` -> `http://127.0.0.1:3211`
+
+If you already have a Convex local backend running, Playwright will reuse it. If the backend is from another project or missing functions, stop it and re-run tests so Playwright can start a fresh backend.
+
+Optional overrides:
+- `PLAYWRIGHT_CONVEX_URL`
+- `PLAYWRIGHT_CONVEX_HTTP_URL`
+- `PLAYWRIGHT_REUSE_CONVEX` (set to `false` to force a fresh backend)
+- `PLAYWRIGHT_REUSE_SERVER` (set to `true` to reuse an existing Next dev server)
+
 ## Checks
 
 ```bash

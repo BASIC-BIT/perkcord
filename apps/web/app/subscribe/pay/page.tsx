@@ -16,6 +16,7 @@ export default async function PaymentPage({ searchParams }: { searchParams: Sear
 
   let tierError: string | null = null;
   let tier: Awaited<ReturnType<typeof fetchTierForCheckout>> = null;
+
   if (!guildId) {
     tierError = "Missing guildId. Add ?guildId=<serverId> to the URL to continue.";
   } else if (!tierParam) {
@@ -39,9 +40,9 @@ export default async function PaymentPage({ searchParams }: { searchParams: Sear
   const stripeMode = stripeConfigResult.ok ? stripeConfigResult.config.mode : null;
   const stripeDescription = stripeConfigResult.ok
     ? stripeMode === "payment"
-      ? "One-time checkout."
-      : "Subscription checkout."
-    : "Stripe checkout is not configured yet.";
+      ? "One-time"
+      : "Subscription"
+    : "Not configured";
   const stripeLabel = stripeConfigResult.ok
     ? stripeMode === "payment"
       ? "Pay once with Stripe"
@@ -57,9 +58,9 @@ export default async function PaymentPage({ searchParams }: { searchParams: Sear
   const authorizeNetError = authorizeNetConfigResult.ok ? null : authorizeNetConfigResult.error;
   const authorizeNetDescription = authorizeNetConfig
     ? authorizeNetConfig.mode === "subscription"
-      ? `Subscription billed every ${authorizeNetConfig.intervalLabel}.`
-      : "One-time checkout."
-    : "Authorize.Net checkout is not configured yet.";
+      ? `Subscription (${authorizeNetConfig.intervalLabel})`
+      : "One-time"
+    : "Not configured";
 
   const nmiConfigResult = tier
     ? resolveNmiCheckoutConfig(tier)
@@ -69,52 +70,58 @@ export default async function PaymentPage({ searchParams }: { searchParams: Sear
   const nmiError = nmiConfigResult.ok ? null : nmiConfigResult.error;
   const nmiDescription = nmiConfig
     ? nmiConfig.mode === "subscription"
-      ? "Subscription checkout via NMI hosted payment."
-      : "One-time checkout via NMI hosted payment."
-    : "NMI checkout is not configured yet.";
+      ? "Subscription"
+      : "One-time"
+    : "Not configured";
   const nmiLabel = nmiConfig
     ? nmiConfig.mode === "subscription"
       ? "Subscribe with NMI"
       : "Pay with NMI"
     : "NMI not configured";
 
-  const backUrl = `/subscribe/connect?tier=${tierParam ?? ""}${
-    guildId ? `&guildId=${guildId}` : ""
-  }`;
+  const backUrl = `/subscribe/connect?tier=${tierParam ?? ""}${guildId ? `&guildId=${guildId}` : ""}`;
 
   return (
-    <main className="card">
-      <p className="subtle">Step 3 of 4</p>
-      <h1>Payment</h1>
-      {stripeError && <div className="banner error">{stripeError}</div>}
-      {tierError && <div className="banner">{tierError}</div>}
-      <p>Choose a payment method. Stripe checkout will redirect when configured.</p>
-      <div className="tier-summary">
+    <section className="card p-6">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <p className="subtle">Step 3 of 4</p>
+          <h1 className="text-3xl">Payment</h1>
+          <p className="mt-2 text-sm text-muted-foreground">Choose a payment method.</p>
+        </div>
+        <Link className="button secondary" href={backUrl}>
+          Back to connect
+        </Link>
+      </div>
+
+      {stripeError && <div className="banner error mt-4">{stripeError}</div>}
+      {tierError && <div className="banner mt-4">{tierError}</div>}
+
+      <div className="tier-summary mt-6">
         <div className="tier-header">
           <h3>{tier?.name ?? "Selected tier"}</h3>
           <span className="tier-price">{tier?.displayPrice ?? ""}</span>
         </div>
-        <p>{tier?.description ?? "Complete payment to unlock access."}</p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          {tier?.description ?? "Complete payment to unlock access."}
+        </p>
       </div>
-      <div className="payment-grid">
-        <div className="payment-card">
+
+      <div className="payment-grid mt-6">
+        <div className="payment-card space-y-3">
           <h3>Stripe checkout</h3>
-          <p>Card, Apple Pay, Google Pay. {stripeDescription}</p>
+          <p className="text-sm text-muted-foreground">Card checkout. {stripeDescription}.</p>
           <form action="/api/subscribe/stripe" method="POST">
             <input type="hidden" name="tier" value={tierParam ?? ""} />
             <input type="hidden" name="guildId" value={guildId ?? ""} />
-            <button
-              className={`button${stripeReady ? "" : " disabled"}`}
-              disabled={!stripeReady}
-              type="submit"
-            >
+            <button className={`button${stripeReady ? "" : " disabled"}`} disabled={!stripeReady} type="submit">
               {stripeLabel}
             </button>
           </form>
         </div>
-        <div className="payment-card">
+        <div className="payment-card space-y-3">
           <h3>Authorize.Net checkout</h3>
-          <p>{authorizeNetDescription}</p>
+          <p className="text-sm text-muted-foreground">{authorizeNetDescription}.</p>
           <AuthorizeNetCard
             tierSlug={tierParam ?? ""}
             guildId={guildId ?? null}
@@ -128,9 +135,9 @@ export default async function PaymentPage({ searchParams }: { searchParams: Sear
             configError={authorizeNetError}
           />
         </div>
-        <div className="payment-card">
+        <div className="payment-card space-y-3">
           <h3>NMI hosted checkout</h3>
-          <p>{nmiDescription}</p>
+          <p className="text-sm text-muted-foreground">{nmiDescription}.</p>
           {nmiError && <p className="subtle">{nmiError}</p>}
           <a
             className={`button${nmiReady ? "" : " disabled"}`}
@@ -143,11 +150,6 @@ export default async function PaymentPage({ searchParams }: { searchParams: Sear
           </a>
         </div>
       </div>
-      <p style={{ marginTop: 24 }}>
-        <Link className="button secondary" href={backUrl}>
-          Back to connect
-        </Link>
-      </p>
-    </main>
+    </section>
   );
 }
