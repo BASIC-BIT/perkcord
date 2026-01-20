@@ -6,7 +6,13 @@ import {
   exchangeDiscordCode,
   fetchDiscordUser,
 } from "@/lib/discordOAuth";
+import { encodeDiscordAccessToken } from "@/lib/discordTokens";
 import { encryptSecret } from "@/lib/encryption";
+import {
+  MEMBER_GUILD_COOKIE,
+  MEMBER_GUILD_COOKIE_MAX_AGE_SECONDS,
+  MEMBER_GUILD_OAUTH_TOKEN_COOKIE,
+} from "@/lib/guildSelection";
 import {
   MEMBER_SESSION_COOKIE,
   MEMBER_SESSION_MAX_AGE_SECONDS,
@@ -17,6 +23,7 @@ import { requireEnv, resolveEnvError } from "@/lib/serverEnv";
 import { api } from "../../../../../../../convex/_generated/api";
 
 type MemberOAuthContext = {
+  flow?: "guild_picker" | "connect";
   guildId?: string;
   tier?: string | null;
   returnTo?: string | null;
@@ -56,11 +63,6 @@ export async function GET(request: NextRequest) {
 
   const contextRaw = request.cookies.get(DISCORD_MEMBER_OAUTH_CONTEXT_COOKIE)?.value;
   const context = contextRaw ? decodeContext(contextRaw) : null;
-  const discordGuildId = typeof context?.guildId === "string" ? context.guildId.trim() : "";
-  if (!discordGuildId) {
-    return NextResponse.json({ error: "Missing guild context for member OAuth." }, { status: 400 });
-  }
-
   let redirectUri: string;
   try {
     redirectUri = requireEnv(
@@ -76,38 +78,81 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  let convexUrl: string;
-  try {
-    convexUrl = requireEnv("CONVEX_URL", "CONVEX_URL is not configured.");
-  } catch (error) {
-    return NextResponse.json(
-      { error: resolveEnvError(error, "CONVEX_URL is not configured.") },
-      { status: 500 },
-    );
-  }
-
-  let sessionSecret: string;
-  try {
-    sessionSecret = requireEnv(
-      "PERKCORD_SESSION_SECRET",
-      "PERKCORD_SESSION_SECRET is not configured.",
-    );
-  } catch (error) {
-    return NextResponse.json(
-      {
-        error: resolveEnvError(error, "PERKCORD_SESSION_SECRET is not configured."),
-      },
-      { status: 500 },
-    );
-  }
-
   try {
     const token = await exchangeDiscordCode(code, redirectUri);
     if (!Number.isFinite(token.expires_in)) {
       throw new Error("Discord token expiry is missing.");
     }
+    const flow = context?.flow ?? "connect";
+    if (flow === "guild_picker") {
+      const returnTo = sanitizeReturnTo(context?.returnTo) ?? "/subscribe/select";
+      const response = NextResponse.redirect(new URL(returnTo, request.url));
+      response.cookies.set(DISCORD_MEMBER_OAUTH_STATE_COOKIE, "", {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: 0,
+      });
+      response.cookies.set(DISCORD_MEMBER_OAUTH_CONTEXT_COOKIE, "", {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: 0,
+      });
+      response.cookies.set(
+        MEMBER_GUILD_OAUTH_TOKEN_COOKIE,
+        encodeDiscordAccessToken({
+          accessToken: token.access_token,
+          expiresAt: Date.now() + token.expires_in * 1000,
+        }),
+        {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          path: "/",
+          maxAge: token.expires_in,
+        },
+      );
+      return response;
+    }
+
+    const discordGuildId =
+      typeof context?.guildId === "string" ? context.guildId.trim() : "";
+    if (!discordGuildId) {
+      return NextResponse.json(
+        { error: "Missing guild context for member OAuth." },
+        { status: 400 },
+      );
+    }
     if (!token.refresh_token) {
       throw new Error("Discord refresh token is missing.");
+    }
+
+    let convexUrl: string;
+    try {
+      convexUrl = requireEnv("CONVEX_URL", "CONVEX_URL is not configured.");
+    } catch (error) {
+      return NextResponse.json(
+        { error: resolveEnvError(error, "CONVEX_URL is not configured.") },
+        { status: 500 },
+      );
+    }
+
+    let sessionSecret: string;
+    try {
+      sessionSecret = requireEnv(
+        "PERKCORD_SESSION_SECRET",
+        "PERKCORD_SESSION_SECRET is not configured.",
+      );
+    } catch (error) {
+      return NextResponse.json(
+        {
+          error: resolveEnvError(error, "PERKCORD_SESSION_SECRET is not configured."),
+        },
+        { status: 500 },
+      );
     }
 
     const user = await fetchDiscordUser(token.access_token);
@@ -138,7 +183,6 @@ export async function GET(request: NextRequest) {
     if (context?.tier) {
       fallbackReturn.searchParams.set("tier", context.tier);
     }
-    fallbackReturn.searchParams.set("guildId", discordGuildId);
     const returnTo =
       sanitizeReturnTo(context?.returnTo) ?? `${fallbackReturn.pathname}${fallbackReturn.search}`;
 
@@ -164,6 +208,20 @@ export async function GET(request: NextRequest) {
       sameSite: "lax",
       path: "/",
       maxAge: MEMBER_SESSION_MAX_AGE_SECONDS,
+    });
+    response.cookies.set(MEMBER_GUILD_COOKIE, discordGuildId, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: MEMBER_GUILD_COOKIE_MAX_AGE_SECONDS,
+    });
+    response.cookies.set(MEMBER_GUILD_OAUTH_TOKEN_COOKIE, "", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 0,
     });
     return response;
   } catch {

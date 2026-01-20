@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { getAdminGuildIdFromCookies } from "@/lib/guildSelection";
 import { getSessionFromCookies } from "@/lib/session";
 import { requireEnv, resolveEnvError } from "@/lib/serverEnv";
 
@@ -128,7 +129,8 @@ export async function POST(request: Request) {
     });
   }
 
-  const guildId = readFormValue(form, "guildId");
+  const guildId =
+    readFormValue(form, "guildId") ?? getAdminGuildIdFromCookies(cookies());
   const slug = readFormValue(form, "slug");
   const name = readFormValue(form, "name");
   const description = readFormValue(form, "description");
@@ -152,7 +154,7 @@ export async function POST(request: Request) {
     return buildRedirect(request, {
       tierAction: "create",
       tierStatus: "error",
-      tierMessage: "Guild ID is required.",
+      tierMessage: "Select a guild first.",
     });
   }
   if (!name) {

@@ -1,6 +1,10 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { fetchPublicTierBySlug } from "@/lib/tierCatalog";
 import type { PublicTier } from "@/lib/tierCatalog";
+import { getMemberGuildIdFromCookies } from "@/lib/guildSelection";
+import { ConfettiBurst } from "@/components/confetti-burst";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -8,15 +12,18 @@ const getParam = (value: SearchParams[string]) => (Array.isArray(value) ? value[
 
 export default async function CelebratePage({ searchParams }: { searchParams: SearchParams }) {
   const tierParam = getParam(searchParams.tier);
-  const guildId = getParam(searchParams.guildId) ?? getParam(searchParams.guild);
-  const deepLink = `https://discord.com/channels/${guildId ?? "YOUR_GUILD_ID"}`;
+  const cookieStore = cookies();
+  const selectedGuildId = getMemberGuildIdFromCookies(cookieStore);
+  const guildId = getParam(searchParams.guildId) ?? getParam(searchParams.guild) ?? selectedGuildId;
+  if (!guildId) {
+    redirect("/subscribe/select");
+  }
+  const deepLink = `https://discord.com/channels/${guildId}`;
 
   let tier: PublicTier | null = null;
   let tierError: string | null = null;
 
-  if (!guildId) {
-    tierError = "Missing guildId. Add ?guildId=<serverId> to generate a real deep link.";
-  } else if (tierParam) {
+  if (tierParam) {
     try {
       tier = await fetchPublicTierBySlug(guildId, tierParam);
     } catch (error) {
@@ -27,12 +34,13 @@ export default async function CelebratePage({ searchParams }: { searchParams: Se
 
   return (
     <section className="card p-6">
+      <ConfettiBurst />
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="subtle">Step 4 of 4</p>
-          <h1 className="text-3xl">You are all set</h1>
+          <h1 className="text-3xl">You are in</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Entitlement active. Roles sync shortly. If not, ask an admin.
+            Access is on the way. Head back to Discord to get started.
           </p>
         </div>
         <Link className="button secondary" href="/">
@@ -46,9 +54,7 @@ export default async function CelebratePage({ searchParams }: { searchParams: Se
           <h3>{tier?.name ?? "Selected tier"}</h3>
           <span className="tier-price">{tier?.displayPrice ?? ""}</span>
         </div>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Entitlement recorded.
-        </p>
+        <p className="mt-2 text-sm text-muted-foreground">Access activated.</p>
       </div>
 
       <div className="tier-actions mt-5">

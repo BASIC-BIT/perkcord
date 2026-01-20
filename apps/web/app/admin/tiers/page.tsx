@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { getAdminGuildIdFromCookies } from "@/lib/guildSelection";
 import { getSessionFromCookies } from "@/lib/session";
 import { TierEditor } from "@/components/admin/tier-editor";
 import { fetchConvexJson, getParam, type SearchParams, type TierListResponse } from "../admin-helpers";
@@ -9,12 +10,14 @@ export default async function AdminTiersPage({
   searchParams?: SearchParams;
 }) {
   const secret = process.env.PERKCORD_SESSION_SECRET;
-  const session = secret ? getSessionFromCookies(cookies(), secret) : null;
+  const cookieStore = cookies();
+  const session = secret ? getSessionFromCookies(cookieStore, secret) : null;
   const tierAction = getParam(searchParams?.tierAction);
   const tierStatus = getParam(searchParams?.tierStatus);
   const tierOutcomeId = getParam(searchParams?.tierId);
   const tierMessage = getParam(searchParams?.tierMessage);
-  const guildId = getParam(searchParams?.guildId);
+  const selectedGuildId = session ? getAdminGuildIdFromCookies(cookieStore) : null;
+  const guildId = getParam(searchParams?.guildId) ?? selectedGuildId;
   const convexUrl = process.env.PERKCORD_CONVEX_HTTP_URL?.trim();
   const convexApiKey = process.env.PERKCORD_REST_API_KEY?.trim();
 
@@ -70,7 +73,12 @@ export default async function AdminTiersPage({
         <p className="text-sm text-muted-foreground">
           Create or edit tiers for this guild.
         </p>
-        {tierListError && <div className="banner error mt-4">{tierListError}</div>}
+        {!guildId && (
+          <div className="banner mt-4">Select a guild to manage tiers.</div>
+        )}
+        {guildId && tierListError && (
+          <div className="banner error mt-4">{tierListError}</div>
+        )}
         <TierEditor guildId={guildId} tiers={tierList} />
       </section>
     </div>

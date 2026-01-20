@@ -36,9 +36,6 @@ const buildPayRedirect = (
   if (params.tierSlug) {
     url.searchParams.set("tier", params.tierSlug);
   }
-  if (params.guildId) {
-    url.searchParams.set("guildId", params.guildId);
-  }
   if (params.error) {
     url.searchParams.set("stripeError", params.error);
   }
@@ -119,12 +116,10 @@ export async function POST(request: NextRequest) {
   const baseUrl = new URL(request.url).origin;
   const successUrl = new URL("/subscribe/celebrate", baseUrl);
   successUrl.searchParams.set("tier", tierSlug);
-  successUrl.searchParams.set("guildId", guildId);
   successUrl.searchParams.set("session_id", "{CHECKOUT_SESSION_ID}");
 
   const cancelUrl = new URL("/subscribe/pay", baseUrl);
   cancelUrl.searchParams.set("tier", tierSlug);
-  cancelUrl.searchParams.set("guildId", guildId);
 
   try {
     const stripe = new Stripe(stripeSecret);

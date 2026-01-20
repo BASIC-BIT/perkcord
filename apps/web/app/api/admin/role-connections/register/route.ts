@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { getAdminGuildIdFromCookies } from "@/lib/guildSelection";
 import { getSessionFromCookies } from "@/lib/session";
 import { requireEnv, resolveEnvError } from "@/lib/serverEnv";
 
@@ -75,11 +76,12 @@ export async function POST(request: Request) {
     });
   }
 
-  const guildId = readFormValue(form, "guildId");
+  const guildId =
+    readFormValue(form, "guildId") ?? getAdminGuildIdFromCookies(cookies());
   if (!guildId) {
     return buildRedirect(request, {
       roleConnectionsStatus: "error",
-      roleConnectionsMessage: "Guild ID is required.",
+      roleConnectionsMessage: "Select a guild first.",
     });
   }
 

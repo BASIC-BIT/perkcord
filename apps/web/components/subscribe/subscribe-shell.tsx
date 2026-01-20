@@ -77,17 +77,7 @@ export function SubscribeShell({ children }: { children: ReactNode }) {
           </div>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-          <div className="space-y-6">{children}</div>
-          <aside className="space-y-4">
-            <div className="card p-5">
-              <h2 className="text-lg">Need help?</h2>
-              <p className="mt-2 text-sm text-muted-foreground">
-                If access is late, ask an admin to force sync.
-              </p>
-            </div>
-          </aside>
-        </div>
+        <div className="space-y-6">{children}</div>
       </section>
     </main>
   );

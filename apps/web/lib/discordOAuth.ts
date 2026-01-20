@@ -1,10 +1,12 @@
 import { randomBytes } from "crypto";
 
 export const DISCORD_OAUTH_STATE_COOKIE = "perkcord_discord_oauth_state";
+export const DISCORD_OAUTH_RETURN_COOKIE = "perkcord_discord_oauth_return";
 export const DISCORD_MEMBER_OAUTH_STATE_COOKIE = "perkcord_member_oauth_state";
 export const DISCORD_MEMBER_OAUTH_CONTEXT_COOKIE = "perkcord_member_oauth_context";
 
 const DEFAULT_SCOPES = ["identify", "guilds"];
+export const DISCORD_GUILD_OAUTH_SCOPES = ["identify", "guilds"];
 export const DISCORD_MEMBER_OAUTH_SCOPES = ["identify", "role_connections.write"];
 
 type DiscordOAuthConfig = {
@@ -26,6 +28,12 @@ export type DiscordUser = {
   username: string;
   global_name?: string | null;
   avatar?: string | null;
+};
+
+export type DiscordGuild = {
+  id: string;
+  name: string;
+  icon?: string | null;
 };
 
 const getOAuthConfig = (redirectUriOverride?: string): DiscordOAuthConfig => {
@@ -99,4 +107,20 @@ export const fetchDiscordUser = async (accessToken: string): Promise<DiscordUser
   }
 
   return (await response.json()) as DiscordUser;
+};
+
+export const fetchDiscordGuilds = async (
+  accessToken: string,
+): Promise<DiscordGuild[]> => {
+  const response = await fetch("https://discord.com/api/users/@me/guilds", {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch Discord guild list.");
+  }
+
+  return (await response.json()) as DiscordGuild[];
 };

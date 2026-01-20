@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   DISCORD_OAUTH_STATE_COOKIE,
+  DISCORD_OAUTH_RETURN_COOKIE,
   exchangeDiscordCode,
   fetchDiscordUser,
 } from "@/lib/discordOAuth";
+import { encodeDiscordAccessToken } from "@/lib/discordTokens";
+import { ADMIN_DISCORD_TOKEN_COOKIE } from "@/lib/guildSelection";
 import { ADMIN_SESSION_COOKIE, encodeSession, type AdminSession } from "@/lib/session";
 import { requireEnv, resolveEnvError } from "@/lib/serverEnv";
 
@@ -44,7 +47,9 @@ export async function GET(request: NextRequest) {
     };
 
     const secure = process.env.NODE_ENV === "production";
-    const response = NextResponse.redirect(new URL("/admin", request.url));
+    const returnTo =
+      request.cookies.get(DISCORD_OAUTH_RETURN_COOKIE)?.value ?? "/admin";
+    const response = NextResponse.redirect(new URL(returnTo, request.url));
     response.cookies.set(ADMIN_SESSION_COOKIE, encodeSession(session, sessionSecret), {
       httpOnly: true,
       secure,
@@ -52,7 +57,30 @@ export async function GET(request: NextRequest) {
       path: "/",
       maxAge: 60 * 60 * 24 * 7,
     });
+    try {
+      const expiresAt = Date.now() + token.expires_in * 1000;
+      response.cookies.set(
+        ADMIN_DISCORD_TOKEN_COOKIE,
+        encodeDiscordAccessToken({ accessToken: token.access_token, expiresAt }),
+        {
+          httpOnly: true,
+          secure,
+          sameSite: "lax",
+          path: "/",
+          maxAge: token.expires_in,
+        },
+      );
+    } catch {
+      // If encryption is unavailable, continue without storing the token cookie.
+    }
     response.cookies.set(DISCORD_OAUTH_STATE_COOKIE, "", {
+      httpOnly: true,
+      secure,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 0,
+    });
+    response.cookies.set(DISCORD_OAUTH_RETURN_COOKIE, "", {
       httpOnly: true,
       secure,
       sameSite: "lax",

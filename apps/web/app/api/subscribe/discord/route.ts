@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import {
   buildDiscordAuthorizeUrl,
   createDiscordState,
@@ -6,6 +6,7 @@ import {
   DISCORD_MEMBER_OAUTH_SCOPES,
   DISCORD_MEMBER_OAUTH_STATE_COOKIE,
 } from "@/lib/discordOAuth";
+import { getMemberGuildIdFromCookies } from "@/lib/guildSelection";
 import { requireEnv, resolveEnvError } from "@/lib/serverEnv";
 
 const readParam = (params: URLSearchParams, key: string) => {
@@ -17,13 +18,16 @@ const readParam = (params: URLSearchParams, key: string) => {
   return trimmed.length > 0 ? trimmed : null;
 };
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const secure = process.env.NODE_ENV === "production";
   const { searchParams } = new URL(request.url);
 
-  const guildId = readParam(searchParams, "guildId") ?? readParam(searchParams, "guild");
+  const guildId =
+    readParam(searchParams, "guildId") ??
+    readParam(searchParams, "guild") ??
+    getMemberGuildIdFromCookies(request.cookies);
   if (!guildId) {
-    return NextResponse.json({ error: "guildId is required to connect Discord." }, { status: 400 });
+    return NextResponse.json({ error: "Select a server to connect Discord." }, { status: 400 });
   }
 
   let redirectUri: string;
@@ -48,13 +52,13 @@ export async function GET(request: Request) {
   if (tier) {
     fallbackReturn.searchParams.set("tier", tier);
   }
-  fallbackReturn.searchParams.set("guildId", guildId);
   const safeReturnTo =
     returnTo && returnTo.startsWith("/")
       ? returnTo
       : `${fallbackReturn.pathname}${fallbackReturn.search}`;
 
   const context = {
+    flow: "connect",
     guildId,
     tier,
     returnTo: safeReturnTo,

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
+import { getAdminGuildIdFromCookies } from "@/lib/guildSelection";
 import { getSessionFromCookies } from "@/lib/session";
 import {
   AuditEventContent,
@@ -19,8 +20,10 @@ export default async function AdminMembersPage({
   searchParams?: SearchParams;
 }) {
   const secret = process.env.PERKCORD_SESSION_SECRET;
-  const session = secret ? getSessionFromCookies(cookies(), secret) : null;
-  const guildId = getParam(searchParams?.guildId);
+  const cookieStore = cookies();
+  const session = secret ? getSessionFromCookies(cookieStore, secret) : null;
+  const selectedGuildId = session ? getAdminGuildIdFromCookies(cookieStore) : null;
+  const guildId = getParam(searchParams?.guildId) ?? selectedGuildId;
   const memberSearch = getParam(searchParams?.memberSearch);
   const memberId = getParam(searchParams?.memberId);
   const grantAction = getParam(searchParams?.grantAction);
@@ -55,7 +58,7 @@ export default async function AdminMembersPage({
     }
 
     if (memberSearch && !guildId) {
-      memberSearchError = "Guild ID is required to search members.";
+      memberSearchError = "Select a guild to search members.";
     }
     if (memberSearch && guildId) {
       const result = await fetchConvexJson<MemberSearchResponse>(
@@ -72,7 +75,7 @@ export default async function AdminMembersPage({
     }
 
     if (memberId && !guildId) {
-      memberSnapshotError = "Guild ID is required to load a member snapshot.";
+      memberSnapshotError = "Select a guild to load a member snapshot.";
     }
     if (memberId && guildId) {
       const result = await fetchConvexJson<MemberSnapshotResponse>(
@@ -145,32 +148,27 @@ export default async function AdminMembersPage({
         <p className="text-sm text-muted-foreground">
           Search by Discord ID or username.
         </p>
-        <form className="form mt-4" action="/admin/members" method="get">
-          <label className="field">
-            <span>Guild ID</span>
-            <input
-              className="input"
-              name="guildId"
-              placeholder="123456789012345678"
-              defaultValue={guildId ?? ""}
-              required
-            />
-          </label>
-          <label className="field">
-            <span>Search (Discord ID or username)</span>
-            <input
-              className="input"
-              name="memberSearch"
-              placeholder="Search members"
-              defaultValue={memberSearch ?? ""}
-            />
-          </label>
-          <div className="tier-actions">
-            <button className="button secondary" type="submit">
-              Search members
-            </button>
-          </div>
-        </form>
+        {!guildId ? (
+          <div className="banner mt-4">Select a guild to search members.</div>
+        ) : (
+          <form className="form mt-4" action="/admin/members" method="get">
+            <input type="hidden" name="guildId" value={guildId} />
+            <label className="field">
+              <span>Search (Discord ID or username)</span>
+              <input
+                className="input"
+                name="memberSearch"
+                placeholder="Search members"
+                defaultValue={memberSearch ?? ""}
+              />
+            </label>
+            <div className="tier-actions">
+              <button className="button secondary" type="submit">
+                Search members
+              </button>
+            </div>
+          </form>
+        )}
         {memberSearchError && <div className="banner error mt-4">{memberSearchError}</div>}
         {memberSearchResults && (
           <>
@@ -212,33 +210,28 @@ export default async function AdminMembersPage({
         <p className="text-sm text-muted-foreground">
           View grants and audit events.
         </p>
-        <form className="form mt-4" action="/admin/members" method="get">
-          <label className="field">
-            <span>Guild ID</span>
-            <input
-              className="input"
-              name="guildId"
-              placeholder="123456789012345678"
-              defaultValue={guildId ?? ""}
-              required
-            />
-          </label>
-          <label className="field">
-            <span>Discord User ID</span>
-            <input
-              className="input"
-              name="memberId"
-              placeholder="112233445566778899"
-              defaultValue={memberId ?? ""}
-              required
-            />
-          </label>
-          <div className="tier-actions">
-            <button className="button secondary" type="submit">
-              Load snapshot
-            </button>
-          </div>
-        </form>
+        {!guildId ? (
+          <div className="banner mt-4">Select a guild to load member snapshots.</div>
+        ) : (
+          <form className="form mt-4" action="/admin/members" method="get">
+            <input type="hidden" name="guildId" value={guildId} />
+            <label className="field">
+              <span>Discord User ID</span>
+              <input
+                className="input"
+                name="memberId"
+                placeholder="112233445566778899"
+                defaultValue={memberId ?? ""}
+                required
+              />
+            </label>
+            <div className="tier-actions">
+              <button className="button secondary" type="submit">
+                Load snapshot
+              </button>
+            </div>
+          </form>
+        )}
         {memberSnapshotError && <div className="banner error mt-4">{memberSnapshotError}</div>}
         {roleSyncError && <div className="banner error mt-4">{roleSyncError}</div>}
         {memberSnapshot && (
@@ -331,115 +324,103 @@ export default async function AdminMembersPage({
           Create or revoke entitlements with audit trails. Leave valid dates empty for immediate,
           ongoing access.
         </p>
-        {tierListError && <div className="banner error mt-4">{tierListError}</div>}
-        <div className="snapshot-grid mt-4">
-          <div className="snapshot-card">
-            <h3>Create grant</h3>
-            <form className="form mt-3" action="/api/admin/grants/create" method="post">
-              <label className="field">
-                <span>Guild ID</span>
-                <input
-                  className="input"
-                  name="guildId"
-                  placeholder="123456789012345678"
-                  defaultValue={guildId ?? ""}
-                  required
-                />
-              </label>
-              <label className="field">
-                <span>Discord User ID</span>
-                <input
-                  className="input"
-                  name="discordUserId"
-                  placeholder="112233445566778899"
-                  required
-                />
-              </label>
-              <label className="field">
-                <span>Tier ID</span>
-                <input className="input" name="tierId" list="tier-options" placeholder="tier_id" required />
-              </label>
-              <label className="field">
-                <span>Status</span>
-                <select className="input" name="status" defaultValue="active">
-                  <option value="active">active</option>
-                  <option value="pending">pending</option>
-                  <option value="past_due">past_due</option>
-                  <option value="canceled">canceled</option>
-                  <option value="expired">expired</option>
-                  <option value="suspended_dispute">suspended_dispute</option>
-                </select>
-              </label>
-              <label className="field">
-                <span>Valid from (optional)</span>
-                <input className="input" type="datetime-local" name="validFrom" />
-              </label>
-              <label className="field">
-                <span>Valid through (optional)</span>
-                <input className="input" type="datetime-local" name="validThrough" />
-              </label>
-              <label className="field">
-                <span>Note (optional)</span>
-                <textarea
-                  className="input"
-                  name="note"
-                  rows={2}
-                  placeholder="Comped access after support ticket."
-                />
-              </label>
-              <div className="tier-actions">
-                <button className="button" type="submit">
-                  Create manual grant
-                </button>
+        {!guildId ? (
+          <div className="banner mt-4">Select a guild to manage grants.</div>
+        ) : (
+          <>
+            {tierListError && <div className="banner error mt-4">{tierListError}</div>}
+            <div className="snapshot-grid mt-4">
+              <div className="snapshot-card">
+                <h3>Create grant</h3>
+                <form className="form mt-3" action="/api/admin/grants/create" method="post">
+                  <input type="hidden" name="guildId" value={guildId} />
+                  <label className="field">
+                    <span>Discord User ID</span>
+                    <input
+                      className="input"
+                      name="discordUserId"
+                      placeholder="112233445566778899"
+                      required
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Tier ID</span>
+                    <input className="input" name="tierId" list="tier-options" placeholder="tier_id" required />
+                  </label>
+                  <label className="field">
+                    <span>Status</span>
+                    <select className="input" name="status" defaultValue="active">
+                      <option value="active">active</option>
+                      <option value="pending">pending</option>
+                      <option value="past_due">past_due</option>
+                      <option value="canceled">canceled</option>
+                      <option value="expired">expired</option>
+                      <option value="suspended_dispute">suspended_dispute</option>
+                    </select>
+                  </label>
+                  <label className="field">
+                    <span>Valid from (optional)</span>
+                    <input className="input" type="datetime-local" name="validFrom" />
+                  </label>
+                  <label className="field">
+                    <span>Valid through (optional)</span>
+                    <input className="input" type="datetime-local" name="validThrough" />
+                  </label>
+                  <label className="field">
+                    <span>Note (optional)</span>
+                    <textarea
+                      className="input"
+                      name="note"
+                      rows={2}
+                      placeholder="Comped access after support ticket."
+                    />
+                  </label>
+                  <div className="tier-actions">
+                    <button className="button" type="submit">
+                      Create manual grant
+                    </button>
+                  </div>
+                </form>
+                {tierList && tierList.length > 0 && (
+                  <datalist id="tier-options">
+                    {tierList.map((tier) => (
+                      <option key={tier._id} value={tier._id} label={tier.name} />
+                    ))}
+                  </datalist>
+                )}
               </div>
-            </form>
-            {tierList && tierList.length > 0 && (
-              <datalist id="tier-options">
-                {tierList.map((tier) => (
-                  <option key={tier._id} value={tier._id} label={tier.name} />
-                ))}
-              </datalist>
-            )}
-          </div>
-          <div className="snapshot-card">
-            <h3>Revoke grant</h3>
-            <form className="form mt-3" action="/api/admin/grants/revoke" method="post">
-              <label className="field">
-                <span>Guild ID</span>
-                <input
-                  className="input"
-                  name="guildId"
-                  placeholder="123456789012345678"
-                  defaultValue={guildId ?? ""}
-                  required
-                />
-              </label>
-              <label className="field">
-                <span>Grant ID</span>
-                <input
-                  className="input"
-                  name="grantId"
-                  placeholder="entitlement_grant_id"
-                  required
-                />
-              </label>
-              <label className="field">
-                <span>Note (optional)</span>
-                <textarea
-                  className="input"
-                  name="note"
-                  rows={2}
-                  placeholder="Revoked after cancellation."
-                />
-              </label>
-              <div className="tier-actions">
-                <button className="button secondary" type="submit">
-                  Revoke grant
-                </button>
+              <div className="snapshot-card">
+                <h3>Revoke grant</h3>
+                <form className="form mt-3" action="/api/admin/grants/revoke" method="post">
+                  <input type="hidden" name="guildId" value={guildId} />
+                  <label className="field">
+                    <span>Grant ID</span>
+                    <input
+                      className="input"
+                      name="grantId"
+                      placeholder="entitlement_grant_id"
+                      required
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Note (optional)</span>
+                    <textarea
+                      className="input"
+                      name="note"
+                      rows={2}
+                      placeholder="Revoked after cancellation."
+                    />
+                  </label>
+                  <div className="tier-actions">
+                    <button className="button secondary" type="submit">
+                      Revoke grant
+                    </button>
+                  </div>
+                </form>
               </div>
-            </form>
-          </div>
-        </div>
+            </div>
+          </>
+        )}
       </section>
     </div>
   );

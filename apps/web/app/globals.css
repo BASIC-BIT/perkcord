@@ -166,7 +166,7 @@
   }
 
   .payment-grid {
-    @apply grid gap-4 md:grid-cols-2 xl:grid-cols-3;
+    @apply grid gap-4;
   }
 
   .payment-card {

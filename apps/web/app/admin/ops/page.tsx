@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { getAdminGuildIdFromCookies } from "@/lib/guildSelection";
 import { getSessionFromCookies } from "@/lib/session";
 import { getParam, type SearchParams } from "../admin-helpers";
 
@@ -8,14 +9,16 @@ export default async function AdminOpsPage({
   searchParams?: SearchParams;
 }) {
   const secret = process.env.PERKCORD_SESSION_SECRET;
-  const session = secret ? getSessionFromCookies(cookies(), secret) : null;
+  const cookieStore = cookies();
+  const session = secret ? getSessionFromCookies(cookieStore, secret) : null;
   const forceSyncStatus = getParam(searchParams?.forceSync);
   const forceSyncRequestId = getParam(searchParams?.requestId);
   const forceSyncError = getParam(searchParams?.message);
   const roleConnectionsStatus = getParam(searchParams?.roleConnectionsStatus);
   const roleConnectionsMessage = getParam(searchParams?.roleConnectionsMessage);
   const roleConnectionsCount = getParam(searchParams?.roleConnectionsCount);
-  const guildId = getParam(searchParams?.guildId);
+  const selectedGuildId = session ? getAdminGuildIdFromCookies(cookieStore) : null;
+  const guildId = getParam(searchParams?.guildId) ?? selectedGuildId;
 
   const forceSyncBanner =
     forceSyncStatus === "success"
@@ -56,43 +59,38 @@ export default async function AdminOpsPage({
         <p className="text-sm text-muted-foreground">
           Queue a role sync for a user or guild.
         </p>
-        <form className="form mt-4" action="/api/admin/force-sync" method="post">
-          <label className="field">
-            <span>Guild ID</span>
-            <input
-              className="input"
-              name="guildId"
-              placeholder="123456789012345678"
-              defaultValue={guildId ?? ""}
-              required
-            />
-          </label>
-          <label className="field">
-            <span>Scope</span>
-            <select className="input" name="scope" defaultValue="user">
-              <option value="user">User</option>
-              <option value="guild">Guild</option>
-            </select>
-          </label>
-          <label className="field">
-            <span>Discord User ID (required for user scope)</span>
-            <input className="input" name="discordUserId" placeholder="112233445566778899" />
-          </label>
-          <label className="field">
-            <span>Reason (optional)</span>
-            <textarea
-              className="input"
-              name="reason"
-              rows={2}
-              placeholder="Member reported missing access."
-            />
-          </label>
-          <div className="tier-actions">
-            <button className="button" type="submit">
-              Request force sync
-            </button>
-          </div>
-        </form>
+        {!guildId ? (
+          <div className="banner mt-4">Select a guild to request a role sync.</div>
+        ) : (
+          <form className="form mt-4" action="/api/admin/force-sync" method="post">
+            <input type="hidden" name="guildId" value={guildId} />
+            <label className="field">
+              <span>Scope</span>
+              <select className="input" name="scope" defaultValue="user">
+                <option value="user">User</option>
+                <option value="guild">Guild</option>
+              </select>
+            </label>
+            <label className="field">
+              <span>Discord User ID (required for user scope)</span>
+              <input className="input" name="discordUserId" placeholder="112233445566778899" />
+            </label>
+            <label className="field">
+              <span>Reason (optional)</span>
+              <textarea
+                className="input"
+                name="reason"
+                rows={2}
+                placeholder="Member reported missing access."
+              />
+            </label>
+            <div className="tier-actions">
+              <button className="button" type="submit">
+                Request force sync
+              </button>
+            </div>
+          </form>
+        )}
       </section>
 
       <section className="panel">
@@ -108,22 +106,18 @@ export default async function AdminOpsPage({
               app).
             </p>
             <form className="form" action="/api/admin/role-connections/register" method="post">
-              <label className="field">
-                <span>Guild ID</span>
-                <input
-                  className="input"
-                  name="guildId"
-                  placeholder="123456789012345678"
-                  defaultValue={guildId ?? ""}
-                  required
-                />
-              </label>
+              <input type="hidden" name="guildId" value={guildId ?? ""} />
               <div className="tier-actions">
-                <button className="button secondary" type="submit">
+                <button className="button secondary" type="submit" disabled={!guildId}>
                   Register metadata schema
                 </button>
               </div>
             </form>
+            {!guildId && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Select a guild to register metadata.
+              </p>
+            )}
           </li>
           <li className="step-item">
             <div className="step-title">Create a Linked Role in Discord</div>

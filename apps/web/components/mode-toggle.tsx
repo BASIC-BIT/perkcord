@@ -22,7 +22,7 @@ const MoonIcon = () => (
 );
 
 export function ModeToggle() {
-  const { theme, resolvedTheme, setTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -34,8 +34,6 @@ export function ModeToggle() {
   }
 
   const isDark = resolvedTheme === "dark";
-  const label = isDark ? "Dark" : "Light";
-  const system = theme === "system";
 
   return (
     <button
@@ -43,14 +41,9 @@ export function ModeToggle() {
       onClick={() => setTheme(isDark ? "light" : "dark")}
       className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold text-muted-foreground transition hover:bg-secondary hover:text-foreground"
       aria-label={`Switch to ${isDark ? "light" : "dark"} mode`}
+      title={`Switch to ${isDark ? "light" : "dark"} mode`}
     >
       {isDark ? <MoonIcon /> : <SunIcon />}
-      <span>{label}</span>
-      {system && (
-        <span className="rounded-full border border-border bg-secondary px-2 py-0.5 text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
-          Auto
-        </span>
-      )}
     </button>
   );
 }

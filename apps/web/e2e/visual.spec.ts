@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { ADMIN_GUILD_COOKIE, MEMBER_GUILD_COOKIE } from "../lib/guildSelection";
 import { ADMIN_SESSION_COOKIE, encodeSession } from "../lib/session";
 import { ensureConvexTestData } from "./convexTestData";
 
@@ -46,7 +47,7 @@ async function prepareVisualPage(page: Page) {
   await page.emulateMedia({ reducedMotion: "reduce" });
 }
 
-const addAdminSession = async (page: Page, baseURL: string) => {
+const addAdminSession = async (page: Page, baseURL: string, guildId: string) => {
   const sessionSecret = process.env.PERKCORD_SESSION_SECRET ?? "playwright-smoke-secret";
   const token = encodeSession(
     {
@@ -63,6 +64,11 @@ const addAdminSession = async (page: Page, baseURL: string) => {
       value: token,
       url: baseURL,
     },
+    {
+      name: ADMIN_GUILD_COOKIE,
+      value: guildId,
+      url: baseURL,
+    },
   ]);
 };
 
@@ -75,7 +81,7 @@ test.describe("visual", () => {
     await prepareVisualPage(page);
 
     await page.goto("/");
-    await expect(page.getByRole("heading", { name: "Paid access without the manual Discord firefighting." })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Automated paid access for Discord." })).toBeVisible();
 
     await expect(page).toHaveScreenshot("home-viewport.png");
     await expect(page).toHaveScreenshot("home-full.png", {
@@ -100,7 +106,7 @@ test.describe("visual", () => {
     const baseURL = new URL(
       (testInfo.project.use.baseURL as string | undefined) ?? "http://127.0.0.1:3001",
     );
-    await addAdminSession(page, baseURL.origin);
+    await addAdminSession(page, baseURL.origin, seeded.guildId);
 
     await page.goto("/admin/overview");
     await expect(page.getByRole("heading", { name: "Overview", exact: true })).toBeVisible();
@@ -123,32 +129,41 @@ test.describe("visual", () => {
     await expect(page).toHaveScreenshot("admin-ops-full.png", { fullPage: true });
   });
 
-  test("member flow stub pages @visual", async ({ page }) => {
+  test("member flow stub pages @visual", async ({ page }, testInfo) => {
     await prepareVisualPage(page);
 
-    await page.goto(`/subscribe?guildId=${seeded.discordGuildId}`);
+    const baseURL =
+      (testInfo.project.use.baseURL as string | undefined) ?? "http://127.0.0.1:3001";
+    await page.context().addCookies([
+      {
+        name: MEMBER_GUILD_COOKIE,
+        value: seeded.discordGuildId,
+        url: baseURL,
+      },
+    ]);
+    await page.goto(`/subscribe`);
     await expect(page.getByRole("heading", { name: "Pick your tier" })).toBeVisible();
     await expect(page).toHaveScreenshot("subscribe-tier-viewport.png");
     await expect(page).toHaveScreenshot("subscribe-tier-full.png", {
       fullPage: true,
     });
 
-    await page.goto(`/subscribe/connect?tier=starter&guildId=${seeded.discordGuildId}`);
+    await page.goto(`/subscribe/connect?tier=starter`);
     await expect(page.getByRole("heading", { name: "Connect Discord" })).toBeVisible();
     await expect(page).toHaveScreenshot("subscribe-connect-viewport.png");
     await expect(page).toHaveScreenshot("subscribe-connect-full.png", {
       fullPage: true,
     });
 
-    await page.goto(`/subscribe/pay?tier=starter&guildId=${seeded.discordGuildId}`);
+    await page.goto(`/subscribe/pay?tier=starter`);
     await expect(page.getByRole("heading", { name: "Payment" })).toBeVisible();
     await expect(page).toHaveScreenshot("subscribe-pay-viewport.png");
     await expect(page).toHaveScreenshot("subscribe-pay-full.png", {
       fullPage: true,
     });
 
-    await page.goto(`/subscribe/celebrate?tier=starter&guildId=${seeded.discordGuildId}`);
-    await expect(page.getByRole("heading", { name: "You are all set" })).toBeVisible();
+    await page.goto(`/subscribe/celebrate?tier=starter`);
+    await expect(page.getByRole("heading", { name: "You are in" })).toBeVisible();
     await expect(page).toHaveScreenshot("subscribe-celebrate-viewport.png");
     await expect(page).toHaveScreenshot("subscribe-celebrate-full.png", {
       fullPage: true,

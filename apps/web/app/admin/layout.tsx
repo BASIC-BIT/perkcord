@@ -4,11 +4,24 @@ import { cookies } from "next/headers";
 import { getSessionFromCookies } from "@/lib/session";
 import { ModeToggle } from "@/components/mode-toggle";
 import { AdminNav } from "@/components/admin/admin-nav";
+import { AdminGuildSwitcher } from "@/components/admin/admin-guild-switcher";
+import { resolveAllowedGuilds } from "@/lib/guildAccess";
+import {
+  getAdminDiscordTokenFromCookies,
+  getAdminGuildIdFromCookies,
+} from "@/lib/guildSelection";
 
-export default function AdminLayout({ children }: { children: ReactNode }) {
+export default async function AdminLayout({ children }: { children: ReactNode }) {
   const secret = process.env.PERKCORD_SESSION_SECRET;
   const authEnabled = Boolean(secret);
-  const session = secret ? getSessionFromCookies(cookies(), secret) : null;
+  const cookieStore = cookies();
+  const session = secret ? getSessionFromCookies(cookieStore, secret) : null;
+  const selectedGuildId = session ? getAdminGuildIdFromCookies(cookieStore) : null;
+  const tokenValue = session ? getAdminDiscordTokenFromCookies(cookieStore) : null;
+  const guildAccess = session ? await resolveAllowedGuilds(tokenValue) : { guilds: null, error: null };
+  const guildOptions = guildAccess.guilds
+    ? guildAccess.guilds.map((guild) => ({ id: guild._id, name: guild.name }))
+    : null;
 
   return (
     <div className="page-frame">
@@ -73,10 +86,12 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                 Signed in: {new Date(session.issuedAt).toLocaleString()}
               </p>
             </div>
+            <AdminGuildSwitcher
+              guilds={guildOptions}
+              selectedGuildId={selectedGuildId}
+              error={guildAccess.error}
+            />
             <AdminNav />
-            <div className="rounded-xl border border-border bg-secondary/60 p-3 text-xs text-muted-foreground">
-              Use Overview to swap guilds or refresh data.
-            </div>
           </aside>
           <section className="space-y-6">{children}</section>
         </div>

@@ -310,7 +310,6 @@ export async function POST(request: NextRequest) {
     const baseUrl = new URL(request.url).origin;
     const redirectUrl = new URL("/subscribe/celebrate", baseUrl);
     redirectUrl.searchParams.set("tier", tierSlug);
-    redirectUrl.searchParams.set("guildId", guildId);
 
     return NextResponse.json({ ok: true, redirectUrl: redirectUrl.toString() });
   } catch (error) {

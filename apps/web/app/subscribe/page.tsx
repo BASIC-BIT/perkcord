@@ -1,29 +1,34 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { fetchPublicTiers } from "@/lib/tierCatalog";
 import type { PublicTier } from "@/lib/tierCatalog";
+import { getMemberGuildIdFromCookies } from "@/lib/guildSelection";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
 const getParam = (value: SearchParams[string]) => (Array.isArray(value) ? value[0] : value);
 
 export default async function SubscribePage({ searchParams }: { searchParams: SearchParams }) {
+  const cookieStore = cookies();
   const highlight = getParam(searchParams.highlight);
-  const guildId = getParam(searchParams.guildId) ?? getParam(searchParams.guild);
+  const selectedGuildId = getMemberGuildIdFromCookies(cookieStore);
+  const guildId = getParam(searchParams.guildId) ?? getParam(searchParams.guild) ?? selectedGuildId;
   let tiers: PublicTier[] = [];
   let tierError: string | null = null;
 
   if (!guildId) {
-    tierError = "Missing guildId. Add ?guildId=<serverId> to the URL to continue.";
-  } else {
-    try {
-      tiers = await fetchPublicTiers(guildId);
-      if (tiers.length === 0) {
-        tierError = "No tiers are configured for this server yet.";
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unable to load tiers.";
-      tierError = message;
+    redirect("/subscribe/select");
+  }
+
+  try {
+    tiers = await fetchPublicTiers(guildId);
+    if (tiers.length === 0) {
+      tierError = "No tiers are configured for this server yet.";
     }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unable to load tiers.";
+    tierError = message;
   }
 
   return (
@@ -62,10 +67,7 @@ export default async function SubscribePage({ searchParams }: { searchParams: Se
               </ul>
             )}
             <div className="tier-actions mt-4">
-              <Link
-                className="button"
-                href={`/subscribe/connect?tier=${tier.slug}${guildId ? `&guildId=${guildId}` : ""}`}
-              >
+              <Link className="button" href={`/subscribe/connect?tier=${tier.slug}`}>
                 Choose {tier.name}
               </Link>
             </div>

@@ -233,11 +233,7 @@ export function AuthorizeNetCard({
       {missingKeys && (
         <div className="banner">Authorize.Net Accept.js keys are not configured.</div>
       )}
-      {!guildId && (
-        <div className="banner">
-          Missing guildId. Add ?guildId=&lt;serverId&gt; to the URL to continue.
-        </div>
-      )}
+      {!guildId && <div className="banner">Select a server to continue.</div>}
       {!mode && <div className="banner">Authorize.Net checkout is not configured.</div>}
       {error && <div className="banner error">{error}</div>}
       <form className="form" onSubmit={handleSubmit}>

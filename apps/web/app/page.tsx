@@ -12,7 +12,7 @@ export default function HomePage() {
           <div>
             <p className="text-lg font-semibold text-foreground">Perkcord</p>
             <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
-              Signal Blue Ops
+              Access automation
             </p>
           </div>
         </div>
@@ -32,15 +32,12 @@ export default function HomePage() {
         </div>
       </header>
 
-      <section className="mt-12 grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
-        <div className="space-y-6">
+      <section className="mt-12">
+        <div className="max-w-3xl space-y-6">
           <p className="subtle">Ops-first access automation</p>
-          <h1 className="text-4xl leading-tight sm:text-5xl">
-            Paid access without the manual Discord firefighting.
+          <h1 className="text-3xl leading-tight sm:text-4xl">
+            Automated paid access for Discord.
           </h1>
-          <p className="text-lg text-muted-foreground">
-            Turn payments into entitlements and roles. Stripe and Authorize.Net supported.
-          </p>
           <div className="flex flex-wrap gap-3">
             <Link className="button" href="/subscribe">
               Preview member flow
@@ -50,46 +47,10 @@ export default function HomePage() {
             </Link>
           </div>
           <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-            <span>Stripe + Authorize.Net ready</span>
-            <span>Entitlement source of truth</span>
-            <span>Role Connections optional</span>
+            <span>Stripe + Authorize.Net</span>
+            <span>Automatic role unlocks</span>
+            <span>Admin console included</span>
           </div>
-        </div>
-        <div className="card space-y-4 border border-primary/20 bg-gradient-to-br from-card via-card to-secondary/60 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
-                Live ops view
-              </p>
-              <h2 className="text-2xl">Entitlement signal</h2>
-            </div>
-            <span className="rounded-full border border-border bg-secondary px-3 py-1 text-xs font-semibold text-muted-foreground">
-              Running
-            </span>
-          </div>
-          <div className="space-y-3">
-            <div className="rounded-xl border border-border bg-card px-4 py-3">
-              <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">
-                Active tiers
-              </p>
-              <p className="text-2xl font-semibold">3</p>
-            </div>
-            <div className="rounded-xl border border-border bg-card px-4 py-3">
-              <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">
-                Member sync latency
-              </p>
-              <p className="text-2xl font-semibold">&lt; 30s</p>
-            </div>
-            <div className="rounded-xl border border-border bg-card px-4 py-3">
-              <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">
-                Providers connected
-              </p>
-              <p className="text-2xl font-semibold">2</p>
-            </div>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Entitlements are append-audited. Role sync is safe to retry.
-          </p>
         </div>
       </section>
 
@@ -97,7 +58,7 @@ export default function HomePage() {
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className="subtle">Member flow</p>
-            <h2 className="text-3xl">4-step member flow.</h2>
+            <h2 className="text-3xl">Member flow in four steps.</h2>
           </div>
           <Link className="button secondary" href="/subscribe">
             Walk through it
@@ -108,22 +69,22 @@ export default function HomePage() {
             {
               step: "01",
               title: "Pick a tier",
-              body: "Pick a tier.",
+              body: "Pick",
             },
             {
               step: "02",
               title: "Connect Discord",
-              body: "Connect Discord.",
+              body: "Connect",
             },
             {
               step: "03",
               title: "Pay with confidence",
-              body: "Checkout.",
+              body: "Pay",
             },
             {
               step: "04",
               title: "Celebrate",
-              body: "Back to Discord.",
+              body: "Done",
             },
           ].map((item) => (
             <div key={item.step} className="card p-5">
@@ -141,22 +102,16 @@ export default function HomePage() {
         <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
           <div className="space-y-4">
             <p className="subtle">Admin console</p>
-            <h2 className="text-3xl">Ops for mods and admins.</h2>
-            <p className="text-muted-foreground">
-              Review grants, tiers, webhooks, and role syncs.
-            </p>
+            <h2 className="text-3xl">Ops for admins.</h2>
+            <p className="text-muted-foreground">Review grants, tiers, and sync.</p>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="card p-4">
                 <h3 className="text-lg">Diagnostics</h3>
-                <p className="text-sm text-muted-foreground">
-                  Role hierarchy and provider status.
-                </p>
+                <p className="text-sm text-muted-foreground">Roles + providers.</p>
               </div>
               <div className="card p-4">
                 <h3 className="text-lg">Manual actions</h3>
-                <p className="text-sm text-muted-foreground">
-                  Force syncs and manual grants.
-                </p>
+                <p className="text-sm text-muted-foreground">Force syncs + grants.</p>
               </div>
             </div>
           </div>
@@ -191,32 +146,8 @@ export default function HomePage() {
       <section className="mt-16">
         <div className="card flex flex-col gap-6 p-6 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="subtle">Provider coverage</p>
-            <h2 className="text-3xl">Stripe + Authorize.Net now, NMI next.</h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              One entitlement stream across providers.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            {["Stripe", "Authorize.Net", "NMI (next)", "Discord"].map((label) => (
-              <span
-                key={label}
-                className="rounded-full border border-border bg-secondary px-3 py-1 text-xs font-semibold text-muted-foreground"
-              >
-                {label}
-              </span>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="mt-16">
-        <div className="card flex flex-col gap-6 p-6 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-2xl">Ready to go?</h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Start the member flow or open the admin console.
-            </p>
+            <h2 className="text-2xl">Ready?</h2>
+            <p className="mt-2 text-sm text-muted-foreground">Start the flow or open admin.</p>
           </div>
           <div className="flex flex-wrap gap-3">
             <Link className="button" href="/subscribe">

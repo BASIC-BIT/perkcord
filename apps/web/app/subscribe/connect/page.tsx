@@ -1,6 +1,9 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { fetchPublicTierBySlug } from "@/lib/tierCatalog";
 import type { PublicTier } from "@/lib/tierCatalog";
+import { getMemberGuildIdFromCookies } from "@/lib/guildSelection";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -11,29 +14,32 @@ export default async function ConnectDiscordPage({
 }: {
   searchParams: SearchParams;
 }) {
+  const cookieStore = cookies();
   const tierParam = getParam(searchParams.tier);
-  const guildId = getParam(searchParams.guildId) ?? getParam(searchParams.guild);
+  const selectedGuildId = getMemberGuildIdFromCookies(cookieStore);
+  const guildId = getParam(searchParams.guildId) ?? getParam(searchParams.guild) ?? selectedGuildId;
 
   let tier: PublicTier | null = null;
   let tierError: string | null = null;
 
   if (!guildId) {
-    tierError = "Missing guildId. Add ?guildId=<serverId> to the URL to continue.";
-  } else if (!tierParam) {
-    tierError = "Missing tier selection.";
-  } else {
-    try {
-      tier = await fetchPublicTierBySlug(guildId, tierParam);
-      if (!tier) {
-        tierError = "Selected tier was not found.";
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unable to load tier.";
-      tierError = message;
-    }
+    redirect("/subscribe/select");
+  }
+  if (!tierParam) {
+    redirect("/subscribe");
   }
 
-  const oauthUrl = guildId && tierParam ? `/api/subscribe/discord?guildId=${guildId}&tier=${tierParam}` : null;
+  try {
+    tier = await fetchPublicTierBySlug(guildId, tierParam);
+    if (!tier) {
+      tierError = "Selected tier was not found.";
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unable to load tier.";
+    tierError = message;
+  }
+
+  const oauthUrl = `/api/subscribe/discord?tier=${tierParam}`;
 
   return (
     <section className="card p-6">
@@ -45,7 +51,7 @@ export default async function ConnectDiscordPage({
             Connect Discord to attach this purchase. We request the role_connections.write scope.
           </p>
         </div>
-        <Link className="button secondary" href={`/subscribe${guildId ? `?guildId=${guildId}` : ""}`}>
+        <Link className="button secondary" href="/subscribe">
           Change tier
         </Link>
       </div>

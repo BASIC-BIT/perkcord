@@ -145,6 +145,25 @@ export const TierEditor = ({ guildId, tiers }: TierEditorProps) => {
   const resolvedGuildId =
     guildId ?? activeTier?.guildId ?? selectedTier?.guildId ?? "";
 
+  if (!resolvedGuildId) {
+    return (
+      <div className="panel-grid mt-4">
+        <div className="snapshot-card">
+          <h3>Tier selection</h3>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Select a guild to manage tiers.
+          </p>
+        </div>
+        <div className="snapshot-card">
+          <h3>Tier editor</h3>
+          <div className="banner mt-4">
+            Choose a guild from the sidebar to edit tiers.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="panel-grid mt-4">
       <div className="snapshot-card">
@@ -246,16 +265,7 @@ export const TierEditor = ({ guildId, tiers }: TierEditorProps) => {
           action={mode === "update" ? "/api/admin/tiers/update" : "/api/admin/tiers/create"}
           method="post"
         >
-          <label className="field">
-            <span>Guild ID</span>
-            <input
-              className="input"
-              name="guildId"
-              placeholder="123456789012345678"
-              defaultValue={resolvedGuildId}
-              required
-            />
-          </label>
+          <input type="hidden" name="guildId" value={resolvedGuildId} />
           {mode === "update" && activeTier && (
             <label className="field">
               <span>Tier ID</span>

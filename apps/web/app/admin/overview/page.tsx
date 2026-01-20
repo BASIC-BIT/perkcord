@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { cookies } from "next/headers";
+import { getAdminGuildIdFromCookies } from "@/lib/guildSelection";
 import { getSessionFromCookies } from "@/lib/session";
 import {
   AuditEventContent,
@@ -25,8 +27,10 @@ export default async function AdminOverviewPage({
   searchParams?: SearchParams;
 }) {
   const secret = process.env.PERKCORD_SESSION_SECRET;
-  const session = secret ? getSessionFromCookies(cookies(), secret) : null;
-  const guildId = getParam(searchParams?.guildId);
+  const cookieStore = cookies();
+  const session = secret ? getSessionFromCookies(cookieStore, secret) : null;
+  const selectedGuildId = session ? getAdminGuildIdFromCookies(cookieStore) : null;
+  const guildId = getParam(searchParams?.guildId) ?? selectedGuildId;
   const scanLimit = getNumberParam(searchParams?.scanLimit);
   const revenueWindowDays = getNumberParam(searchParams?.revenueWindowDays);
   const auditLimit = getNumberParam(searchParams?.auditLimit);
@@ -148,6 +152,9 @@ export default async function AdminOverviewPage({
     }
   }
 
+  const selectedGuild =
+    guildId && guildList ? guildList.find((guild) => guild._id === guildId) : null;
+
   return (
     <div className="space-y-6">
       <section className="panel">
@@ -161,35 +168,25 @@ export default async function AdminOverviewPage({
       <section className="panel">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-2xl">Guild selection</h2>
-            <p className="text-sm text-muted-foreground">Choose a guild for this session.</p>
+            <h2 className="text-2xl">Active guild</h2>
+            <p className="text-sm text-muted-foreground">
+              Select the guild you want to manage.
+            </p>
           </div>
+          <Link className="button secondary" href="/admin/select-guild">
+            Change guild
+          </Link>
         </div>
         {guildListError && <div className="banner error mt-4">{guildListError}</div>}
-        {guildList && guildList.length > 0 ? (
-          <form className="form mt-4" action="/admin/overview" method="get">
-            <label className="field">
-              <span>Guild</span>
-              <select className="input" name="guildId" defaultValue={guildId ?? ""}>
-                <option value="">Select a guild</option>
-                {guildList.map((guild) => (
-                  <option key={guild._id} value={guild._id}>
-                    {guild.name} ({guild.discordGuildId})
-                  </option>
-                ))}
-              </select>
-            </label>
-            <div className="tier-actions">
-              <button className="button secondary" type="submit">
-                Load guild
-              </button>
-            </div>
-          </form>
-        ) : !guildListError ? (
-          <p className="mt-4 text-sm text-muted-foreground">
-            No guilds yet. Invite the bot to a server.
-          </p>
-        ) : null}
+        {!guildId ? (
+          <div className="banner mt-4">Select a guild to load admin data.</div>
+        ) : (
+          <div className="snapshot-meta mt-4">
+            <span>
+              Guild: <strong>{selectedGuild?.name ?? "Unknown guild"}</strong>
+            </span>
+          </div>
+        )}
       </section>
 
       <section className="panel">
@@ -201,72 +198,66 @@ export default async function AdminOverviewPage({
             </p>
           </div>
         </div>
-        <form className="form mt-4" action="/admin/overview" method="get">
-          <label className="field">
-            <span>Guild ID</span>
-            <input
-              className="input"
-              name="guildId"
-              placeholder="123456789012345678"
-              defaultValue={guildId ?? ""}
-              required
-            />
-          </label>
-          <label className="field">
-            <span>Provider scan limit (optional)</span>
-            <input
-              className="input"
-              name="scanLimit"
-              type="number"
-              min={1}
-              max={1000}
-              placeholder="200"
-              defaultValue={scanLimit ? String(scanLimit) : ""}
-            />
-          </label>
-          <label className="field">
-            <span>Revenue window days (optional)</span>
-            <input
-              className="input"
-              name="revenueWindowDays"
-              type="number"
-              min={1}
-              max={365}
-              placeholder="30"
-              defaultValue={revenueWindowDays ? String(revenueWindowDays) : ""}
-            />
-          </label>
-          <label className="field">
-            <span>Failed webhook limit (optional)</span>
-            <input
-              className="input"
-              name="failedLimit"
-              type="number"
-              min={1}
-              max={200}
-              placeholder="25"
-              defaultValue={failedLimit ? String(failedLimit) : ""}
-            />
-          </label>
-          <label className="field">
-            <span>Audit event limit (optional)</span>
-            <input
-              className="input"
-              name="auditLimit"
-              type="number"
-              min={1}
-              max={200}
-              placeholder="25"
-              defaultValue={auditLimit ? String(auditLimit) : ""}
-            />
-          </label>
-          <div className="tier-actions">
-            <button className="button secondary" type="submit">
-              Load health
-            </button>
-          </div>
-        </form>
-        {!guildId && <p className="mt-4 text-sm text-muted-foreground">Enter a guild ID to load health metrics.</p>}
+        {!guildId ? (
+          <div className="banner mt-4">Select a guild to load health metrics.</div>
+        ) : (
+          <form className="form mt-4" action="/admin/overview" method="get">
+            <input type="hidden" name="guildId" value={guildId} />
+            <label className="field">
+              <span>Provider scan limit (optional)</span>
+              <input
+                className="input"
+                name="scanLimit"
+                type="number"
+                min={1}
+                max={1000}
+                placeholder="200"
+                defaultValue={scanLimit ? String(scanLimit) : ""}
+              />
+            </label>
+            <label className="field">
+              <span>Revenue window days (optional)</span>
+              <input
+                className="input"
+                name="revenueWindowDays"
+                type="number"
+                min={1}
+                max={365}
+                placeholder="30"
+                defaultValue={revenueWindowDays ? String(revenueWindowDays) : ""}
+              />
+            </label>
+            <label className="field">
+              <span>Failed webhook limit (optional)</span>
+              <input
+                className="input"
+                name="failedLimit"
+                type="number"
+                min={1}
+                max={200}
+                placeholder="25"
+                defaultValue={failedLimit ? String(failedLimit) : ""}
+              />
+            </label>
+            <label className="field">
+              <span>Audit event limit (optional)</span>
+              <input
+                className="input"
+                name="auditLimit"
+                type="number"
+                min={1}
+                max={200}
+                placeholder="25"
+                defaultValue={auditLimit ? String(auditLimit) : ""}
+              />
+            </label>
+            <div className="tier-actions">
+              <button className="button secondary" type="submit">
+                Load health
+              </button>
+            </div>
+          </form>
+        )}
         {healthConfigError && <div className="banner error mt-4">{healthConfigError}</div>}
         {guildDiagnosticsError && <div className="banner error mt-4">{guildDiagnosticsError}</div>}
         {activeMemberCountsError && <div className="banner error mt-4">{activeMemberCountsError}</div>}

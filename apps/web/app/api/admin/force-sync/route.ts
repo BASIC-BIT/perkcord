@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { getAdminGuildIdFromCookies } from "@/lib/guildSelection";
 import { getSessionFromCookies } from "@/lib/session";
 import { requireEnv, resolveEnvError } from "@/lib/serverEnv";
 
@@ -77,7 +78,8 @@ export async function POST(request: Request) {
     });
   }
 
-  const guildId = readFormValue(form, "guildId");
+  const guildId =
+    readFormValue(form, "guildId") ?? getAdminGuildIdFromCookies(cookies());
   const scope = readFormValue(form, "scope");
   const discordUserId = readFormValue(form, "discordUserId");
   const reason = readFormValue(form, "reason");
@@ -85,7 +87,7 @@ export async function POST(request: Request) {
   if (!guildId) {
     return buildRedirect(request, {
       forceSync: "error",
-      message: "Guild ID is required.",
+      message: "Select a guild first.",
     });
   }
   if (!scope || !allowedScopes.has(scope)) {

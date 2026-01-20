@@ -65,6 +65,8 @@ after signing in and create tiers with:
 - Provider references (Stripe price IDs, Authorize.Net key, NMI key)
 - Provider checkout settings (Authorize.Net amount/interval, NMI hosted URL)
 
+Note: Admin and member flows now use Discord OAuth to pick a guild, so you no longer pass guild IDs in URLs.
+
 ## Playwright browsers (for E2E)
 
 ```bash
